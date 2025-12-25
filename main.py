@@ -60,6 +60,13 @@ def parse_args():
     parser.add_argument('--icl', type=bool, default=False, help='To use ICL examples for inference or not')
     parser.add_argument('--hard', type=bool, default=False, help='To use hard example trained models for inference')
 
+    # GRPO Training Speed Optimization Arguments
+    parser.add_argument('--subset-size', type=int, default=None, help='Use subset of training data for faster training (e.g., 10000). None = full dataset')
+    parser.add_argument('--num-epochs', type=int, default=4, help='Number of training epochs (default: 4, reduce to 1-2 for faster training)')
+    parser.add_argument('--num-generations', type=int, default=4, help='Number of generations per sample for GRPO (default: 4, reduce to 2 for 50%% speedup)')
+    parser.add_argument('--batch-size', type=int, default=2, help='Per-device training batch size (default: 2, increase to 4 for fewer steps)')
+    parser.add_argument('--disable-gradient-checkpointing', action='store_true', help='Disable gradient checkpointing for 20-30%% speedup (uses more memory)')
+
     return parser.parse_args()
 
 def set_all_seeds(seed: int = 2025) -> None:
@@ -576,9 +583,12 @@ if __name__ == "__main__":
 
         logging.info(f"Loaded {len(train_dataset)} training samples")
 
-        # Optional: Use subset for testing (comment out for full training)
-        # train_dataset = train_dataset.select(range(1000))
-        # logging.info(f"Using subset: {len(train_dataset)} samples")
+        # Use subset if specified via --subset-size argument
+        if args.subset_size is not None:
+            train_dataset = train_dataset.select(range(min(args.subset_size, len(train_dataset))))
+            logging.info(f"✓ Using subset: {len(train_dataset)} samples (--subset-size={args.subset_size})")
+        else:
+            logging.info(f"✓ Using full dataset: {len(train_dataset)} samples")
 
         # Format dataset for GRPO training
         # Use Python list directly to avoid Arrow serialization issues
@@ -629,6 +639,16 @@ if __name__ == "__main__":
         print(model.print_trainable_parameters())
         print("=" * 80)
 
+        # Log configuration
+        logging.info("=" * 80)
+        logging.info("GRPO TRAINING CONFIGURATION:")
+        logging.info(f"  Training samples: {len(grpo_train_dataset)}")
+        logging.info(f"  Epochs: {args.num_epochs}")
+        logging.info(f"  Batch size: {args.batch_size}")
+        logging.info(f"  Generations per sample: {args.num_generations}")
+        logging.info(f"  Gradient checkpointing: {not args.disable_gradient_checkpointing}")
+        logging.info("=" * 80)
+
         training_args = GRPOConfig(
         # output_dir=args.vlm_name+"grpo-answer-think-preappend",  # Directory to save the model
         # output_dir="full-chartqa-vanilla",  # Directory to save the model
@@ -639,18 +659,18 @@ if __name__ == "__main__":
         # output_dir = "prm",
         bf16=True,
         remove_unused_columns = False,
-        per_device_train_batch_size=2,  # Increased back to 2 with LoRA (was 1)
-        gradient_accumulation_steps=2,  # Effective batch size = 4
-        num_train_epochs=4,
+        per_device_train_batch_size=args.batch_size,  # Configurable via --batch-size
+        gradient_accumulation_steps=2,  # Effective batch size = batch_size * 2
+        num_train_epochs=args.num_epochs,  # Configurable via --num-epochs
         logging_steps=50,
         max_prompt_length = 4096,  # Restored to original (LoRA saves memory)
         eval_strategy="no",  # Disabled - no eval during training
         eval_steps=500,  # Ignored when eval_strategy="no"
         max_completion_length = 768,  # Restored to original (LoRA saves memory)
-        num_generations = 4,  # Restored to 4 (LoRA saves memory)
+        num_generations = args.num_generations,  # Configurable via --num-generations
         learning_rate = 1e-5,  # LoRA requires higher LR than full fine-tuning (8e-7)
         beta = 0.0,  # Disable reference model for VLM support (reduces memory)
-        gradient_checkpointing=True,  # Additional memory savings (~20-30% slower but saves memory)
+        gradient_checkpointing=not args.disable_gradient_checkpointing,  # Configurable via --disable-gradient-checkpointing
         )
 
         trainer = GRPOTrainer(
