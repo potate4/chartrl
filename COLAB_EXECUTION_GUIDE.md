@@ -34,18 +34,30 @@ Expected output: `/content/chartrl`
 
 ### Step 1.3: Install Dependencies
 
+**IMPORTANT:** Install from requirements.txt (with fixes already applied)
+
+```bash
+# Install from requirements.txt (this includes ALL dependencies)
+!pip install -r requirements.txt
+
+# This will take ~10-15 minutes
+# Includes: torch, flash-attn, trl, transformers, datasets, deepspeed, etc.
+```
+
+**If installation fails or times out, use this fallback:**
+
 ```bash
 # PyTorch with CUDA 12.4
-!pip install -q torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+!pip install torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 # Flash Attention 2 (critical - takes ~5 min)
-!pip install -q flash-attn==2.7.4.post1 --no-build-isolation
+!pip install flash-attn==2.7.4.post1 --no-build-isolation
 
 # Core libraries
-!pip install -q trl==0.12.0 transformers==4.53.1 datasets==3.6.0 accelerate==1.7.0 deepspeed==0.15.3 peft==0.15.2
+!pip install trl==0.12.0 transformers==4.53.1 datasets==3.6.0 accelerate==1.7.0 deepspeed==0.15.3 peft==0.15.2
 
 # Additional dependencies
-!pip install -q qwen-vl-utils==0.0.11 wandb==0.20.1 sentence-transformers sacrebleu scipy scikit-image Pillow==10.4.0
+!pip install qwen-vl-utils==0.0.11 wandb==0.20.1 sentence-transformers sacrebleu scipy scikit-image Pillow==10.4.0 undecorated==0.3.0
 ```
 
 **Verify installation:**
@@ -137,6 +149,23 @@ Number of samples: 34200
 ---
 
 ## Part 3: GRPO Training (12-16 hours)
+
+### ⚠️ IMPORTANT: Understanding `--dataset-name evochart`
+
+**This is confusing but important to understand:**
+
+- **Training dataset**: Always loaded from `sanchit97/chart-rvr-grpo-train` (HuggingFace)
+- **`--dataset-name evochart`**: This argument ONLY affects the **evaluation dataset** used during training
+- The training data is NOT from EvoChart - it's from the 34K HF dataset
+
+**Why evochart?**
+- During training, the model is evaluated every 500 steps on an OOD dataset
+- EvoChart is used as the validation set to measure OOD performance
+- This is just for monitoring - it doesn't affect what data is used for training
+
+**TL;DR:** `--dataset-name evochart` means "use EvoChart for validation during training" not "train on EvoChart"
+
+---
 
 ### Step 3.1: Verify Setup Before Training
 

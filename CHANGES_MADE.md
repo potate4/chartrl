@@ -78,6 +78,19 @@ num_processes: 1  # For single A100
 
 ---
 
+### 4. `requirements.txt`
+
+**Line 204: Fixed broken TRL path**
+```python
+# OLD:
+trl @ file:///mnt/home/sanchit/rl-chart/trl  # Local path - won't work
+
+# NEW:
+trl==0.12.0  # Install from PyPI
+```
+
+---
+
 ## Files Created
 
 ### 1. `COLAB_EXECUTION_GUIDE.md`

@@ -581,29 +581,18 @@ if __name__ == "__main__":
         grpo_train_dataset = train_dataset.map(
             _grpo_format_data,
             num_proc=4,
-            load_from_cache_file=False,
+            load_from_cache_file=True,
             desc="Formatting training data"
         )
 
         logging.info(f"Training dataset formatted. Sample prompt length: {len(grpo_train_dataset[0]['prompt'])}")
 
         # =================================================================
-        # LOAD EVALUATION DATASET (EvoChart OOD)
+        # SKIP EVALUATION DATASET - WILL EVAL AFTER TRAINING
         # =================================================================
-        logging.info("Loading evaluation dataset (EvoChart)...")
-        dataset = ChartDataset("evochart", processor=processor, blocks=blocks)
-        eval_dataset = dataset.load_chart_dataset(split="test")
-        eval_dataset = eval_dataset.select(range(200))  # 200 samples for eval
-
-        grpo_eval_dataset = eval_dataset.map(
-            _grpo_format_data,
-            num_proc=4,
-            load_from_cache_file=False,
-            desc="Formatting eval data"
-        )
-
-        logging.info(f"Evaluation dataset loaded: {len(grpo_eval_dataset)} samples")
-        logging.info("✓ Datasets ready for GRPO training")
+        logging.info("Skipping evaluation during training")
+        grpo_eval_dataset = None
+        logging.info("✓ Training dataset ready for GRPO")
 
 
         # start from an SFT checkpoint
@@ -622,12 +611,12 @@ if __name__ == "__main__":
         # output_dir = "prm",
         bf16=True,
         remove_unused_columns = False,
-        per_device_train_batch_size=2,
+        per_device_train_batch_size=4,
         num_train_epochs=4,
         logging_steps=50,
         max_prompt_length = 4096,
-        eval_strategy="steps",
-        eval_steps=500,
+        eval_strategy="no",  # Disabled - no eval during training
+        eval_steps=500,  # Ignored when eval_strategy="no"
         max_completion_length = 768,
         num_generations = 4,
         # learning_rate = 8e-7,
@@ -639,7 +628,7 @@ if __name__ == "__main__":
             args=training_args,
             reward_funcs=[format_reward, accuracy_reward, length_think_reward, num_token_reward, chart_type_reward, table_style_reward, process_style_reward],
             train_dataset=grpo_train_dataset,
-            eval_dataset=grpo_eval_dataset,  
+            eval_dataset=None,  # Skip eval during training
             processing_class=processor,
         )
         

@@ -174,27 +174,16 @@ class ChartDataset:
             if os.path.exists(cache_dir+"/evochart_dataset"):
                 dataset = load_from_disk(str(cache_dir+"/evochart_dataset"))
             else:
-                root = "./evochart/"
-                with open(root+'EvoChart-QA.json', 'r') as f:
-                    data = json.load(f)
-                data = [
-                    {
-                        "image": root+f"png/{d['imgname']}",
-                        "label": d["label"],
-                        "query": d["query"],
-                    }
-                    for d in data
-                ]
-                test_ds = Dataset.from_list(data).cast_column("image", Image())
+                # Load from HuggingFace
+                logging.info("Downloading EvoChart dataset from HuggingFace...")
+                dataset = load_dataset("MuyeHuang/EvoChart-QA-Benchmark", cache_dir=cache_dir)
 
-                evochart = DatasetDict({
-                                "test": test_ds,
-                            })
+                # Save to disk for future use
+                dataset.save_to_disk(str(cache_dir+"/evochart_dataset"))
+                logging.info(f"EvoChart dataset saved to {cache_dir}/evochart_dataset")
 
-                evochart.save_to_disk(str(cache_dir+"/evochart_dataset"))
-                dataset = evochart
-
-            data = dataset[split]
+            # EvoChart only has 'train' split - use it for all splits
+            data = dataset['train']
             return data
 
         if self.dataset_name == "chartllama":
@@ -234,48 +223,13 @@ class ChartDataset:
             if os.path.exists(cache_dir+"/chartbench"):
                 dataset = load_from_disk(str(cache_dir+"/chartbench"))
             else:
-                root = "./chartbench/"
-                with open(root+"test.jsonl", 'r') as f:
-                    json_data = [json.loads(l) for l in f if l.strip()]
+                # Load from HuggingFace
+                logging.info("Downloading ChartBench dataset from HuggingFace...")
+                dataset = load_dataset("SincereX/ChartBench", cache_dir=cache_dir)
 
-                # folds = ["area", "bar",  "box",  "combination",  "line",  "node_link",  "pie",   "radar",  "scatter"]
-                # breakpoint()
-
-                data = []
-                skip = 0
-                for d in json_data:
-                    conversation = d["conversation"]
-                    if len(conversation) == 2:
-                        data.append({
-                            "image": root+d['image'][2:],
-                            "query": d["conversation"][0]["query"].strip()+" For binary questions, answer in yes/no.",
-                            "label": d["conversation"][0]["label"].strip(),
-                            "type": d["type"]["chart"],
-                        })
-                        data.append({
-                            "image": root+d['image'][2:],
-                            "query": d["conversation"][1]["query"].strip()+" For binary questions, answer in yes/no.",
-                            "label": d["conversation"][1]["label"].strip(),
-                            "type": d["type"]["chart"],
-                        })
-                    else:
-                        # if conversation is not of length 2, we skip it
-                        # print("Skipping conversation of length: ", len(conversation))
-                        skip+=1
-                        data.append({
-                            "image": root+d['image'][2:],
-                            "query": d["conversation"][0]["query"].strip()+" For binary questions, answer in yes/no.",
-                            "label": d["conversation"][0]["label"].strip(),
-                            "type": d["type"]["chart"],
-                        })
-                print("Skipped conversations: ", skip)    
-                test_ds = Dataset.from_list(data).cast_column("image", Image())
-                chartbench = DatasetDict({
-                                "test": test_ds,
-                            })
-
-                chartbench.save_to_disk(str(cache_dir+"/chartbench/"))
-                dataset = load_from_disk(str(cache_dir+"/chartbench"))
+                # Save to disk for future use
+                dataset.save_to_disk(str(cache_dir+"/chartbench"))
+                logging.info(f"ChartBench dataset saved to {cache_dir}/chartbench")
 
             data = dataset[split]
             return data
