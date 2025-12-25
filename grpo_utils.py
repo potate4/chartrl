@@ -1,3 +1,4 @@
+
 import torch
 from datasets import load_dataset
 import re
@@ -75,28 +76,45 @@ def compare_tables(pred, gt):
     try:
         gt['columns'] = sorted(gt['columns'], key=lambda x: x.lower())
         pred['columns'] = sorted(pred['columns'], key=lambda x: x.lower())
-        
-
     except Exception as e:
-        print(e)
+        print(f"Column sorting error: {e}")
         pass
 
     try:
-        gt['rows'] = sorted([g for g in gt['rows']])
-        pred['rows'] = sorted([g for g in pred['rows']])
+        # Only sort if rows are lists, not dicts
+        if all(isinstance(row, list) for row in gt['rows']):
+            gt['rows'] = sorted([g for g in gt['rows']])
+        if all(isinstance(row, list) for row in pred['rows']):
+            pred['rows'] = sorted([g for g in pred['rows']])
     except Exception as e:
-        print(e)
+        print(f"Row sorting error: {e}")
         pass
 
     reward = 0.0
-    for col in range(len(pred["columns"])):
-        if pred["columns"][col].lower() == gt["columns"][col].lower():
-            reward += 0.5*float(1/len(pred["columns"]))
 
-    for row in range(len(pred["rows"])):
-        for row_id in range(len(pred["rows"][row])):
-            if pred["rows"][row][row_id] == gt["rows"][row][row_id]:
-                reward += 0.5*float(1.0/len(pred["rows"]))
+    try:
+        # Compare columns
+        min_cols = min(len(pred["columns"]), len(gt["columns"]))
+        for col in range(min_cols):
+            if pred["columns"][col].lower() == gt["columns"][col].lower():
+                reward += 0.5*float(1/len(pred["columns"]))
+    except Exception as e:
+        print(f"Column comparison error: {e}")
+        pass
+
+    try:
+        # Compare rows - only if both are list of lists
+        if all(isinstance(row, list) for row in pred['rows']) and all(isinstance(row, list) for row in gt['rows']):
+            min_rows = min(len(pred["rows"]), len(gt["rows"]))
+            for row in range(min_rows):
+                min_cols_in_row = min(len(pred["rows"][row]), len(gt["rows"][row]))
+                for row_id in range(min_cols_in_row):
+                    if pred["rows"][row][row_id] == gt["rows"][row][row_id]:
+                        reward += 0.5*float(1.0/len(pred["rows"]))
+    except Exception as e:
+        print(f"Row comparison error: {e}")
+        pass
+
     return reward
 
 def table_style_reward(completions, **kwargs):
@@ -403,3 +421,6 @@ def text_sim(pr, gt):
 #             reward = float(ans_pred.lower() == checker_out.lower())
 #         rewards.append(reward)
 #     return rewards
+
+                    
+

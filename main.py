@@ -545,6 +545,11 @@ if __name__ == "__main__":
                 return {
                     "prompt": conversation,  # Conversation format for TRL 0.20+
                     "images": [_resize_up(example["image"])],  # Note: 'images' not 'image'
+                    # Include fields needed by reward functions
+                    "label": example.get("label", ""),
+                    "table": example.get("table", None),
+                    "chart_type": example.get("chart_type", ""),
+                    "reasoning": example.get("reasoning", ""),
                 }
 
         # =================================================================
@@ -602,6 +607,28 @@ if __name__ == "__main__":
         # model = Qwen2_5_VLForConditionalGeneration.from_pretrained(sft_model_path)
         # logging.info("Loaded model with SFT adapters from {}".format(sft_model_path))
 
+        # =================================================================
+        # LORA CONFIGURATION FOR MEMORY EFFICIENCY
+        # =================================================================
+        from peft import LoraConfig, get_peft_model
+
+        logging.info("Applying LoRA adapters for memory-efficient GRPO training...")
+        grpo_peft_config = LoraConfig(
+            r=8,  # Low rank for memory efficiency (vs 256 for full training)
+            lora_alpha=16,  # 2 * rank for optimal training speed
+            lora_dropout=0.05,
+            bias="none",
+            target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "up_proj", "down_proj", "gate_proj"],  # All weight matrices
+            task_type="CAUSAL_LM",
+        )
+
+        model = get_peft_model(model, grpo_peft_config)
+        logging.info("✓ LoRA adapters applied successfully")
+        print("=" * 80)
+        print("TRAINABLE PARAMETERS:")
+        print(model.print_trainable_parameters())
+        print("=" * 80)
+
         training_args = GRPOConfig(
         # output_dir=args.vlm_name+"grpo-answer-think-preappend",  # Directory to save the model
         # output_dir="full-chartqa-vanilla",  # Directory to save the model
@@ -612,16 +639,18 @@ if __name__ == "__main__":
         # output_dir = "prm",
         bf16=True,
         remove_unused_columns = False,
-        per_device_train_batch_size=4,
+        per_device_train_batch_size=2,  # Increased back to 2 with LoRA (was 1)
+        gradient_accumulation_steps=2,  # Effective batch size = 4
         num_train_epochs=4,
         logging_steps=50,
-        max_prompt_length = 4096,
+        max_prompt_length = 4096,  # Restored to original (LoRA saves memory)
         eval_strategy="no",  # Disabled - no eval during training
         eval_steps=500,  # Ignored when eval_strategy="no"
-        max_completion_length = 768,
-        num_generations = 4,
-        # learning_rate = 8e-7,
+        max_completion_length = 768,  # Restored to original (LoRA saves memory)
+        num_generations = 4,  # Restored to 4 (LoRA saves memory)
+        learning_rate = 1e-5,  # LoRA requires higher LR than full fine-tuning (8e-7)
         beta = 0.0,  # Disable reference model for VLM support (reduces memory)
+        gradient_checkpointing=True,  # Additional memory savings (~20-30% slower but saves memory)
         )
 
         trainer = GRPOTrainer(
@@ -635,6 +664,3 @@ if __name__ == "__main__":
         
 
         trainer.train()
-
-                    
-
