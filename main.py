@@ -529,6 +529,8 @@ if __name__ == "__main__":
         def _grpo_format_data(example):
                 from prompts import SYSTEM_PROMPT_TEMPLATES
                 SYSTEM_PROMPT = SYSTEM_PROMPT_TEMPLATES[blocks]
+
+                # TRL 0.20+ expects conversation format for VLMs
                 conversation = [
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {
@@ -538,13 +540,11 @@ if __name__ == "__main__":
                             {"type": "text", "text": example["query"]},
                         ],
                     },
-                    # {"role": "assistant", "content": [{"type": "text", "text": "<think>"}]},
                 ]
-                prompt = processor.apply_chat_template(conversation, add_generation_prompt=True, truncation=False)
 
                 return {
-                    "prompt": prompt,
-                    "image": _resize_up(example["image"]),
+                    "prompt": conversation,  # Conversation format for TRL 0.20+
+                    "images": [_resize_up(example["image"])],  # Note: 'images' not 'image'
                 }
 
         # =================================================================
@@ -576,16 +576,17 @@ if __name__ == "__main__":
         # logging.info(f"Using subset: {len(train_dataset)} samples")
 
         # Format dataset for GRPO training
-        # The HF dataset already has: image, query, label, reasoning, chart_type, table
-        # We need to add the 'prompt' field using _grpo_format_data
-        grpo_train_dataset = train_dataset.map(
-            _grpo_format_data,
-            num_proc=4,
-            load_from_cache_file=True,
-            desc="Formatting training data"
-        )
+        # Use Python list directly to avoid Arrow serialization issues
+        logging.info("Formatting dataset as Python list...")
+        grpo_train_dataset = []
 
-        logging.info(f"Training dataset formatted. Sample prompt length: {len(grpo_train_dataset[0]['prompt'])}")
+        from tqdm import tqdm
+        for example in tqdm(train_dataset, desc="Formatting training data"):
+            formatted = _grpo_format_data(example)
+            grpo_train_dataset.append(formatted)
+
+        logging.info(f"Training dataset formatted. Total samples: {len(grpo_train_dataset)}")
+        logging.info(f"Sample has {len(grpo_train_dataset[0]['prompt'])} messages")
 
         # =================================================================
         # SKIP EVALUATION DATASET - WILL EVAL AFTER TRAINING
@@ -620,7 +621,7 @@ if __name__ == "__main__":
         max_completion_length = 768,
         num_generations = 4,
         # learning_rate = 8e-7,
-        # beta = 0.2,
+        beta = 0.0,  # Disable reference model for VLM support (reduces memory)
         )
 
         trainer = GRPOTrainer(

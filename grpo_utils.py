@@ -11,6 +11,22 @@ import matplotlib.pyplot as plt
 
 text_reward_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2").cuda().eval()
 
+def extract_text_from_completion(completion):
+    """Extract text from conversation format completions."""
+    # If completion is a list (conversation format), extract text from last assistant message
+    if isinstance(completion, list):
+        for msg in reversed(completion):
+            if isinstance(msg, dict) and msg.get("role") == "assistant":
+                content = msg.get("content", "")
+                # If content is a list of dicts (multimodal), extract text parts
+                if isinstance(content, list):
+                    text_parts = [part.get("text", "") for part in content if part.get("type") == "text"]
+                    return " ".join(text_parts)
+                return content
+        return ""
+    # If it's already a string, return as-is
+    return str(completion)
+
 def format_reward(completions, **kwargs):
         """Reward function that checks if the completion has a specific format."""
         # pattern = r"^<think>\n.*?\n</think>\n<answer>\n.*?\n</answer>$" # blocks=2
@@ -35,8 +51,10 @@ def format_reward(completions, **kwargs):
         # TAG_RE = re.compile(r"<think>\s*[\s\S]+?\s*</think>\s*<answer>\s*[\s\S]+?\s*</answer>\s*\Z",flags=re.DOTALL | re.IGNORECASE,)
 
         # TAG_RE = re.compile(r"<answer>\s*[\s\S]+?\s*</answer>\s*\Z",flags=re.DOTALL | re.IGNORECASE,)
-        
-        matches = [re.match(pattern, content, re.DOTALL | re.MULTILINE) for content in completions]
+
+        # Extract text from conversation format
+        text_completions = [extract_text_from_completion(c) for c in completions]
+        matches = [re.match(pattern, content, re.DOTALL | re.MULTILINE) for content in text_completions]
         # matches = [TAG_RE.search(content) for content in completions]
 
         # rewards = [3.0 if match else 0.0 for match in matches]
@@ -81,12 +99,18 @@ def compare_tables(pred, gt):
                 reward += 0.5*float(1.0/len(pred["rows"]))
     return reward
 
-def table_style_reward(completions, table, **kwargs):
+def table_style_reward(completions, **kwargs):
+    # Extract table from kwargs
+    table = kwargs.get('table', None)
+
+    # Extract text from conversation format
+    completions = [extract_text_from_completion(c) for c in completions]
+
     rewards = []
     if table is None:
         print("No table provided for table style reward.")
         return [0.0] * len(completions)
-    
+
     for completion,tab in zip(completions, table):
         reward = 0.0
 
@@ -120,6 +144,9 @@ def table_style_reward(completions, table, **kwargs):
     return rewards
 
 def num_token_reward(completions, **kwargs):
+    # Extract text from conversation format
+    completions = [extract_text_from_completion(c) for c in completions]
+
     _PATTERNS = [
             re.compile(r"<type>"),
             re.compile(r"</type>"),
@@ -145,11 +172,19 @@ def num_token_reward(completions, **kwargs):
     return rewards
 
 
-def accuracy_reward(completions, label: list[str], **kwargs):
+def accuracy_reward(completions, **kwargs):
     """Reward function that checks if the completion matches the ground truth.
     - If both gold and prediction are parseable → use math verification.
     - If not parseable → compare as normalized text.
     """
+    # Extract label from kwargs
+    label = kwargs.get('label', [])
+    if not label:
+        return [0.0] * len(completions)
+
+    # Extract text from conversation format
+    completions = [extract_text_from_completion(c) for c in completions]
+
     rewards = []
 
     # print(completions)
@@ -196,6 +231,9 @@ def accuracy_reward(completions, label: list[str], **kwargs):
 
 # Ensure that the length of the reasoning is sufficient (50 tokens and 3 steps minimum)
 def length_think_reward(completions, **kwargs):
+    # Extract text from conversation format
+    completions = [extract_text_from_completion(c) for c in completions]
+
     rewards = []
     for completion in completions:
         reward = 0.0
@@ -230,7 +268,15 @@ def length_think_reward(completions, **kwargs):
     return rewards
 
 
-def chart_type_reward(completions, chart_type, **kwargs):
+def chart_type_reward(completions, **kwargs):
+    # Extract chart_type from kwargs
+    chart_type = kwargs.get('chart_type', [])
+    if not chart_type:
+        return [0.0] * len(completions)
+
+    # Extract text from conversation format
+    completions = [extract_text_from_completion(c) for c in completions]
+
     rewards = []
     for completion, c_type in zip(completions, chart_type):
         reward = 0.0
@@ -248,7 +294,15 @@ def chart_type_reward(completions, chart_type, **kwargs):
 ## graph specific rewards here
 
 
-def process_style_reward(completions, reasoning, **kwargs):
+def process_style_reward(completions, **kwargs):
+    # Extract reasoning from kwargs
+    reasoning = kwargs.get('reasoning', [])
+    if not reasoning:
+        return [0.0] * len(completions)
+
+    # Extract text from conversation format
+    completions = [extract_text_from_completion(c) for c in completions]
+
     rewards  = []
     for completion, reason in zip(completions, reasoning):
         steps = completion.split("</table>")[-1].strip().split("</think>")[0].strip()
