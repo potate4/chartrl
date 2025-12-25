@@ -48,7 +48,7 @@ os.environ['HF_HOME'] = '/content/hf_cache'
 def parse_args():
     parser = argparse.ArgumentParser(description="Argument parser for VLM evaluation pipeline")
 
-    parser.add_argument('--mode', type=str, choices=["eval", "sft", "dpo", "ppo", "grpo"], required=True, help='Run mode')
+    parser.add_argument('--mode', type=str, choices=["eval", "sft", "dpo", "ppo", "grpo", "psr", "nsr", "w-reinforce"], required=True, help='Run mode: eval, sft, dpo, ppo, grpo, psr (Positive Sample Reinforcement), nsr (Negative Sample Reinforcement), w-reinforce (Weighted-REINFORCE)')
     parser.add_argument('--vlm-name', type=str, required=True, help='Name of the vision-language model')
     parser.add_argument('--sft-lora', type=bool, required=False, default=False, help='Use LORA adapters for SFT and location')
     parser.add_argument('--dpo-lora', type=bool, required=False, default=False, help='Use LORA adapters for DPO and location')
@@ -66,6 +66,10 @@ def parse_args():
     parser.add_argument('--num-generations', type=int, default=4, help='Number of generations per sample for GRPO (default: 4, reduce to 2 for 50%% speedup)')
     parser.add_argument('--batch-size', type=int, default=2, help='Per-device training batch size (default: 2, increase to 4 for fewer steps)')
     parser.add_argument('--disable-gradient-checkpointing', action='store_true', help='Disable gradient checkpointing for 20-30%% speedup (uses more memory)')
+
+    # NSR Training Mode Arguments (PSR, NSR, W-REINFORCE)
+    parser.add_argument('--lambda-psr', type=float, default=0.1, help='Weight for PSR in W-REINFORCE mode (default: 0.1, paper recommendation)')
+    parser.add_argument('--reward-threshold', type=float, default=0.5, help='Threshold to separate positive/negative samples (default: 0.5)')
 
     return parser.parse_args()
 
@@ -500,7 +504,7 @@ if __name__ == "__main__":
         trainer.train()
 
 
-    if args.mode == "grpo":
+    if args.mode in ["grpo", "psr", "nsr", "w-reinforce"]:
         # Setup and imports
         os.environ["WANDB_CONSOLE"] = "wrap" 
         wandb.init(project="chartrl", entity="chartrl")
@@ -641,22 +645,29 @@ if __name__ == "__main__":
 
         # Log configuration
         logging.info("=" * 80)
-        logging.info("GRPO TRAINING CONFIGURATION:")
+        if args.mode in ["psr", "nsr", "w-reinforce"]:
+            logging.info(f"{args.mode.upper()} TRAINING CONFIGURATION:")
+        else:
+            logging.info("GRPO TRAINING CONFIGURATION:")
+        logging.info(f"  Training mode: {args.mode}")
         logging.info(f"  Training samples: {len(grpo_train_dataset)}")
         logging.info(f"  Epochs: {args.num_epochs}")
         logging.info(f"  Batch size: {args.batch_size}")
         logging.info(f"  Generations per sample: {args.num_generations}")
         logging.info(f"  Gradient checkpointing: {not args.disable_gradient_checkpointing}")
+        if args.mode == "w-reinforce":
+            logging.info(f"  Lambda PSR: {args.lambda_psr}")
+            logging.info(f"  Reward threshold: {args.reward_threshold}")
+        elif args.mode in ["psr", "nsr"]:
+            logging.info(f"  Reward threshold: {args.reward_threshold}")
         logging.info("=" * 80)
 
+        # Set output directory based on training mode
+        mode_suffix = f"-{args.mode}" if args.mode != "grpo" else ""
+        output_dir = f"grpo-start-ckpts/{args.vlm_name}-prm-large-train-v2{mode_suffix}-{str(seed)}"
+
         training_args = GRPOConfig(
-        # output_dir=args.vlm_name+"grpo-answer-think-preappend",  # Directory to save the model
-        # output_dir="full-chartqa-vanilla",  # Directory to save the model
-        # output_dir = "grpo-start-ckpts/"+args.vlm_name+"-prm-"+str(seed),  # Directory to save the model
-        output_dir = "grpo-start-ckpts/"+args.vlm_name+"-prm-large-train-v2-"+str(seed),  # Directory to save the model
-        # output_dir = "grpo-test/from-sft-"+args.vlm_name+"-format-accuracy-length-longer-1000samp",  # Directory to save the model
-        # output_dir = "test-lim-data",
-        # output_dir = "prm",
+        output_dir = output_dir,
         bf16=True,
         remove_unused_columns = False,
         per_device_train_batch_size=args.batch_size,  # Configurable via --batch-size
@@ -673,10 +684,72 @@ if __name__ == "__main__":
         gradient_checkpointing=not args.disable_gradient_checkpointing,  # Configurable via --disable-gradient-checkpointing
         )
 
+        # =================================================================
+        # NSR TRAINING MODE: Apply reward filtering based on mode
+        # =================================================================
+        base_reward_funcs = [format_reward, accuracy_reward, length_think_reward, num_token_reward, chart_type_reward, table_style_reward, process_style_reward]
+
+        if args.mode in ["psr", "nsr", "w-reinforce"]:
+            # Import training mode filters
+            from trainers.psr_trainer import psr_reward_filter
+            from trainers.nsr_trainer import nsr_reward_filter
+            from trainers.weighted_reinforce_trainer import weighted_reinforce_reward_filter
+
+            # Create filtered reward function wrapper
+            def create_filtered_reward_func(base_funcs, mode, lambda_psr, reward_threshold):
+                """Wrapper that applies reward filtering based on training mode"""
+                def filtered_reward_func(completions, **kwargs):
+                    # Compute base rewards (sum of all reward functions)
+                    total_rewards = None
+                    for reward_func in base_funcs:
+                        rewards = reward_func(completions, **kwargs)
+                        if total_rewards is None:
+                            total_rewards = rewards
+                        else:
+                            total_rewards = [t + r for t, r in zip(total_rewards, rewards)]
+
+                    # Apply mode-specific filtering
+                    if mode == "psr":
+                        filtered_rewards = psr_reward_filter(total_rewards, reward_threshold)
+                        logging.debug(f"PSR: Filtered {sum(1 for r in filtered_rewards if r > 0)}/{len(filtered_rewards)} positive samples")
+                    elif mode == "nsr":
+                        filtered_rewards = nsr_reward_filter(total_rewards, reward_threshold)
+                        logging.debug(f"NSR: Filtered {sum(1 for r in filtered_rewards if r < 0)}/{len(filtered_rewards)} negative samples")
+                    elif mode == "w-reinforce":
+                        filtered_rewards = weighted_reinforce_reward_filter(total_rewards, lambda_psr, reward_threshold)
+                        pos = sum(1 for r in total_rewards if r >= reward_threshold)
+                        neg = sum(1 for r in total_rewards if r < reward_threshold)
+                        logging.debug(f"W-REINFORCE: {pos} positive (λ={lambda_psr}), {neg} negative (λ=1.0)")
+                    else:
+                        filtered_rewards = total_rewards
+
+                    return filtered_rewards
+
+                return filtered_reward_func
+
+            # Use filtered reward function
+            reward_funcs_to_use = [create_filtered_reward_func(base_reward_funcs, args.mode, args.lambda_psr, args.reward_threshold)]
+
+            logging.info(f"✓ {args.mode.upper()} reward filtering enabled")
+            if args.mode == "psr":
+                logging.info("  → Training only on POSITIVE samples (correct responses)")
+                logging.info("  → Expected: High Pass@1, Lower Pass@k at large k")
+            elif args.mode == "nsr":
+                logging.info("  → Training only on NEGATIVE samples (incorrect responses)")
+                logging.info("  → Expected: High Pass@k across all k, preserves diversity")
+            elif args.mode == "w-reinforce":
+                logging.info(f"  → Weighted training: {args.lambda_psr}·PSR + NSR")
+                logging.info("  → Expected: Best Pass@1 and Pass@k overall")
+
+        else:
+            # Standard GRPO mode - use all reward functions separately
+            reward_funcs_to_use = base_reward_funcs
+            logging.info("✓ Standard GRPO training (no reward filtering)")
+
         trainer = GRPOTrainer(
             model=model,
             args=training_args,
-            reward_funcs=[format_reward, accuracy_reward, length_think_reward, num_token_reward, chart_type_reward, table_style_reward, process_style_reward],
+            reward_funcs=reward_funcs_to_use,
             train_dataset=grpo_train_dataset,
             eval_dataset=None,  # Skip eval during training
             processing_class=processor,
