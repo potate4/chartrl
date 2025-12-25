@@ -40,10 +40,10 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 
-cache_dir = '/mnt/data/sanchit/hf'
-os.environ['HF_HUB_CACHE'] = '/mnt/data/sanchit/hf'
-os.environ['TRANSFORMERS_CACHE']= '/mnt/data/sanchit/hf'
-os.environ['HF_HOME'] = '/mnt/data/sanchit/hf'
+cache_dir = '/content/hf_cache'
+os.environ['HF_HUB_CACHE'] = '/content/hf_cache'
+os.environ['TRANSFORMERS_CACHE']= '/content/hf_cache'
+os.environ['HF_HOME'] = '/content/hf_cache'
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Argument parser for VLM evaluation pipeline")
@@ -208,17 +208,38 @@ if __name__ == "__main__":
             logging.info("Loaded model with DPO adapters from {}".format(adapter_path))
         
         if args.grpo_lora:
-            from transformers import  Qwen2_5_VLForConditionalGeneration, Qwen2_5_VLProcessor
+            from peft import PeftModel
+            # Use local checkpoint from training or download from HF
             if not args.hard:
-                grpo_path = "/mnt/home/sanchit/rl-chart/grpo-start-ckpts/qwen2-5-3b-prm-"+str(seed)+"/checkpoint-4000/"
+                # For regular Chart-RVR-3B (6K dataset)
+                grpo_path = "./grpo-start-ckpts/qwen2-5-3b-prm-large-train-v2-"+str(seed)
             else:
-                grpo_path = "/mnt/home/sanchit/rl-chart/grpo-start-ckpts/qwen2-5-3b-prm-large-train-v2-"+str(seed)+"/checkpoint-22000/"
-            
-            grpo_path = "/mnt/home/sanchit/rl-chart/grpo-start-ckpts/qwen2-5-3b-prm-large-train-v2-"+str(seed)+"/checkpoint-22000/"
-            model = Qwen2_5_VLForConditionalGeneration.from_pretrained(grpo_path, device_map="auto", local_files_only=True)
-            model.eval()
+                # For Chart-RVR-3B-Hard (30K dataset)
+                grpo_path = "./grpo-start-ckpts/qwen2-5-3b-prm-large-train-v2-"+str(seed)
 
-            logging.info("Loaded model with GRPO adapters from {}".format(grpo_path))
+            # Check if local checkpoint exists
+            if os.path.exists(grpo_path):
+                # Find latest checkpoint
+                import glob
+                checkpoints = sorted(glob.glob(os.path.join(grpo_path, "checkpoint-*")),
+                                   key=lambda x: int(x.split('-')[-1]))
+                if checkpoints:
+                    final_checkpoint = checkpoints[-1]
+                    logging.info(f"Loading local GRPO checkpoint: {final_checkpoint}")
+                    model = PeftModel.from_pretrained(model, final_checkpoint)
+                    logging.info(f"✓ Loaded GRPO LoRA adapters from {final_checkpoint}")
+                else:
+                    logging.error("No checkpoints found! Train the model first or download from HF.")
+                    exit(1)
+            else:
+                # Download from HuggingFace
+                logging.info("Local checkpoint not found. Attempting to download from HuggingFace...")
+                hf_model_id = "sanchit97/chart-rvr-3b" if not args.hard else "sanchit97/chart-rvr-hard-3b"
+                logging.info(f"Downloading: {hf_model_id}")
+                model = PeftModel.from_pretrained(model, hf_model_id)
+                logging.info(f"✓ Loaded GRPO adapters from HuggingFace: {hf_model_id}")
+
+            model.eval()
 
 
         em_correct, ra_correct, tot_bleuscore, total = 0, 0, 0, 0
@@ -526,164 +547,64 @@ if __name__ == "__main__":
                     "image": _resize_up(example["image"]),
                 }
 
-        custom = True
+        # =================================================================
+        # LOAD TRAINING DATASET FROM HUGGINGFACE
+        # =================================================================
+        from datasets import load_from_disk
 
-        if custom == True:
-            grpo_dataset_path = "/grpo-custom-dataset-large-"+str(seed)
-            if os.path.exists(str(cache_dir+grpo_dataset_path)):
-                import json
-                from datasets import load_from_disk
-                train_dataset = load_from_disk(str(cache_dir+grpo_dataset_path))
-                logging.info("Loaded train dataset from cache")
+        grpo_dataset_path = "/grpo-chartrvr-train"
 
-            else:
-                ### Messy - fix TODO
-                all_datasets = []
-                dataset = ChartDataset("chartqa-src", processor=processor, blocks=blocks)
-                train_dataset = dataset.load_chart_dataset(split = "train")
-                # Only hard examples!
-                train_dataset = train_dataset.filter(lambda example: example["human_or_machine"] == 0)
-                all_datasets.append(train_dataset)
-                dataset = ChartDataset("figqa", processor=processor, blocks=blocks)
-                train_dataset = dataset.load_chart_dataset(split = "train")
-                all_datasets.append(train_dataset)
-                dataset = PlotQADataset("plotqa", processor=processor, blocks=blocks)
-                train_dataset = dataset.load_plotqa_dataset(split = "train")
-                all_datasets.append(train_dataset)
-                dataset = ChartDataset("chartfc", processor=processor, blocks=blocks)
-                train_dataset = dataset.load_chart_dataset(split = "train")
-                all_datasets.append(train_dataset)
-
-                all_datasets[0] = all_datasets[0].remove_columns('human_or_machine')
-                all_datasets[2] = all_datasets[2].remove_columns('image_index')
-                all_datasets[2] = all_datasets[2].remove_columns('qid')
-                all_datasets[2] = all_datasets[2].remove_columns('answer_id')
-                all_datasets[2] = all_datasets[2].remove_columns('type')
-                all_datasets[2] = all_datasets[2].remove_columns('question_id')
-                all_datasets[2] = all_datasets[2].rename_column('question_string', 'query')
-                all_datasets[3] = all_datasets[3].rename_column('question','query')
-
-                def _collapse_no(example):
-                    is_none_label = example["label"] == None 
-                    is_none_ans =  example["answer"] == None
-                    # Harmonise both columns
-                    example["label"]  = example["answer"] if is_none_label else example["label"]
-                    return example
-
-                select_all_datasets = []
-                for i in range(len(all_datasets)):
-                    if i==0:
-                        select_all_datasets.append(all_datasets[i].shuffle(seed=seed))
-                    else:
-                        select_all_datasets.append(all_datasets[i].shuffle(seed=seed).select(range(2000)))
-                all_datasets = select_all_datasets
-                # all_datasets = [dst.shuffle(seed=seed).select(range(1000)) for dst in all_datasets]
-                all_datasets = all_datasets[:1]+ all_datasets[2:]
-                from datasets import concatenate_datasets
-                train_dataset = concatenate_datasets(all_datasets)
-                train_dataset = train_dataset.map(_collapse_no, num_proc=32)
-                train_dataset = train_dataset.remove_columns('answer')
-                
-                grpo_train_dataset = train_dataset.map(_grpo_format_data,num_proc=32,load_from_cache_file=False)#.shuffle(seed=seed)#.select(range(5000))
-                print(grpo_train_dataset[0]['prompt'])
-                logging.info("Created Dataset and saved to disk")
-                grpo_train_dataset.save_to_disk(str(cache_dir+grpo_dataset_path))
-                exit(0)
-       
-
-            with open("./rationales_llm/rationales-large-"+str(seed)+".json", "r") as f:
-                rationales = json.load(f)
-                logging.info("Loaded rationales+chart types from json: "+str(len(rationales)))            
-            
-            errors = 0
-
-            def _add_keys(example, idx):
-                global errors
-                rsn = rationales[idx].split("### Reasoning: ")[-1].strip().split("### Type: ")[0]
-                # rsn = rationales[idx].split("### Type: ")[0].split("### Reasoning: ")[-1].strip()
-                if "### Type: " in rationales[idx]:
-                    typ = rationales[idx].split("### Type: ")[-1].strip()
-                else:
-                    typ = "bar"
-                
-                try:
-                    tab_string = rationales[idx].split("```json")[-1].split("```")[0].split("### Reasoning")[0].strip()
-                    tab_string = tab_string.replace('\n', '')
-                    tab = None
-                    # Repair
-                    if not tab_string.endswith("}"):
-                        tab_string += "}"
-                    try:
-                        tab = json.loads(tab_string, parse_int=str, parse_float=str, parse_constant=str)
-                    except:
-                        errors+=1
-                        pass
-
-                except:
-                    errors+=1
-                    # print("Error in table loading", tab_string)
-
-                print(idx)
-
-                # Very important check!!
-                if tab is not None:
-                    for i in range(len(tab["columns"])):
-                        tab["columns"][i] = str(tab["columns"][i])
-                    for i in range(len(tab["rows"])):
-                        for j in range(len(tab["rows"][i])):
-                            tab["rows"][i][j] = str(tab["rows"][i][j])
-
-
-                example["reasoning"], example["chart_type"], example["table"] = rsn, typ, tab
-                return example
-            
-
-            grpo_train_dataset = train_dataset.map(_add_keys, with_indices=True, num_proc=1, load_from_cache_file=False)
-            print(errors)
-            # Eval dataset is different from custom but to compare benchmarks we need this
-            # grpo_dataset_path = "/grpo-chartqa-with-type-3-longer-thinking"
-            dataset = ChartDataset("evochart", processor=processor, blocks=blocks)
-            eval_dataset = dataset.load_chart_dataset(split = "test")
-            eval_dataset = eval_dataset.map(_grpo_format_data, num_proc=32,load_from_cache_file=False).select(range(200))
-            grpo_eval_dataset = eval_dataset.map(_add_keys, with_indices=True, num_proc=32, load_from_cache_file=False)
-
-            logging.info("Loaded model and datasets")
-            logging.info("Last train sample:", grpo_train_dataset[-1])
-            # logging.info("First train sample:", grpo_eval_dataset[-1])
-            # breakpoint()
-
-
-
+        # Check if dataset exists locally (from previous download)
+        if os.path.exists(cache_dir + grpo_dataset_path):
+            logging.info(f"Loading dataset from disk: {cache_dir + grpo_dataset_path}")
+            full_dataset = load_from_disk(cache_dir + grpo_dataset_path)
+            train_dataset = full_dataset["train"]
         else:
-            grpo_dataset_path = "/grpo-chartqa-with-type-3-longer-thinking"
-            if not os.path.exists(cache_dir+grpo_dataset_path):
-                dataset = ChartDataset("chartqa-src", processor=processor, blocks=blocks)
-                train_dataset = dataset.load_chart_dataset(split = "train")
-                eval_dataset = dataset.load_chart_dataset(split = "val")
-                grpo_train_dataset = train_dataset.map(_grpo_format_data,num_proc=32,load_from_cache_file=False)
-                grpo_eval_dataset = eval_dataset.map(_grpo_format_data,num_proc=32,load_from_cache_file=False).select(range(200))
-                
-                with open("./rationales_llm/rationales-chartqa-data-only_qwen72b.json", "r") as f:
-                    rationales = json.load(f)
+            # Download from HuggingFace
+            logging.info("Dataset not found locally. Downloading from HuggingFace: sanchit97/chart-rvr-grpo-train")
+            from datasets import load_dataset
+            full_dataset = load_dataset("sanchit97/chart-rvr-grpo-train", cache_dir=cache_dir)
+            # Save for future use
+            full_dataset.save_to_disk(cache_dir + grpo_dataset_path)
+            logging.info(f"Dataset saved to: {cache_dir + grpo_dataset_path}")
+            train_dataset = full_dataset["train"]
 
-                logging.info("Loaded rationales+chart types from json")
-                def _add_keys(example, idx):
-                    rsn = rationales[idx].split("### Type: ")[0].split("### Reasoning: ")[-1].strip()
-                    typ = rationales[idx].split("### Type: ")[-1].strip()
-                    # tab = rationales[idx].strip()
-                    example["reasoning"], example["chart_type"] = rsn, typ
-                    # example["reasoning"], example["chart_type"], example ["table"]= rsn, typ, tab
-                    return example
-                grpo_train_dataset = grpo_train_dataset.map(_add_keys, with_indices=True, num_proc=32,load_from_cache_file=False)
-                grpo_eval_dataset = grpo_eval_dataset.map(_add_keys, with_indices=True, num_proc=32,load_from_cache_file=False)
-                grpo_train_dataset.save_to_disk(str(cache_dir+grpo_dataset_path))
-                grpo_eval_dataset.save_to_disk(str(cache_dir+grpo_dataset_path+"-eval"))
-            else:
-                from datasets import load_from_disk
-                grpo_train_dataset = load_from_disk(str(cache_dir+grpo_dataset_path)).select(range(1000))
-                grpo_eval_dataset = load_from_disk(str(cache_dir+grpo_dataset_path+"-eval"))
-                
-                
+        logging.info(f"Loaded {len(train_dataset)} training samples")
+
+        # Optional: Use subset for testing (comment out for full training)
+        # train_dataset = train_dataset.select(range(1000))
+        # logging.info(f"Using subset: {len(train_dataset)} samples")
+
+        # Format dataset for GRPO training
+        # The HF dataset already has: image, query, label, reasoning, chart_type, table
+        # We need to add the 'prompt' field using _grpo_format_data
+        grpo_train_dataset = train_dataset.map(
+            _grpo_format_data,
+            num_proc=4,
+            load_from_cache_file=False,
+            desc="Formatting training data"
+        )
+
+        logging.info(f"Training dataset formatted. Sample prompt length: {len(grpo_train_dataset[0]['prompt'])}")
+
+        # =================================================================
+        # LOAD EVALUATION DATASET (EvoChart OOD)
+        # =================================================================
+        logging.info("Loading evaluation dataset (EvoChart)...")
+        dataset = ChartDataset("evochart", processor=processor, blocks=blocks)
+        eval_dataset = dataset.load_chart_dataset(split="test")
+        eval_dataset = eval_dataset.select(range(200))  # 200 samples for eval
+
+        grpo_eval_dataset = eval_dataset.map(
+            _grpo_format_data,
+            num_proc=4,
+            load_from_cache_file=False,
+            desc="Formatting eval data"
+        )
+
+        logging.info(f"Evaluation dataset loaded: {len(grpo_eval_dataset)} samples")
+        logging.info("✓ Datasets ready for GRPO training")
+
 
         # start from an SFT checkpoint
         # sft_model_path = "/mnt/home/sanchit/Qwen2-VL-Finetune/output/sft-2.5-3b-chartqa-rationales/checkpoint-200"

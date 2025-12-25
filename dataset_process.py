@@ -37,10 +37,10 @@ random.seed(seed)
 
 
 # Caching
-cache_dir = '/mnt/data/sanchit/hf'
-os.environ['HF_HUB_CACHE'] = '/mnt/data/sanchit/hf'
-os.environ['TRANSFORMERS_CACHE']= '/mnt/data/sanchit/hf'
-os.environ['HF_HOME'] = '/mnt/data/sanchit/hf'
+cache_dir = '/content/hf_cache'
+os.environ['HF_HUB_CACHE'] = '/content/hf_cache'
+os.environ['TRANSFORMERS_CACHE']= '/content/hf_cache'
+os.environ['HF_HOME'] = '/content/hf_cache'
 
 # ChartQA
 class ChartDataset:

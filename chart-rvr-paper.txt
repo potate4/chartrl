@@ -1,0 +1,847 @@
+Chart-RVR: Reinforcement Learning with Verifiable Rewards for
+Explainable Chart Reasoning
+Sanchit Sinha1*, Oana Frunza2
+, Kashif Rasul2
+, Yuriy Nevmyvaka2
+, Aidong Zhang1
+1University of Virginia, 2Morgan Stanley
+{sanchit,aidong}@virginia.edu
+Abstract
+The capabilities of Large Vision-Language
+Models (LVLMs) have reached state-ofthe-art on many visual reasoning tasks,
+including chart reasoning, yet they still
+falter on out-of-distribution (OOD) data, and
+degrade further when asked to produce their
+chain-of-thought (CoT) rationales, limiting
+explainability. We present Chart-RVR, a
+general framework that fine-tunes LVLMs
+to be more robust and explainable for chart
+reasoning by coupling Group Relative Policy
+Optimization (GRPO) with automatically
+verifiable rewards. Our framework comprises of three rewards that maximize: (i)
+correct chart-type classification, (ii) faithful
+chart table reconstruction, and (iii) process
+conformity. Applied to 3-billion-parameter
+LVLMs, Chart-RVR consistently outperforms
+standard supervised fine-tuning (SFT) on both
+in-distribution and out-of-distribution datasets,
+closing the OOD performance gap while
+improving rationale fidelity. The resulting
+models, the Chart-RVR-3B series, achieve
+state-of-the-art results on six chart-reasoning
+benchmarks spanning in-domain and OOD
+settings, surpassing all existing models of
+comparable size. Beyond accuracy, Chart-RVR
+yields more interpretable CoT rationales,
+strengthening trust and reliability - showcasing
+the power of verifiable rewards with GRPO
+for training reliable, interpretable chartreasoning models. The code can be found at
+https://github.com/sanchit97/chartrl
+for reproducibility and the collection
+of models is released at https://
+huggingface.co/collections/sanchit97/
+chart-rvr-68aaac32a2745bc653f581a1.
+1 Introduction
+Charts are a cornerstone of visual communication
+and are widely used in finance, healthcare, public policy, and beyond. Experts and non-experts
+*Work done during internship at Morgan Stanley
+alike rely on them to make judgments that shape
+policy, allocate resources, and drive strategic investments. Automating the interpretation of such
+figures is, therefore, a high-value AI problem. Unlike natural images, often described by high-level
+semantics (e.g., “a dog on a table”), charts encode
+information through precise spatial and numerically aligned relationships. Chart reasoning is inherently entangled: structured data representations
+are tightly interwoven with visual design choices.
+Consequently, any chart-reasoning model must disentangle these components during decision making. Large Vision–Language Models (LVLMs),
+pre-trained on billions of image–text pairs, have
+demonstrated good performance on general visual
+question-answering benchmarks, including chart
+reasoning.
+Although pre-trained LVLMs are successful on
+chart reasoning benchmarks, recent studies (Islam
+et al., 2024) reveal two systematic weaknesses.
+First, even when an LVLM answers in-distribution
+(ID) chart questions correctly, its performance significantly collapses on out-of-distribution (OOD)
+datasets that differ only in visual style, color palette,
+etc. Second, and more importantly, attempts to
+elicit model rationales via chain-of-thought (CoT)
+prompting not only fail to improve accuracy but
+often harm it (Zhang et al., 2025a; Turpin et al.,
+2023), generating incoherent or hallucinated reasoning traces. This brittleness undermines trust,
+as a system that cannot explain the reasoning process is unlikely ever to be widely adopted by stakeholders, no matter how impressive its predictive
+accuracy. This problem is particularly severe in
+relatively smaller LVLMs (2–3 billion parameters),
+which are more likely to be used in edge devices
+and for efficient chart understanding.
+To alleviate these problems, current state-of-theart approaches (Masry et al., 2025b; Carbune et al.,
+2024; Zhang et al., 2024) utilize supervised finetuning (SFT) with labeled chart datasets consistarXiv:2510.10973v1 [cs.CV] 13 Oct 2025
+ing of questions and step-by-step answer computation traces to improve LVLMs on chart reasoning.
+However, these methods have moderate success
+in generalizing to OOD data, and most methods
+underperform their untrained counterparts, implying that SFT decreases generalizability in chart
+LVLMs. This behavior is a direct consequence of
+SFT’s goal, maximizing the likelihood of human
+demonstrations, which incentivizes token-level imitation of reasoning traces rather than verifiable task
+success.
+To alleviate the shortcomings of SFT, which
+trains models to imitate labeled examples and thus
+inherits dataset-specific styles and biases, a parallel line of new research utilizes Reinforcement
+Fine-Tuning (RFT) to fine-tune LVLMs (Liu et al.,
+2025b). RFT optimizes outcomes by (i) prompting
+the model and sampling candidate responses, (ii)
+evaluating feedback (from human preferences or
+verifiable functions), and (iii) updating the model
+toward higher-scoring behavior while staying close
+to the reference (starting untrained) model. Multiple studies have demonstrated improved reasoning
+(Guo et al., 2025; Shao et al., 2024) and generalization (Chu et al., 2025) abilities of RFT compared to
+SFT. A common form of RFT is Direct Preference
+Optimization (DPO), which aligns model generations with human preferences (Xie et al., 2024;
+Zhang et al., 2025b). However, collecting highquality preferences for thousands of multi-step
+numeric explanations is prohibitively expensive,
+while synthetic chart data does not effectively capture visual diversity. As a solution, recent research
+has introduced Group Relative Policy Optimization (GRPO) as a lightweight objective that ranks
+multiple sampled responses for the same prompt
+and updates the policy toward those with higher rewards relative to the group. By optimizing relative
+quality between candidates rather than imitating
+traces, GRPO provides stable training for large vision–language models. More recently, verifiable
+rewards - automatic checks that score outputs on
+an objective criterion (e.g., format adherence and
+success on intermediate subgoals) have been successfully utilized to fine-tune LVLMs. Verifiable
+rewards are machine-checkable, deterministic signals that plug naturally into GRPO, yielding dense,
+low-variance feedback across multiple candidates
+and aligning the model with what can be verified
+rather than merely imitated.
+Building on this premise, we present ChartRVR, a general-purpose reinforcement learning
+framework that combines GRPO with verifiable
+rewards tailored to chart reasoning. Chart-RVR
+utilizes verifiable surrogate task rewards that score
+a policy’s performance on chart type prediction
+and chart table reconstruction, followed by a verifiable process conformity reward, which incentivizes
+the model’s reasoning process to stylistically follow an algorithmic skeleton, improving robustness
+under format/domain shift and producing logically
+coherent CoT rationales. We demonstrate that models trained with the Chart-RVR framework achieve
+state-of-the-art prediction performance on 6 diverse
+chart benchmarks and also provide more explainable rationales, improving interpretability. More
+specifically, our contributions are as follows:
+• We propose Chart-RVR, the first general-purpose
+reinforcement learning framework with verifiable
+surrogate-task rewards: chart type prediction and
+chart table reconstruction for improved chart reasoning.
+• We present the Chart-RVR-3B series of models,
+the best state-of-the-art chart-reasoning models
+of their size (2–3 billion parameters) trained using Chart-RVR. Our method achieves benchmark
+performance on 6 diverse chart-reasoning benchmarks, including OOD settings.
+• We also empirically demonstrate that Chart-RVR
+produces benchmark results on the surrogate
+tasks and generates explainable chain-of-thought
+rationales.
+2 Related Work
+Chart Reasoning. Chart reasoning has been an
+active area of research recently. Benchmarks for
+studying chart-related downstream tasks, such as
+chart-to-table conversion, chart captioning, chart
+factoid-based question answering, etc., have been
+widely utilized to evaluate vision language models.
+Multiple chart-specific VLMs have been proposed,
+such as Unichart (Masry et al., 2023), MatCha (Liu
+et al., 2023), Pix2Struct (Lee et al., 2023), etc., with
+considerable success in some of the downstream
+tasks. However, most of the proposed models struggle when the complexity of the questions increases,
+which requires relatively deeper reasoning. In addition, with deeper reasoning, it is also imperative
+to output explanations with the final answers to improve trust in the models. Some new benchmarks,
+such as (Hegde et al., 2025; Ma et al., 2025), have
+been proposed to measure both reasoning and accuracy performance in tandem. As a consequence,
+newer chart reasoning models such as Chartgemma
+(Masry et al., 2025b), TinyChart (Zhang et al.,
+2024) have been proposed to output rationales with
+their predictions. Some other works like ChartAssistant (Meng et al., 2024), ChartBench (Xu
+et al., 2023), ChartInsights (Wu et al., 2024), etc.,
+have been proposed with newer and more challenging datasets. Newer approaches utilize contrastive
+learning and graph-based methods to improve CoT
+performance on charts (Dai et al., 2025) or use
+visual tools to focus on chart images to answer
+conflicting questions (Fu et al., 2025).
+Chain-of-thought in LVLMs. Chain-of-thought
+entails prompting LLMs to think step by step, before outputting the final prediction, and provides
+improvement in both performance and interpretability of LLMs through explicit natural language reasoning traces (Wei et al., 2022). However, similar
+observations are not observed in LVLMs, where
+CoT-type prompting significantly degrades performance (Zhang et al., 2025a), especially in smaller
+models. Several approaches have attempted to improve CoT in LVLMs with further pre-training (Xu
+et al., 2024), Reinforcement Learning (Zhang et al.,
+2025a; Xie et al., 2024; Liu et al., 2025b), etc. The
+degraded CoT performance also hinders the explainability of LVLMs (Jiaqi et al., 2025).
+3 Methodology
+3.1 Problem Setup and Notation
+Let D = {(xi
+, qi
+, y∗
+i
+, a∗
+i
+)}
+N
+i=1 be a dataset of chart
+images xi ∈ X , natural-language queries qi ∈ Q,
+ground-truth answers y
+∗
+i ∈Y, and expert rationales
+a
+∗
+i ∈ A. Each rationale decomposes into three
+components:
+a
+∗
+i =
+
+c
+∗
+i
+, T∗
+i
+, w∗
+i
+
+,
+where c
+∗
+i ∈ C is the chart type, T
+∗
+i ∈ T is the underlying table representation, and w
+∗
+i ∈W is a naturallanguage chain-of-thought. A vision–language policy πθ (LVLM with parameters θ) defines a distribution over completions, conditioned on the input
+pair (xi
+, qi) as:
+oi =
+
+aˆi
+, yˆi
+
+∈ O, such that oi ∼ πθ(· | xi
+, qi )
+and aˆi =
+
+cˆi
+, Tˆ
+i
+, wˆi
+
+.
+We denote aˆi and yˆi as the associated chain of
+thought rationale and final answer predicted by a
+policy, respectively.
+Chart Surrogate Tasks. Beyond the primary QA
+objective (i.e., predicting yˆ), we introduce two verifiable surrogate tasks that can be solved as a precursor to reasoning and computing the final output
+effectively.
+• Chart-Type Prediction. Identifying the type
+of chart is a fundamental problem in chart understanding due to significant visual-semantic
+differences across the types of charts. Predicting
+the chart type correctly conditions the models to
+focus on type-specific visual semantics, e.g., for
+bar graphs - the length of bars, for pie-charts -
+the sectors of the pie, etc. We therefore predict
+a discrete type cˆ ∈ C where C consists of a fixed
+set of chart types and compare it to the ground
+truth c
+∗
+. Correctly identifying the type guides
+the model toward type-specific cues and reduces
+spurious reasoning.
+• Chart-Table Reconstruction. A chart visualizes data which is structured in the form of the
+underlying data table T
+∗ = (C
+∗
+, R∗
+) where C
+∗
+denotes headers/labels and R∗ denotes the rowwise numeric entries. Inferring the data table
+from the chart is extremely important to ensure
+accurate reasoning. We reconstruct Tˆ = (C, ˆ Rˆ)
+to condition downstream reasoning on explicit
+data structure rather than raw pixels. Faithful
+recovery of T
+∗
+is essential, and errors in Tˆ induce incorrect prerequisites for computing yˆ. We
+represent the tables in the JSON format, which
+consists of two formatted entities - ‘columns’
+containing columns and ‘rows’ consisting of a
+list of all rows.
+Proposition 1: Monotonicity of Conditional
+Entropy with Chart Surrogates (C
+∗
+, T∗
+) Let
+(X, Q, C∗
+, T∗
+, Y ) be random variables for the
+chart image, query, true chart type, true table,
+and answer. For any joint distribution over
+(X, Q, C∗
+, T∗
+, Y ),
+H(Y | X, Q) ≥ H(Y | X, Q, C∗
+, T∗
+),
+with equality if and only if I(Y ; C
+∗
+, T∗
+| X, Q) =
+0. H(·) denotes Shannon entropy to quantify uncertainty, while I denotes Mutual information I(·; ·)
+measures shared information.
+Proof: By the nonnegativity of conditional mutual information, I(Y ; C
+∗
+, T∗
+| X, Q) = H(Y |
+X, Q) − H(Y | X, Q, C∗
+, T∗
+) ≥ 0. Rearrange to obtain the inequality; equality holds iff
+I(Y ; C
+∗
+, T∗
+| X, Q) = 0, i.e., cases where the
+query can be entirely answered through visual attributes and requires no reasoning. Utilizing accurate chart surrogates helps reasoning. □
+3.2 Group Relative Preference Optimization
+(GRPO)
+GRPO (Shao et al., 2024; Guo et al., 2025) extends
+the Proximal Policy Optimization (PPO) (Schulman et al., 2017) framework to group-wise preference learning with verifiable rewards. The learning
+process involves first sampling a rollout group on
+which rewards are computed, followed by a policy
+update using the GRPO objective as detailed below.
+Rollout groups. For each (xi
+, qi) we draw a group
+of G rollouts {oj}
+G
+j=1 ∼ πold(· | xi
+, qi) from a
+frozen behavior policy πold. Each rollout is a completion oj = (ˆaj , yˆj ) with aˆj = (ˆcj , Tˆ
+j , wˆj ). Let
+tok(oj ) = (z
+(j)
+1
+, . . . , z
+(j)
+|oj |
+) be the tokenization of
+oj , and z
+(j)
+<t = (z
+(j)
+1
+, . . . , z
+(j)
+t−1
+) its prefix.
+Objective. Within each group, absolute rewards
+{Rj}
+G
+j=1 are converted to relative advantages Aˆ
+j :
+R¯ =
+1
+G
+X
+G
+j=1
+Rj , s2
+R =
+1
+G
+X
+G
+j=1
+(Rj − R¯)
+2
+,
+Aˆ
+j =
+Rj − R¯
+max(1, sR)
+.
+To update the policy πold to the new policy πθ, we
+use a clipped policy surrogate with a sequence-level
+KL penalty:
+JGRPO(θ) =E(xi,qi)∼D E{oj}∼πold
+"
+1
+G
+X
+G
+j=1
+1
+|oj |
+X
+|oj |
+t=1
+
+min
+ρj,t(θ) Aˆ
+j ,
+clip(ρj,t(θ), 1 − ϵ, 1 + ϵ) Aˆ
+j
+	
+
+− β DKL(πθ ∥ πref)
+#
+, where
+ρj,t(θ) = πθ(z
+(j)
+t
+| xi
+, qi
+, z
+(j)
+<t)
+πold(z
+(j)
+t
+| xi
+, qi
+, z
+(j)
+<t)
+.
+Here ϵ > 0 is the clipping range, and DKL(πθ∥πref)
+is computed as the average over tokens of oj ; β > 0
+weights the KL penalty with respect to the original
+policy πref.
+3.3 Format, Length and Accuracy Reward
+Design
+In this section, we discuss the verifiable rewards
+employed by Chart-RVR. The first set of rewards is
+commonly utilized GRPO rewards with minor modifications: format, length sufficiency, and answer
+accuracy. Next, we discuss the rewards around surrogate tasks, namely, chart type and chart-table data
+construction. Finally, we introduce the ProcessConformity Reward, which ensures the reasoning
+process does not drift stylistically away from the
+ground-truth reasoning rationales.
+Format reward. Regex validation of the two-block
+schema (<think> then <answer>) and nested tags
+of <type> enclosing the chart type and <table>
+enclosing the JSON-formatted table representation.
+We set Rfmt = 1 if all format checks pass; 0 otherwise.
+Length (sufficiency) reward. Let ℓ(oj ) be the tokenized length of a rollout oj . Multiple works have
+(Liu et al., 2025a) observed the impact of reasoning
+length on CoT traces, wherein longer traces usually improve performance, but overtly long traces
+begin to overthink and hallucinate, degrading performance. As our reasoning traces are conditioned
+on the chart type and the underlying data table before actual reasoning, we set the maximum rewards
+between length thresholds 0 < η1 ≤ η2,
+Rlen = 1, if η1 ≤ ℓ(oj ) ≤ η2, otherwise 0.
+Answer accuracy. The accuracy between the
+ground truth answer and the predicted answer is
+calculated on a case-by-case basis, depending on
+whether the answer consists of textual or numeric
+outputs. The numeric branch is scale-invariant; textual answers are normalized using norm, which
+strips trailing special symbols and converts to lowercase. Subsequently, the accuracy is calculated
+as an exact match for textual outputs, while for
+numeric outputs, a match within a tolerance τ , usually set to a small number, is calculated, to capture
+imprecise mathematical values after calculation.
+Racc =
+
+
+
+1{norm(ˆy) = norm(y
+⋆
+)}, textual,
+1
+n
+|yˆ−y
+⋆|
+|y
+⋆| ≤ τ
+o
+, numeric.
+(1)
+Finally, the total rewards for the standard GRPO
+schema are given as Rschema = Rfmt + Rlen +
+Racc
+3.4 Chart Surrogate Task Reward Design
+Chart Type Prediction. Given ground-truth chart
+type c
+∗
+and predicted cˆ, we define the chart type
+reward as an exact match between the predicted
+type cˆ and ground truth type c
+∗
+after normalization:
+Rtype(ˆc, c∗
+) = 1
+
+norm(ˆc) = norm(c
+∗
+)
+
+,
+Chart Table Reconstruction. The model emits a
+JSON table Tˆ = (C, ˆ Rˆ), ground truth is T
+∗ =
+(C
+∗
+, R∗
+). Note that the tables take the form
+{‘columns’:{.. , ..},‘rows’:{[..],[..],..,[..]} }.
+Rtable(T , T ˆ ∗
+) =
+
+
+
+1
+|C∗|
+X
+c∈C∗
+1{c ∈ Cˆ}
+| {z }
+column header accuracy
++
+1
+|R∗|
+X
+r∈R∗
+1
+|r|
+X
+j
+1{rj = ˆrj}
+| {z }
+cell accuracy
+,
+0 otherwise.
+(2)
+Every correct header contributes 1/|C
+∗
+|; every correct cell adds 1/(|R∗
+|× |r|). A parseable JSON
+yields an additional modest 0.5 reward (to improve
+reward smoothness) while an unparseable JSON
+yields Rtab = 0, strongly encouraging syntactic
+validity. The final surrogate task reward can be
+calculated as: Rsurr = Rtype + Rtable.
+3.5 Process Conformity Reward Design
+Final-answer rewards are sparse and easy to game
+since models can guess correctly or retrofit a rationale. Recent research has called for evaluating
+the quality of rationales through a process skeleton (Lee and Hockenmaier, 2025). As a consequence, we propose a process-conformity reward,
+which incentivizes traces that follow a predefined
+schema, cite verifiable intermediate quantities, perform the appropriate operations, and remain consistent across steps. This delivers denser credit assignment, discourages hallucinated or decorative CoT,
+and makes reasoning auditable. It also improves robustness under format/domain shift by enforcing an
+algorithmic skeleton rather than a dataset-specific
+style. For chart reasoning, the two primary stages
+governing the quality of rationale are (i) if it faithfully gathers the appropriate data and (ii) reasons
+with the data sufficiently. We utilize a similarity
+function, s, given a token alphabet Σ and a text
+embedding model ϕ : Σ∗ → R
+d
+, mapping from
+natural language text to a d-dimensional vector
+space. Mathematically, for two sentences a and b
+and cosine similarity cos,
+s(a, b) = (1 + cos(ϕ(a), ϕ(b)))/2
+ϕ : Σ∗ → R
+d
+; s ∈ [0, 1].
+Evidence Gathering Conformity. For the first
+stage, we ensure that the data is gathered faithfully. To this effect, we utilize step-wise conformity, where each step is explicitly evaluated to be
+structurally aligned to the ground truth for the first
+m steps of each rollout’s reasoning (split by steps),
+denoted as wˆ[:m]
+, while ground truth traces are denoted as w
+∗
+[:m]
+).
+Reasoning Alignment. For the second stage,
+we score the overall reasoning by comparing
+the model’s derivation to the gold steps via
+text-embedding similarity, encouraging procedural alignment and preventing drift into degenerate traces. The final Process Conformity Reward
+(Rproc) is calculated as the sum of Reg and Rrs.
+Mathematically,
+Reg =
+1
+m
+Xm
+i
+s( ˆw[:m](i)
+, w∗
+[:m](i)
+);
+Rrs = s( ˆw[m:], w∗
+[m:])
+The total Process Conformity Reward Rproc is
+given as Rproc = Reg +Rrs. The final reward R is
+calculated as a weighted sum of each of the aforementioned Schema Rewards (Rschema ∈ [0, 3]),
+Surrogate Task rewards (Rsurr ∈ [0, 3]), and Process Conformity Reward (Rproc ∈ [0, 2]) where λ1
+and λ2 > 0 are tunable hyperparameters:
+R = Rschema + λ1Rsurr + λ2Rproc. (3)
+4 Experiments and Results
+4.1 Dataset and Model Settings
+Train Datasets. We utilize ChartQA (Masry et al.,
+2022), PlotQA (Methani et al., 2020) and ChartFC
+(Akhtar et al., 2023) datasets to create our CoT
+datasets. ChartQA consists of a mix of questions
+based on direct facts and deeper reasoning. PlotQA
+consists of factoid questions on a completely synthetic dataset. ChartFC consists of yes/no questions
+requiring deeper reasoning.
+Test Datasets. We use the ChartQA, PlotQA,
+and ChartFC test sets as in-domain benchmarks.
+For out-of-domain (OOD) benchmarks, we utilize EvoChart (Huang et al., 2025), which consists of challenging irregular charts in the wild,
+ChartQAPro (Masry et al., 2025a), which is a more
+challenging version of ChartQA with more complex charts and questions, and ChartBench (Xu
+et al., 2023), which consists of questions with complicated reasoning.
+Chart-RVR CoT Reasoning Datasets. Although
+the training datasets discussed contain plenty of examples, there is a distinct lack of a reliable source
+of ground-truth rationales, data tables, and charttype annotations associated with them. As a consequence, we generate a CoT Chart dataset sampled
+from the training splits of ChartQA, ChartFC, and
+PlotQA. To generate faithful CoT rationales, inferring the chart type and generating the associated
+data tables, we utilize a large-scale SOTA LVLM -
+Qwen2.5VL-72B. The prompt template for generating the dataset is provided in Figure 2 (Appendix),
+where both the query and label are provided to the
+model. (1) CoT Datasets: For the CoT dataset, we
+randomly sample 2,000 datapoints each from the
+aforementioned datasets based on a specific seed
+for a total of 6,000 training samples. (2) CoT-Hard
+Dataset: A significant issue in randomly sampling
+training points from the datasets is the lack of diversity and dominance of easy samples, which constitute queries that require no reasoning, e.g., ‘title of
+the chart. To alleviate this, we specifically sample
+data from the human-annotated reasoning subset of
+ChartQA (labeled ‘human’) and random samples
+from the ChartFC and PlotQA data. We filter out
+overly simplistic questions from the dataset for a
+total of 30,000 training samples.
+Model and Baseline Details: For all our experiments, we utilize Qwen2.5VL-3B-Instruct (Bai
+et al., 2025) due to its good benchmark performance and flexibility. Furthermore, to demonstrate the generalizability of Chart-RVR, we use
+similarly sized Gemma3-3b-it (Team et al., 2025)
+and InternVL3.5-4B (Wang et al., 2025) LVLMs.
+We compare our approach to ChartGemma (Masry
+et al., 2025b), which is the state-of-the-art explainable chart reasoning model, outperforming any
+other model of similar size (i.e., 3-4 billion parameters). ChartGemma is a fine-tuned model on top of
+PaliGemma, which outputs an executable Python
+program as rationales and achieves state-of-the-art
+performance.
+Training Details. SFT: We utilize the same system
+prompt format as in Figure 3(Appendix) for finetuning. We train the entire model for 3 epochs, with
+a learning rate of 1e−5 for the LLM and projector,
+while 2e − 6 for the vision tower, with a warmup ratio of 0.03. Chart-RVR: We utilize TRL’s
+(von Werra et al., 2020) implementation of GRPO
+with a maximum prompt length of 4096, maximum
+completion length 768, and number of generations
+(rollouts) 4 per sample. To further reduce prompt
+Table 1: Comparison of Direct, CoT, and Structured
+Prompt.
+Dataset Direct CoT Structured
+ChartQA 82.0 41.8 73.12
+PlotQA 80.5 31.82 52.72
+ChartFC 74.4 48.02 69.20
+EvoChart 48.72 18.72 29.60
+ChartQAPro 25.7 12.01 15.80
+ChartBench 66.04 29.4 51.16
+lengths, we utilize the JSON notation to represent
+the underlying chart tables. For Process Conformity Rewards, we use sentence embeddings using
+a lightweight embedding model, MiniLM-L6-v2
+(Reimers and Gurevych, 2019). We train all models
+for 4 epochs with a learning rate set as 1e − 6.
+4.2 Experiment-0: Chain-of-Thought
+Prompting
+First, we evaluate how chain-of-thought prompting
+affects off-the-shelf LVLMs in Table 1. Although
+CoT prompting shows gains in LLMs, we observe
+an opposite trend in LVLMs (Liu et al., 2025b; Xu
+et al., 2024), where standard CoT prompting degrades performance by a large margin compared
+to direct prompting. Next, we see how structured
+prompting (i.e., instructing the model to emit chart
+type, table, and the reasoning process along with
+the answer) using the prompt structure shown in
+Figure 3(Appendix) improves the results over standard CoT prompting. As can be seen, our structured prompting approach improves performance,
+but is still significantly less than direct prompting.
+4.3 Experiment-1: Benchmark Performance
+We report the benchmark performance of ChartRVR-3B and Chart-RVR-3B-Hard (trained on the
+CoT-Hard dataset) in Table 2 on six diverse datasets.
+In addition, we also compare our approach with
+Direct Prompting approaches on the same base
+model, even though they are non-explainable. We
+observe that Chart-RVR consistently outperforms
+all approaches, including the chart-specific baseline
+ChartGemma. The improvements over SFT on indomain datasets are approximately 1-2%. However,
+significant improvements are observed on Out-ofDomain datasets EvoChart (+7.28%), ChartQAPro
+(+4.82%), and ChartBench (+3.68%). In addition, Chart-RVR-3B-Hard boosts performance by
+an extra 1–2% across the board, highlighting the
+Table 2: Main benchmark results across 6 diverse chart datasets. The ‘Exp?’ column signifies if the approach is
+explainable (i.e., outputs CoT rationales or equivalent, like Python programs). We observe that Chart-RVR-3B and
+Chart-RVR-3B-Hard achieve benchmark performance across all benchmarks as compared to SFT and chart-specific
+models. The performance improvement is more pronounced on out-of-domain (OOD) datasets, as signified in the
+last 3 columns.
+Approach Exp? ChartQA PlotQA ChartFC EvoChart ChartQAPro ChartBench
+Direct Prompting
+Q2.5VL-Ins ✗ 82.0 80.5 74.4 48.72 25.7 66.04
+Explainable Models with Rationales
+Q2.5VL-Ins (CoT) ✔ 73.12 52.72 69.20 29.6 15.80 51.16
+ChartGemma ✔ 76.44 33.28 70.33 36.96 10.93 40.56
+Fine-tuned Models with Rationales
+Q2.5VL-SFT ✔ 83.08 74.18 77.30 46.08 23.56 64.64
+Q2.5VL-Ins (A+F+L) ✔ 76.72 56.22 58.58 38.88 17.55 48.1
+Q2.5VL-Ins (A+F+L+Tasks) ✔ 81.8 76.24 63.85 51.68 27.66 65.28
+Chart-RVR-3B (Ours) ✔ 84.56 78.68 77.62 53.36 28.38 68.32
+Curated Data Fine-tuned Models with Rationales
+Q2.5VL-SFT-Hard ✔ 84.28 75.54 77.90 49.36 23.20 65.12
+Chart-RVR-3B-Hard (Ours) ✔ 85.76 77.9 80.07 54.24 28.64 69.46
+effectiveness of high-quality data curation.
+Impact of Various Rewards. Next, we discuss ablation studies with respect to the proposed rewards.
+As standard GRPO implementations usually only
+optimize format, length, and accuracy rewards, we
+report the results in Table 2 depicted as Q2.5VL-Ins
+(A+F+L). Next, we report performance with all formats, accuracy, length, and surrogate task rewards
+Q2.5VL-Ins (A+F+L+Tasks). As can be observed,
+standard GRPO’s learning process is worse than
+SFT, implying naive GRPO is ineffective. Once
+surrogate tasks are introduced (A+F+L+Tasks), the
+reasoning process beats SFT on multiple datasets.
+Finally, adding the Process Conformity Reward
+makes our method exceptional on all benchmarks,
+highlighting its utility.
+4.4 Experiment-2: Chart-RVR versus SFT
+Performance Comparison
+To demonstrate the consistent gains of ChartRVR over Supervised Fine Tuning (SFT), we randomly sample the CoT-dataset using 3 different
+seeds, with 6,000 samples from the training set of
+ChartQA, PlotQA, and ChartFC. We train three
+separate SFT and Chart-RVR models, each on the
+various training splits using the same prompt structure as Figure 3(Appendix). We report the average
+performance and standard deviation in Table 3a
+over all 3 seeds. As can be seen, Chart-RVR consistently outperforms SFT across both ID and OOD
+datasets by 1–2% and 4–6% respectively, demonstrating the efficacy of our method over SFT. In
+addition, the average results are at par with the
+results on a single CoT dataset split (as shown in
+Table 2), highlighting robust convergence.
+4.5 Experiment-3: Results on Surrogate Tasks
+In Table 3b, we report the performance on the surrogate tasks as discussed in Section 3.4. Note that
+the chart-type accuracy measures how accurately
+the type of chart is predicted, while for table reconstruction, we measure Edit Distance errors as
+defined between predicted table {R, ˆ Cˆ} ∈ Tˆ and
+ground truth table {R∗
+, C∗} ∈ T
+∗
+as:
+ET (T , T ˆ ∗
+) = (1/|C
+∗
+|)
+X
+c∈C∗
+1[c /∈ Cˆ]
++(1/|R
+∗
+|×1/|r|)
+X
+r∈R∗
+X
+j
+1[rj ̸= ˆrj ],
+We observe that SFT and Chart-RVR moderately
+boost chart-type accuracy, implying that the base
+model is already decent at the chart-type identification task. However, our method improves underlying data table reconstruction by 0.06 points on
+EvoChart (OOD) as compared to using SFT.
+(a) CoT gets the initial data gathering step wrong, attributing the green line 14%, which is incorrect, compromising the entire
+reasoning process, while SFT fails similarly on Step 2, wherein it wrongly attributes the value of 14 instead of 21. Chart-RVR
+reasons faithfully by smaller, more accurate steps to output the correct answer.
+(b) Both CoT and SFT fail in the initial steps by misidentifying the third-highest category (Europe and China, respectively) and
+the relevant line, while Chart-RVR correctly recognizes the US as the third-highest.
+Figure 1: Chain-of-thought rationales on EvoCharts (OOD). We demonstrate CoT rationales for Structured
+prompting on base model, SFT model, and Chart-RVR. We highlight the mistake in a particular reasoning step in
+red font. See Appendix for additional examples.
+4.6 Experiment-4: Interpretability Analysis
+and Quality of Rationales
+To measure the quality of chain-of-thought rationales output by our method, we design the Explainable Information Gain metric (∆ log P), which
+measures the difference in the probability of predicting the ground truth answer y
+∗ given the image
+x and the output CoT rationale a using an oracle model W. We utilize the Qwen2.5VL-72B, a
+SOTA LVLM, as the oracle. Intuitively, our metric measures the additional information added by
+the rationales contributing to the certainty of the
+answer. Mathematically,
+∆ log P = log PW
+
+y
+⋆
+|x, a
+− log PW
+
+y
+⋆
+|x
+
+(4)
+We report ∆ log P for correctly predicted responses in Table 4 for CoT, SFT, and Chart-RVR.
+We omit ChartFC (ID) and ChartBench (OOD) due
+to overwhelming binary questions. Surprisingly,
+not only is CoT unable to provide accurate answers,
+but the CoT rationales are also unhelpful for improving explainability by reducing the certainty
+of the correct answer. Next, SFT and Chart-RVR
+both improve explainability, but our method outperforms particularly on OOD datasets. Interestingly,
+all methods degrade as compared to direct prompting on ChartQA, implying some memorization in
+the base model. However, on the deeper/harder reasoning samples, ChartQA (human), both SFT and
+Chart-RVR improve. These results are a testament
+Table 3: (a) Chart-RVR’s consistent improvements over
+SFT. (b) Surrogate Task Performance.
+(a) Comparison between fine-tuned models using 3 distinct
+seeds of the ChartRVR-CoT Dataset. Chart-RVR improves
+performance over SFT across all datasets, with OOD improvements more pronounced.
+Dataset Direct CoT SFT Chart-RVR
+ChartQA 82.0 73.12 83.18 ± 0.33 83.87 ± 0.68
+PlotQA 80.50 52.72 76.05 ± 1.65 78.71±0.20
+ChartFC 74.4 69.20 76.67 ±0.54 78.08±1.36
+EvoChart 48.72 29.6 46.50 ± 0.36 52.16±0.86
+ChartQAPro 25.7 15.80 24.52 ±0.48 28.30±1.00
+(b) Performance across different datasets on the surrogate tasks:
+(i) Chart Type Accuracy (Type Acc) and (ii) Underlying table
+creation (Tab). Note that the Tab is the Edit-Distance errors,
+where lower is better.
+Dataset CoT SFT Chart-RVR
+Acc (↑) Tab (↓) Acc (↑) Tab (↓) Acc (↑) Tab (↓)
+ChartQA 0.87 0.46 0.94 0.38 0.95 0.49
+PlotQA 0.70 0.65 0.78 1.13 0.77 1.03
+ChartFC 1.00 0.65 1.00 0.20 1.00 0.20
+EvoChart 0.74 0.99 0.81 1.28 0.84 1.22
+ChartQAPro 0.69 0.72 0.72 1.05 0.72 1.05
+Table 4: Explainability Results.
+Dataset ∆ CoT ∆ SFT ∆ Chart-RVR
+ChartQA -5.04 -2.22 -4.3
+ChartQA (human) -3.46 +0.09 +0.3
+PlotQA -2.25 +1.13 +3.66
+EvoChart -9.13 -6.82 +0.02
+ChartQAPro -0.04 +1.75 +2.41
+to the improved explainability of Chart-RVR. A
+visual example is demonstrated in Figure 1, comparing CoT, SFT, and Chart-RVR. Additionally, we
+also utilize an additional Oracle model to judge
+the rationales similarly via LLaVA-Next-72B in
+Table 6 (Appendix). Finally, we also conduct a human study wherein Chart-RVR reasoning is more
+interpretable than those of SFT and CoT, details
+and results of which are shown in Figure 8 (Appendix).
+4.7 Experiment-5: Chart-RVR applied to
+diverse LVLM architectures
+In Table 5, we report the performance on the 3
+OOD benchmarks using two different backbone
+VLMs: Gemma3 and InternVL3.5. We observe
+that SFT provides a reasonable baseline improvement over CoT, with InternVL generally outperforming Gemma across all datasets. To demonstrate the efficacy of Chart-RVR, we compare
+against GRPO (A+F+L+Tasks), which improves
+over SFT on Gemma models, but shows inconsistent gains on InternVL. Finally, Chart-RVR
+achieves the best overall performance, yielding
+consistent improvements across both Gemma and
+InternVL on all benchmarks except ChartQAPro
+where it is at par. These results indicate stronger
+generalization capabilities compared to both SFT
+and standard GRPO with Surrogate tasks.
+Table 5: Ablation across different training settings on
+OOD benchmarks. Columns are grouped by dataset
+with subcolumns for Gemma-3 and InternVL-3.5 (IVL)
+respectively. Chart-RVR outperforms across all datasets
+and models.
+EvoChart ChartQAPro ChartBench
+Setting Gemma IVL Gemma IVL Gemma IVL
+CoT 21.04 45.36 24.82 15.91 42.28 54.42
+SFT 21.92 44.08 23.56 29.34 54.14 63.16
+GRPO (A+F+L+Tasks) 42.26 50.04 29.51 20.43 53.18 64.62
+Chart-RVR (Ours) 42.48 50.24 32.59 29.34 58.18 64.78
+5 Conclusion
+In this paper, we introduced Chart-RVR, a generalpurpose reinforcement learning framework for explainable chart reasoning built on verifiable rewards. Our method augments standard GRPO
+with rewards for chart surrogate tasks, i.e., charttype prediction and table reconstruction, as well
+as a process-conformity objective that encourages faithful, step-by-step reasoning aligned with
+ground-truth rationales. Empirically, Chart-RVR
+improves both answer accuracy and explanation
+quality across six benchmarks and three LVLMs
+(Qwen2.5VL, Gemma3, and InternVL-3.5), with
+the largest gains under distribution shift (EvoChart,
+ChartQAPro, ChartBench), indicating stronger
+OOD generalization than SFT and vanilla GRPO.
+We also demonstrate the improved explainability
+of the CoT traces produced by Chart-RVR.
