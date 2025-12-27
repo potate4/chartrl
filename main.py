@@ -506,8 +506,29 @@ if __name__ == "__main__":
 
     if args.mode in ["grpo", "psr", "nsr", "w-reinforce"]:
         # Setup and imports
-        os.environ["WANDB_CONSOLE"] = "wrap" 
-        wandb.init(project="chartrl", entity="chartrl")
+        os.environ["WANDB_CONSOLE"] = "wrap"
+
+        # Initialize wandb with enhanced config tracking
+        wandb.init(
+            project="chartrl-nsr",
+            entity="chartrl",
+            name=f"{args.mode}-{args.vlm_name}-{args.dataset_name}-{args.subset_size or 'full'}-{seed}",
+            config={
+                "mode": args.mode,
+                "model": args.vlm_name,
+                "dataset": args.dataset_name,
+                "subset_size": args.subset_size,
+                "num_epochs": args.num_epochs,
+                "num_generations": args.num_generations,
+                "batch_size": args.batch_size,
+                "learning_rate": 1e-5,
+                "seed": seed,
+                "lambda_psr": args.lambda_psr if args.mode == "w-reinforce" else None,
+                "reward_threshold": args.reward_threshold if args.mode in ["psr", "nsr", "w-reinforce"] else None,
+                "gradient_checkpointing": not args.disable_gradient_checkpointing,
+            },
+            tags=[args.mode, args.dataset_name, f"samples_{args.subset_size or 'full'}"]
+        )
 
         from trl import (GRPOConfig, GRPOTrainer, get_peft_config)
         from grpo_utils import format_reward,\
@@ -673,7 +694,20 @@ if __name__ == "__main__":
         per_device_train_batch_size=args.batch_size,  # Configurable via --batch-size
         gradient_accumulation_steps=2,  # Effective batch size = batch_size * 2
         num_train_epochs=args.num_epochs,  # Configurable via --num-epochs
-        logging_steps=50,
+
+        # ===== ENHANCED LOGGING =====
+        logging_dir=f"{output_dir}/logs",  # Save logs to checkpoint directory
+        logging_steps=10,  # Log every 10 steps (more frequent than default 50)
+        logging_first_step=True,  # Log first step
+        report_to="wandb",  # Report to Weights & Biases
+
+        # ===== ENHANCED CHECKPOINTING =====
+        save_strategy="steps",  # Save checkpoints every N steps
+        save_steps=50,  # Save checkpoint every 50 steps
+        save_total_limit=3,  # Keep only last 3 checkpoints (save disk space)
+        save_safetensors=True,  # Use safetensors format (safer and faster)
+
+        # ===== GRPO SPECIFIC =====
         max_prompt_length = 4096,  # Restored to original (LoRA saves memory)
         eval_strategy="no",  # Disabled - no eval during training
         eval_steps=500,  # Ignored when eval_strategy="no"
@@ -682,6 +716,10 @@ if __name__ == "__main__":
         learning_rate = 1e-5,  # LoRA requires higher LR than full fine-tuning (8e-7)
         beta = 0.0,  # Disable reference model for VLM support (reduces memory)
         gradient_checkpointing=not args.disable_gradient_checkpointing,  # Configurable via --disable-gradient-checkpointing
+
+        # ===== RESUMABILITY =====
+        resume_from_checkpoint=True,  # Auto-resume if checkpoint exists
+        load_best_model_at_end=False,  # Don't load best (no eval)
         )
 
         # =================================================================
@@ -695,7 +733,9 @@ if __name__ == "__main__":
             from trainers.nsr_trainer import nsr_reward_filter
             from trainers.weighted_reinforce_trainer import weighted_reinforce_reward_filter
 
-            # Create filtered reward function wrapper
+            # Create filtered reward function wrapper with enhanced logging
+            step_counter = [0]  # Mutable counter for logging
+
             def create_filtered_reward_func(base_funcs, mode, lambda_psr, reward_threshold):
                 """Wrapper that applies reward filtering based on training mode"""
                 def filtered_reward_func(completions, **kwargs):
@@ -711,18 +751,43 @@ if __name__ == "__main__":
                     # Apply mode-specific filtering
                     if mode == "psr":
                         filtered_rewards = psr_reward_filter(total_rewards, reward_threshold)
-                        logging.debug(f"PSR: Filtered {sum(1 for r in filtered_rewards if r > 0)}/{len(filtered_rewards)} positive samples")
+                        pos_count = sum(1 for r in filtered_rewards if r > 0)
+                        logging.info(f"PSR [Step {step_counter[0]}]: {pos_count}/{len(filtered_rewards)} positive samples | Avg reward: {sum(filtered_rewards)/len(filtered_rewards):.3f}")
+                        # Log to wandb
+                        if step_counter[0] % 10 == 0:
+                            wandb.log({
+                                "psr/positive_samples": pos_count,
+                                "psr/positive_ratio": pos_count / len(filtered_rewards),
+                                "psr/avg_reward": sum(filtered_rewards) / len(filtered_rewards),
+                            }, step=step_counter[0])
                     elif mode == "nsr":
                         filtered_rewards = nsr_reward_filter(total_rewards, reward_threshold)
-                        logging.debug(f"NSR: Filtered {sum(1 for r in filtered_rewards if r < 0)}/{len(filtered_rewards)} negative samples")
+                        neg_count = sum(1 for r in filtered_rewards if r < 0)
+                        logging.info(f"NSR [Step {step_counter[0]}]: {neg_count}/{len(filtered_rewards)} negative samples | Avg reward: {sum(filtered_rewards)/len(filtered_rewards):.3f}")
+                        # Log to wandb
+                        if step_counter[0] % 10 == 0:
+                            wandb.log({
+                                "nsr/negative_samples": neg_count,
+                                "nsr/negative_ratio": neg_count / len(filtered_rewards),
+                                "nsr/avg_reward": sum(filtered_rewards) / len(filtered_rewards),
+                            }, step=step_counter[0])
                     elif mode == "w-reinforce":
                         filtered_rewards = weighted_reinforce_reward_filter(total_rewards, lambda_psr, reward_threshold)
                         pos = sum(1 for r in total_rewards if r >= reward_threshold)
                         neg = sum(1 for r in total_rewards if r < reward_threshold)
-                        logging.debug(f"W-REINFORCE: {pos} positive (λ={lambda_psr}), {neg} negative (λ=1.0)")
+                        logging.info(f"W-REINFORCE [Step {step_counter[0]}]: {pos} pos (λ={lambda_psr}) + {neg} neg (λ=1.0) | Avg reward: {sum(filtered_rewards)/len(filtered_rewards):.3f}")
+                        # Log to wandb
+                        if step_counter[0] % 10 == 0:
+                            wandb.log({
+                                "w_reinforce/positive_samples": pos,
+                                "w_reinforce/negative_samples": neg,
+                                "w_reinforce/pos_neg_ratio": pos / (neg + 1e-6),
+                                "w_reinforce/avg_reward": sum(filtered_rewards) / len(filtered_rewards),
+                            }, step=step_counter[0])
                     else:
                         filtered_rewards = total_rewards
 
+                    step_counter[0] += 1
                     return filtered_rewards
 
                 return filtered_reward_func
