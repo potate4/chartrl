@@ -33,10 +33,57 @@ def _text_sim(pred: str, gt: str) -> float:
 
 
 def format_reward(completion: str) -> float:
-    """Reward function that checks if the completion has a specific format."""
-    pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
-    match = re.match(pattern, completion, re.DOTALL | re.MULTILINE)
-    return 2.0 if match else 0.0
+    """
+    Reward function that checks if the completion has the expected format.
+
+    Full format (2.0 points):
+        <think>
+        <type>...</type>
+        <table>...</table>
+        ...reasoning...
+        </think>
+        <answer>...</answer>
+
+    Partial rewards help the model learn the format incrementally.
+    """
+    # Full format match (strict)
+    full_pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
+    if re.match(full_pattern, completion, re.DOTALL | re.MULTILINE):
+        return 2.0
+
+    # Partial rewards for learning the format incrementally
+    reward = 0.0
+
+    # Has think block
+    if "<think>" in completion and "</think>" in completion:
+        reward += 0.3
+
+    # Has answer block
+    if "<answer>" in completion and "</answer>" in completion:
+        reward += 0.3
+
+    # Has type tag (inside think)
+    if "<type>" in completion and "</type>" in completion:
+        reward += 0.2
+
+    # Has table tag (inside think)
+    if "<table>" in completion and "</table>" in completion:
+        reward += 0.2
+
+    # Correct order: think before answer
+    think_pos = completion.find("</think>")
+    answer_pos = completion.find("<answer>")
+    if think_pos > 0 and answer_pos > think_pos:
+        reward += 0.2
+
+    # Type before table
+    type_pos = completion.find("</type>")
+    table_pos = completion.find("<table>")
+    if type_pos > 0 and table_pos > type_pos:
+        reward += 0.2
+
+    # Cap partial reward at 1.4 (full format gets 2.0 bonus)
+    return min(reward, 1.4)
 
 
 def accuracy_reward(completion: str, label: str, tolerance: float = 0.05) -> float:
