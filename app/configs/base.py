@@ -33,7 +33,7 @@ class RewardConfig:
     use_format_reward: bool = True
     use_accuracy_reward: bool = True
     use_length_reward: bool = True
-    use_token_count_reward: bool = True
+    use_token_count_reward: bool = False
     use_chart_type_reward: bool = True
     use_table_reward: bool = True
     use_process_reward: bool = True
@@ -72,16 +72,16 @@ class TrainingConfig:
     ])
 
     # Training hyperparameters
-    num_epochs: int = 3
+    num_epochs: int = 4
     batch_size: int = 2
     gradient_accumulation_steps: int = 4
-    learning_rate: float = 5e-7
+    learning_rate: float = 1e-6
     warmup_ratio: float = 0.03
     weight_decay: float = 0.01
     max_grad_norm: float = 1.0
 
     # GRPO specific
-    num_generations: int = 8  # K rollouts per sample
+    num_generations: int = 4  # K rollouts per sample
     max_prompt_length: int = 4096
     max_completion_length: int = 768
     temperature: float = 0.8
