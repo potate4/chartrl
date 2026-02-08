@@ -57,6 +57,10 @@ print(f"Working directory: {os.getcwd()}")
 !pip install -q datasets pillow tqdm wandb
 !pip install -q sentence-transformers deepspeed bitsandbytes
 !pip install -q qwen-vl-utils
+!pip install -q trl>=0.12.0
+!pip install -U trl
+
+# Verify GPU
 
 # Verify GPU
 import torch

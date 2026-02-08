@@ -12,6 +12,7 @@ from configs import TrainingConfig
 from rewards import RewardAggregator
 from utils.checkpointing import CheckpointManager
 from utils.logging_utils import get_logger, WandBLogger, MetricsLogger
+import logging
 
 
 class BaseTrainer(ABC):
@@ -71,7 +72,8 @@ class BaseTrainer(ABC):
         self._current_step = 0
         self._resume_step = 0
         self._completion_log_step = 0
-        self._completion_log_path = None
+        self._reward_log_step = 0
+        self._training_log_path = None
 
     def setup(self):
         """Set up training components."""
@@ -91,10 +93,8 @@ class BaseTrainer(ABC):
         self.metrics_logger = MetricsLogger(
             self.checkpoint_manager.run_dir / "metrics.jsonl"
         )
-        if self.config.log_completions_to_file:
-            self._completion_log_path = (
-                self.checkpoint_manager.run_dir / "completions.log"
-            )
+        self._training_log_path = self.checkpoint_manager.run_dir / "train.log"
+        self._attach_file_logger()
 
         if self.config.use_wandb:
             self.wandb_logger = WandBLogger(
@@ -170,9 +170,23 @@ class BaseTrainer(ABC):
                 return completion
             if isinstance(completion, dict):
                 # Attempt to pull a text field
-                for key in ("text", "content", "output", "completion"):
+                for key in ("text", "output", "completion"):
                     if key in completion and isinstance(completion[key], str):
                         return completion[key]
+                content = completion.get("content")
+                if isinstance(content, list):
+                    parts = []
+                    for item in content:
+                        if isinstance(item, str):
+                            parts.append(item)
+                        elif isinstance(item, dict):
+                            text = item.get("text")
+                            if isinstance(text, str):
+                                parts.append(text)
+                    if parts:
+                        return "\n".join(parts)
+                if isinstance(content, str):
+                    return content
                 return str(completion)
             if isinstance(completion, list):
                 parts = []
@@ -183,15 +197,25 @@ class BaseTrainer(ABC):
                         text = item.get("text")
                         if isinstance(text, str):
                             parts.append(text)
+                        else:
+                            content = item.get("content")
+                            if isinstance(content, str):
+                                parts.append(content)
+                            elif isinstance(content, list):
+                                for sub in content:
+                                    if isinstance(sub, dict) and isinstance(sub.get("text"), str):
+                                        parts.append(sub.get("text"))
                 return "\n".join(parts)
             return str(completion)
 
         def _truncate(text: str) -> str:
+            if self.config.log_completions_max_chars <= 0:
+                return text
             if len(text) <= self.config.log_completions_max_chars:
                 return text
             return text[: self.config.log_completions_max_chars] + "...[truncated]"
 
-        def _log_completions(completions, kwargs):
+        def _log_completions(completions, kwargs, rewards_breakdown=None):
             if not self.config.log_completions:
                 return
             if self.config.log_completions_every <= 0:
@@ -201,7 +225,10 @@ class BaseTrainer(ABC):
 
             prompts = kwargs.get("prompts", None)
             labels = kwargs.get("labels", None)
-            n = min(len(completions), self.config.log_completions_max)
+            if self.config.log_completions_max is None or self.config.log_completions_max < 0:
+                n = len(completions)
+            else:
+                n = min(len(completions), self.config.log_completions_max)
 
             for i in range(n):
                 raw = completions[i]
@@ -213,17 +240,34 @@ class BaseTrainer(ABC):
                 if isinstance(labels, list) and i < len(labels):
                     label_preview = str(labels[i])
 
+                raw_preview = _truncate(repr(raw))
+                reward_info = ""
+                if rewards_breakdown and i < len(rewards_breakdown):
+                    reward_info = f" | rewards={rewards_breakdown[i]}"
+
                 msg = (
                     f"[completion_log step={self._completion_log_step} idx={i}] "
+                    f"raw_type={type(raw).__name__} raw={raw_preview} | "
                     f"prompt={_truncate(prompt_preview)} | "
                     f"label={_truncate(label_preview)} | "
                     f"completion={_truncate(norm)}"
+                    f"{reward_info}"
                 )
                 self.logger.info(msg)
 
-                if self._completion_log_path is not None:
-                    with open(self._completion_log_path, "a") as f:
-                        f.write(msg + "\n")
+        def _log_rewards(rewards_breakdown):
+            if not self.config.log_rewards:
+                return
+            if self.config.log_rewards_every <= 0:
+                return
+            if (self._reward_log_step % self.config.log_rewards_every) != 0:
+                return
+            for i, breakdown in enumerate(rewards_breakdown):
+                msg = (
+                    f"[reward_log step={self._reward_log_step} idx={i}] "
+                    f"{breakdown}"
+                )
+                self.logger.info(msg)
 
         def reward_fn(completions, **kwargs):
             # Get ground truth from kwargs
@@ -243,14 +287,16 @@ class BaseTrainer(ABC):
             # Normalize completions to strings
             normalized = [_normalize_completion(c) for c in completions]
 
-            # Compute raw rewards
-            rewards = self.reward_aggregator.compute_rewards_tensor(
-                normalized, ground_truth
-            )
+            # Compute rewards with full breakdown
+            results = self.reward_aggregator.compute(normalized, ground_truth)
+            rewards = [r.total for r in results]
+            rewards_breakdown = [r.breakdown for r in results]
 
-            # Log completions (raw and normalized)
-            _log_completions(completions, kwargs)
+            # Log completions and rewards
+            _log_completions(completions, kwargs, rewards_breakdown=rewards_breakdown)
+            _log_rewards(rewards_breakdown)
             self._completion_log_step += 1
+            self._reward_log_step += 1
 
             # Apply policy-specific transformation
             advantages = self.compute_advantages(rewards)
@@ -258,6 +304,26 @@ class BaseTrainer(ABC):
             return advantages
 
         return reward_fn
+
+    def _attach_file_logger(self):
+        """Attach a single file handler to the experiment logger."""
+        if not self._training_log_path:
+            return
+        for handler in self.logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                try:
+                    if Path(handler.baseFilename) == Path(self._training_log_path):
+                        return
+                except Exception:
+                    pass
+        file_handler = logging.FileHandler(self._training_log_path)
+        file_handler.setLevel(logging.DEBUG)
+        file_format = logging.Formatter(
+            "%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+        file_handler.setFormatter(file_format)
+        self.logger.addHandler(file_handler)
 
     @abstractmethod
     def compute_advantages(self, rewards: List[float]) -> List[float]:

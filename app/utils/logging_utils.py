@@ -33,6 +33,7 @@ def setup_logging(
     logger_name = experiment_name or "hcpc_rlvr"
     logger = logging.getLogger(logger_name)
     logger.setLevel(getattr(logging, log_level.upper()))
+    logger.propagate = False
 
     # Clear existing handlers
     logger.handlers = []
