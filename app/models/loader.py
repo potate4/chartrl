@@ -9,9 +9,22 @@ from transformers import (
     Qwen2_5_VLForConditionalGeneration,
     AutoModelForCausalLM,
 )
+from transformers.utils import is_flash_attn_2_available
 from peft import PeftModel, get_peft_model
 
 from .lora_config import get_lora_config_from_training_config, get_lora_config
+
+
+def _resolve_attn_implementation(use_flash_attention: bool) -> str:
+    """
+    Resolve attention implementation based on availability.
+
+    Returns:
+        "flash_attention_2" when requested and available, else "sdpa".
+    """
+    if use_flash_attention and is_flash_attn_2_available():
+        return "flash_attention_2"
+    return "sdpa"
 
 
 def load_model(
@@ -48,7 +61,7 @@ def load_model(
         model_class = AutoModelForCausalLM
 
     # Load model
-    attn_impl = "flash_attention_2" if use_flash_attention else "eager"
+    attn_impl = _resolve_attn_implementation(use_flash_attention)
 
     model = model_class.from_pretrained(
         model_name,
@@ -95,8 +108,9 @@ def load_model_for_training(
     }
 
     # Flash attention can cause issues with some GRPO setups
-    if config.use_flash_attention:
-        model_kwargs["attn_implementation"] = "flash_attention_2"
+    model_kwargs["attn_implementation"] = _resolve_attn_implementation(
+        config.use_flash_attention
+    )
 
     # Load base model
     if "qwen" in config.model_name.lower():
