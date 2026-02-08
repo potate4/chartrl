@@ -26,6 +26,8 @@ def parse_response(text: str) -> Dict[str, Any]:
     result = {
         "type": "",
         "table": {},
+        "table_raw": "",
+        "table_parse_success_strict": False,
         "reasoning": "",
         "answer": "",
         "raw": text,
@@ -41,6 +43,14 @@ def parse_response(text: str) -> Dict[str, Any]:
     table_match = re.search(r"<table>(.*?)</table>", text, re.DOTALL)
     if table_match:
         table_str = table_match.group(1).strip()
+        result["table_raw"] = table_str
+        # Strict JSON parse for format reward consistency
+        try:
+            json.loads(table_str)
+            result["table_parse_success_strict"] = True
+        except json.JSONDecodeError:
+            result["table_parse_success_strict"] = False
+        # Lenient parse for downstream table similarity
         result["table"] = parse_json_table(table_str)
 
     # Extract answer
@@ -268,6 +278,11 @@ def split_reasoning_steps(reasoning: str) -> List[str]:
     stepped = re.split(r"\n?Step\s*\d*[:.]\s*", reasoning, flags=re.IGNORECASE)
     if len(stepped) > 1:
         return [s.strip() for s in stepped if s.strip()]
+
+    # Try splitting by <step-1>: style tags
+    tagged = re.split(r"\n?<step-\d+>:\s*", reasoning, flags=re.IGNORECASE)
+    if len(tagged) > 1:
+        return [s.strip() for s in tagged if s.strip()]
 
     # Fall back to sentence splitting
     sentences = re.split(r"(?<=[.!?])\s+", reasoning)

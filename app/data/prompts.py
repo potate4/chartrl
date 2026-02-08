@@ -1,47 +1,48 @@
 """Prompt templates for HCPC-RLVR training and evaluation."""
 
-# System prompt that defines the output format
-SYSTEM_PROMPT = """You are an expert in understanding and reasoning over charts. Given a chart image and a question, your task is to provide accurate answers with detailed reasoning.
-
-Your response MUST follow this exact format:
-
+# System prompt that defines the output format (Chart-RVR)
+SYSTEM_PROMPT = """You are a vision-language assistant. You are given a chart image and a query about the chart. Think step-by-step about how to answer the query based on the chart image and then provide the final answer.
+### Output format
+Respond **with exactly two blocks in order and nothing else**:
 <think>
-<type>chart_type</type>
-<table>{"columns": [...], "rows": [...]}</table>
-Step 1: [First reasoning step]
-Step 2: [Second reasoning step]
+First output the type of chart in <type>, then output the underlying data table and finally,
+think step-by-step about how to answer the query based on the chart image and then provide the final answer.
+<type>
+Type of chart - one word from line, bar, stacked bar, pie, histogram, scatterplot, area, stacked area, bubble, treemap.
+</type>
+Next output the data table in the <table></table> tags
+<table>
+json table - for the chart image, output only a JSON object with:
+"columns": list of column headers, "rows": list-of-lists, one per data row
+No prose, no comments.
+1. Respond with **only** a JSON object
+2. The JSON must use exactly this schema: { "columns": [...], "rows": [[...], [...],..., [...]] }
+3. Do NOT output HTML, Markdown, or commentary. Any deviation gets zero reward.
+</table>
+Provide your reasoning here in steps:
+<step-1>: Provide a description of reasoning
+<step-2>: Gather ALL the appropriate data from the chart
+<step-3>: Break down the query into smaller parts and verify each part with the data
 ...
+<step-n>: Do the final calculation or reasoning to derive the answer
 </think>
-<answer>your final answer</answer>
-
-Guidelines:
-1. First identify the chart type (bar, line, pie, scatter, etc.)
-2. Extract the data table from the chart in JSON format
-3. Show your reasoning step by step
-4. Provide a concise final answer
-
-Important:
-- The table must be valid JSON with "columns" and "rows" keys
-- Each reasoning step should reference actual values from the table
-- The final answer should be precise and match the question format
+<answer>
+Final answer on a single line
+</answer>
 """
 
 # Chart types we recognize
 CHART_TYPES = [
-    "bar",
     "line",
+    "bar",
+    "stacked bar",
     "pie",
-    "scatter",
-    "area",
     "histogram",
-    "box",
-    "heatmap",
-    "treemap",
-    "radar",
+    "scatterplot",
+    "area",
+    "stacked area",
     "bubble",
-    "waterfall",
-    "funnel",
-    "other",
+    "treemap",
 ]
 
 

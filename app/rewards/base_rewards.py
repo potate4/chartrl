@@ -26,14 +26,11 @@ def format_reward(completion: str) -> float:
         <answer>...</answer>
 
     Returns:
-        2.0 if format is correct, 0.0 otherwise
+        1.0 if format is correct, 0.0 otherwise
     """
-    # Check for required tags
+    # Check for required tags and order
     pattern = r"<think>.*?<type>.*?</type>.*?<table>.*?</table>.*?</think>.*?<answer>.*?</answer>"
-
-    if re.search(pattern, completion, re.DOTALL):
-        return 2.0
-    return 0.0
+    return 1.0 if re.search(pattern, completion, re.DOTALL) else 0.0
 
 
 def accuracy_reward(
@@ -82,78 +79,24 @@ def accuracy_reward(
 
 def length_reward(
     completion: str,
-    min_length: int = 70,
-    max_length: int = 250,
+    min_tokens: int = 128,
+    max_tokens: int = 768,
 ) -> float:
     """
-    Reward appropriate reasoning length.
-
-    Encourages thorough but not excessive reasoning.
+    Reward appropriate output length (token-count proxy).
 
     Args:
         completion: Model output
-        min_length: Minimum characters for full reward
-        max_length: Maximum characters before penalty
+        min_tokens: Minimum token count for reward
+        max_tokens: Maximum token count for reward
 
     Returns:
-        Reward value
+        1.0 if within range, 0.0 otherwise
     """
-    parsed = parse_response(completion)
-    reasoning = parsed["reasoning"]
-
-    if not reasoning:
+    if not completion:
         return 0.0
-
-    length = len(reasoning)
-
-    # Base reward for meeting minimum
-    if length >= min_length:
-        reward = 1.0
-    else:
-        # Partial reward for shorter reasoning
-        reward = length / min_length
-
-    # Penalty for excessive length
-    if length > max_length:
-        reward -= 0.5
-
-    # Bonus for step markers
-    steps = split_reasoning_steps(reasoning)
-    step_bonus = min(0.25 * len(steps), 1.0)
-    reward += step_bonus
-
-    return max(0.0, reward)
-
-
-def token_count_reward(completion: str) -> float:
-    """
-    Check for proper tag structure.
-
-    Ensures exactly one of each required tag.
-
-    Returns:
-        2.0 if all tags correct, 0.0 otherwise
-    """
-    required_tags = [
-        ("<think>", "</think>"),
-        ("<answer>", "</answer>"),
-        ("<type>", "</type>"),
-        ("<table>", "</table>"),
-    ]
-
-    for open_tag, close_tag in required_tags:
-        if completion.count(open_tag) != 1:
-            return 0.0
-        if completion.count(close_tag) != 1:
-            return 0.0
-
-    # Check proper ordering
-    if not re.search(r"<think>\s*\n?\s*<type>", completion):
-        return 0.0
-    if not re.search(r"</type>\s*\n?\s*<table>", completion):
-        return 0.0
-
-    return 2.0
+    token_count = len(completion.split())
+    return 1.0 if (min_tokens <= token_count <= max_tokens) else 0.0
 
 
 def chart_type_reward(
@@ -187,7 +130,12 @@ def chart_type_reward(
         "line chart": "line",
         "line graph": "line",
         "pie chart": "pie",
-        "scatter plot": "scatter",
+        "scatter plot": "scatterplot",
+        "scatter": "scatterplot",
+        "stacked bar chart": "stacked bar",
+        "stacked bar graph": "stacked bar",
+        "stacked area chart": "stacked area",
+        "area chart": "area",
     }
 
     pred_type = type_aliases.get(pred_type, pred_type)
@@ -201,51 +149,66 @@ def table_reward(
     table: Dict[str, Any],
 ) -> float:
     """
-    Reward for accurate table extraction.
+    Reward for accurate table extraction (Chart-RVR).
 
-    Checks:
-    - JSON validity
-    - Column accuracy
-    - Row/value accuracy
+    Formula:
+    - Column header accuracy (exact match fraction)
+    - Cell accuracy (exact positional match fraction)
+    - +0.5 bonus if JSON is strictly parseable
 
     Args:
         completion: Model output
         table: Ground truth table
 
     Returns:
-        Reward value (0-2 range)
+        Reward value
     """
     parsed = parse_response(completion)
     pred_table = parsed["table"]
+    parseable_json = parsed.get("table_parse_success_strict", False)
 
     if not pred_table:
         return 0.0
 
-    reward = 0.0
-
-    # Reward for valid JSON (already parsed)
-    reward += 0.5
+    reward = 0.5 if parseable_json else 0.0
 
     if not table:
         return reward
 
-    # Column comparison
-    gt_cols = set(str(c).lower() for c in table.get("columns", []))
-    pred_cols = set(str(c).lower() for c in pred_table.get("columns", []))
+    # Column header accuracy (exact match fraction)
+    gt_cols = table.get("columns", [])
+    pred_cols = pred_table.get("columns", [])
+    if gt_cols:
+        col_matches = 0
+        for c in gt_cols:
+            if str(c).strip().lower() in [str(pc).strip().lower() for pc in pred_cols]:
+                col_matches += 1
+        reward += col_matches / len(gt_cols)
 
-    if gt_cols and pred_cols:
-        col_overlap = len(gt_cols & pred_cols) / max(len(gt_cols), 1)
-        reward += col_overlap * 0.5
-
-    # Row comparison
+    # Cell accuracy (exact positional match fraction)
     gt_rows = table.get("rows", [])
     pred_rows = pred_table.get("rows", [])
+    if gt_rows:
+        total_cells = 0
+        matched_cells = 0
+        for i, gt_row in enumerate(gt_rows):
+            if not isinstance(gt_row, list):
+                gt_row = [gt_row]
+            total_cells += len(gt_row)
+            if i >= len(pred_rows):
+                continue
+            pred_row = pred_rows[i]
+            if not isinstance(pred_row, list):
+                pred_row = [pred_row]
+            for j, gt_cell in enumerate(gt_row):
+                if j >= len(pred_row):
+                    continue
+                if _values_match(gt_cell, pred_row[j]):
+                    matched_cells += 1
+        if total_cells > 0:
+            reward += matched_cells / total_cells
 
-    if gt_rows and pred_rows:
-        row_score = _compare_table_rows(gt_rows, pred_rows)
-        reward += row_score
-
-    return min(reward, 2.0)
+    return reward
 
 
 def _compare_table_rows(
@@ -313,9 +276,11 @@ def process_reward(
     reasoning: str,
 ) -> float:
     """
-    Reward for reasoning process alignment.
+    Reward for process conformity (Chart-RVR).
 
-    Uses semantic similarity between predicted and ground truth reasoning.
+    Computes:
+    - Reg: mean step-wise similarity for first m steps
+    - Rrs: similarity for remaining steps
 
     Args:
         completion: Model output
@@ -330,10 +295,28 @@ def process_reward(
     if not pred_reasoning or not reasoning:
         return 0.0
 
-    # Compute semantic similarity
-    similarity = compute_similarity(pred_reasoning, reasoning)
+    pred_steps = split_reasoning_steps(pred_reasoning)
+    gt_steps = split_reasoning_steps(reasoning)
 
-    return similarity
+    if not pred_steps or not gt_steps:
+        return 0.0
+
+    m = min(2, len(pred_steps), len(gt_steps))
+    if m == 0:
+        return 0.0
+
+    # Step-wise conformity for first m steps
+    step_sims = []
+    for i in range(m):
+        step_sims.append(compute_similarity(pred_steps[i], gt_steps[i]))
+    reg = sum(step_sims) / len(step_sims) if step_sims else 0.0
+
+    # Reasoning alignment for remaining steps
+    pred_tail = " ".join(pred_steps[m:])
+    gt_tail = " ".join(gt_steps[m:])
+    rrs = compute_similarity(pred_tail, gt_tail) if pred_tail and gt_tail else 0.0
+
+    return reg + rrs
 
 
 def compute_base_rewards(
@@ -363,9 +346,6 @@ def compute_base_rewards(
 
     # Length reward
     rewards["length"] = length_reward(completion)
-
-    # Token count reward
-    rewards["token_count"] = token_count_reward(completion)
 
     # Chart type reward
     if ground_truth.get("chart_type"):

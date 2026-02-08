@@ -253,16 +253,16 @@ class BaseTrainer(ABC):
 
                 gt_label = ""
                 if isinstance(labels, list) and i < len(labels):
-                    gt_label = str(labels[i])
+                    gt_label = str(_first_scalar(labels[i], ""))
                 gt_table = ""
                 if isinstance(tables, list) and i < len(tables):
-                    gt_table = str(tables[i])
+                    gt_table = str(_first_scalar(tables[i], {}))
                 gt_chart_type = ""
                 if isinstance(chart_types, list) and i < len(chart_types):
-                    gt_chart_type = str(chart_types[i])
+                    gt_chart_type = str(_first_scalar(chart_types[i], ""))
                 gt_reasoning = ""
                 if isinstance(reasonings, list) and i < len(reasonings):
-                    gt_reasoning = str(reasonings[i])
+                    gt_reasoning = str(_first_scalar(reasonings[i], ""))
 
                 msg = (
                     f"[completion_log step={self._completion_log_step} idx={i}] "
@@ -351,11 +351,6 @@ class BaseTrainer(ABC):
             return value
 
         def reward_fn(completions, **kwargs):
-            if self._completion_log_step == 0:
-                try:
-                    self.logger.info(f"[debug kwargs_keys] {sorted(list(kwargs.keys()))}")
-                except Exception:
-                    pass
             # Get ground truth from kwargs
             labels = _get_list(kwargs, ["labels", "label", "answers", "answer"])
             tables = _get_list(kwargs, ["tables", "table"])
