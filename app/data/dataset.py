@@ -118,6 +118,46 @@ def load_training_dataset(
         dataset = dataset.select(range(min(config.subset_size, len(dataset))))
 
     # Format for GRPO training
+    def _normalize_label(value) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            for item in value:
+                if isinstance(item, str) and item.strip():
+                    return item
+            return str(value[0]) if value else ""
+        return str(value)
+
+    def _normalize_text(value) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, list):
+            # Join list items into a readable string
+            return " ".join(str(v) for v in value if v is not None)
+        return str(value)
+
+    def _normalize_table(value) -> Dict[str, Any]:
+        if value is None:
+            return {}
+        if isinstance(value, dict):
+            return value
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                return parsed if isinstance(parsed, dict) else {}
+            except Exception:
+                return {}
+        if isinstance(value, list):
+            # Common pattern: [columns, rows]
+            if len(value) == 2 and isinstance(value[0], list) and isinstance(value[1], list):
+                return {"columns": value[0], "rows": value[1]}
+            # List of dicts; take first dict-like entry
+            for item in value:
+                if isinstance(item, dict):
+                    return item
+            return {}
+        return {}
+
     def format_example(example):
         """Format a single example for GRPO."""
         # Build conversation format
@@ -131,10 +171,10 @@ def load_training_dataset(
         return {
             "prompt": conversation,
             "images": [image] if image is not None else [],
-            "label": example.get("label", ""),
-            "table": example.get("table", {}),
-            "chart_type": example.get("chart_type", ""),
-            "reasoning": example.get("reasoning", ""),
+            "label": _normalize_label(example.get("label")),
+            "table": _normalize_table(example.get("table")),
+            "chart_type": _normalize_text(example.get("chart_type")),
+            "reasoning": _normalize_text(example.get("reasoning")),
         }
 
     # Apply formatting
