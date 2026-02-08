@@ -108,6 +108,11 @@ class TrainingConfig:
     logging_steps: int = 10
     use_wandb: bool = True
     wandb_project: str = "hcpc-rlvr"
+    log_completions: bool = True
+    log_completions_every: int = 1
+    log_completions_max: int = 2
+    log_completions_max_chars: int = 1200
+    log_completions_to_file: bool = True
 
     # Paths
     output_dir: str = "./outputs"

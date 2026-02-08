@@ -92,6 +92,46 @@ class ChartDataset:
         return self.dataset[idx]
 
 
+def _normalize_label(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                return item
+        return str(value[0]) if value else ""
+    return str(value)
+
+
+def _normalize_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return " ".join(str(v) for v in value if v is not None)
+    return str(value)
+
+
+def _normalize_table(value) -> Dict[str, Any]:
+    if value is None:
+        return {}
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}
+    if isinstance(value, list):
+        if len(value) == 2 and isinstance(value[0], list) and isinstance(value[1], list):
+            return {"columns": value[0], "rows": value[1]}
+        for item in value:
+            if isinstance(item, dict):
+                return item
+        return {}
+    return {}
+
+
 def load_training_dataset(
     config,
     processor=None,
@@ -106,65 +146,20 @@ def load_training_dataset(
     Returns:
         HuggingFace Dataset ready for training
     """
-    # Load from HuggingFace
     dataset = load_dataset(
         config.dataset_name,
         split="train",
         cache_dir=config.cache_dir,
     )
 
-    # Apply subset if specified
     if config.subset_size:
         dataset = dataset.select(range(min(config.subset_size, len(dataset))))
 
-    # Format for GRPO training
-    def _normalize_label(value) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, list):
-            for item in value:
-                if isinstance(item, str) and item.strip():
-                    return item
-            return str(value[0]) if value else ""
-        return str(value)
-
-    def _normalize_text(value) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, list):
-            # Join list items into a readable string
-            return " ".join(str(v) for v in value if v is not None)
-        return str(value)
-
-    def _normalize_table(value) -> Dict[str, Any]:
-        if value is None:
-            return {}
-        if isinstance(value, dict):
-            return value
-        if isinstance(value, str):
-            try:
-                parsed = json.loads(value)
-                return parsed if isinstance(parsed, dict) else {}
-            except Exception:
-                return {}
-        if isinstance(value, list):
-            # Common pattern: [columns, rows]
-            if len(value) == 2 and isinstance(value[0], list) and isinstance(value[1], list):
-                return {"columns": value[0], "rows": value[1]}
-            # List of dicts; take first dict-like entry
-            for item in value:
-                if isinstance(item, dict):
-                    return item
-            return {}
-        return {}
-
     def format_example(example):
         """Format a single example for GRPO."""
-        # Build conversation format (list of messages with consistent content schema)
         question_text = _normalize_text(example.get("query"))
         prompt = format_conversation(question_text)
 
-        # Process image
         image = example.get("image")
         if image is not None:
             image = process_image_for_model(image)
@@ -178,7 +173,6 @@ def load_training_dataset(
             "reasoning": _normalize_text(example.get("reasoning")),
         }
 
-    # Apply formatting
     dataset = dataset.map(
         format_example,
         remove_columns=dataset.column_names,
@@ -212,7 +206,6 @@ def load_eval_dataset(
     Returns:
         Evaluation dataset
     """
-    # Map common names to HuggingFace paths
     dataset_map = {
         "chartqa": "HuggingFaceM4/ChartQA",
         "evochart": "lmms-lab/EvoChart",
@@ -221,14 +214,12 @@ def load_eval_dataset(
 
     hf_name = dataset_map.get(dataset_name.lower(), dataset_name)
 
-    # Load dataset
     dataset = load_dataset(
         hf_name,
         split=split,
         cache_dir=cache_dir,
     )
 
-    # Apply subset
     if subset_size:
         dataset = dataset.select(range(min(subset_size, len(dataset))))
 
@@ -245,13 +236,13 @@ def create_grpo_collator(processor):
     Returns:
         Collate function
     """
+
     def collate_fn(batch: List[Dict]) -> Dict:
         """Collate batch of examples."""
         prompts = [ex["prompt"] for ex in batch]
         images = [ex["images"] for ex in batch]
         labels = [ex["label"] for ex in batch]
 
-        # Additional fields for reward computation
         tables = [ex.get("table", {}) for ex in batch]
         chart_types = [ex.get("chart_type", "") for ex in batch]
         reasonings = [ex.get("reasoning", "") for ex in batch]
@@ -279,7 +270,7 @@ def create_dataloader(
     Create a DataLoader for the dataset.
 
     Args:
-        dataset: Dataset to wrap
+        dataset: Dataset to load
         batch_size: Batch size
         shuffle: Whether to shuffle
         collate_fn: Optional collate function
@@ -292,37 +283,6 @@ def create_dataloader(
         dataset,
         batch_size=batch_size,
         shuffle=shuffle,
-        collate_fn=collate_fn,
         num_workers=num_workers,
-        pin_memory=True,
+        collate_fn=collate_fn,
     )
-
-
-def get_dataset_info(dataset: Dataset) -> Dict[str, Any]:
-    """
-    Get information about a dataset.
-
-    Args:
-        dataset: Dataset to analyze
-
-    Returns:
-        Dict with dataset statistics
-    """
-    info = {
-        "num_examples": len(dataset),
-        "columns": dataset.column_names,
-    }
-
-    # Sample a few examples for inspection
-    if len(dataset) > 0:
-        sample = dataset[0]
-        info["sample_keys"] = list(sample.keys())
-
-        # Check for specific columns
-        if "chart_type" in dataset.column_names:
-            types = dataset["chart_type"]
-            info["chart_type_distribution"] = dict(
-                zip(*[(list(set(types)), [types.count(t) for t in set(types)])])
-            )
-
-    return info

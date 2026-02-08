@@ -70,6 +70,8 @@ class BaseTrainer(ABC):
         self._trl_trainer = None
         self._current_step = 0
         self._resume_step = 0
+        self._completion_log_step = 0
+        self._completion_log_path = None
 
     def setup(self):
         """Set up training components."""
@@ -89,6 +91,10 @@ class BaseTrainer(ABC):
         self.metrics_logger = MetricsLogger(
             self.checkpoint_manager.run_dir / "metrics.jsonl"
         )
+        if self.config.log_completions_to_file:
+            self._completion_log_path = (
+                self.checkpoint_manager.run_dir / "completions.log"
+            )
 
         if self.config.use_wandb:
             self.wandb_logger = WandBLogger(
@@ -157,6 +163,68 @@ class BaseTrainer(ABC):
         The reward function computes base rewards and then applies
         the subclass-specific advantage transformation.
         """
+        def _normalize_completion(completion):
+            if completion is None:
+                return ""
+            if isinstance(completion, str):
+                return completion
+            if isinstance(completion, dict):
+                # Attempt to pull a text field
+                for key in ("text", "content", "output", "completion"):
+                    if key in completion and isinstance(completion[key], str):
+                        return completion[key]
+                return str(completion)
+            if isinstance(completion, list):
+                parts = []
+                for item in completion:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict):
+                        text = item.get("text")
+                        if isinstance(text, str):
+                            parts.append(text)
+                return "\n".join(parts)
+            return str(completion)
+
+        def _truncate(text: str) -> str:
+            if len(text) <= self.config.log_completions_max_chars:
+                return text
+            return text[: self.config.log_completions_max_chars] + "...[truncated]"
+
+        def _log_completions(completions, kwargs):
+            if not self.config.log_completions:
+                return
+            if self.config.log_completions_every <= 0:
+                return
+            if (self._completion_log_step % self.config.log_completions_every) != 0:
+                return
+
+            prompts = kwargs.get("prompts", None)
+            labels = kwargs.get("labels", None)
+            n = min(len(completions), self.config.log_completions_max)
+
+            for i in range(n):
+                raw = completions[i]
+                norm = _normalize_completion(raw)
+                prompt_preview = ""
+                if isinstance(prompts, list) and i < len(prompts):
+                    prompt_preview = str(prompts[i])
+                label_preview = ""
+                if isinstance(labels, list) and i < len(labels):
+                    label_preview = str(labels[i])
+
+                msg = (
+                    f"[completion_log step={self._completion_log_step} idx={i}] "
+                    f"prompt={_truncate(prompt_preview)} | "
+                    f"label={_truncate(label_preview)} | "
+                    f"completion={_truncate(norm)}"
+                )
+                self.logger.info(msg)
+
+                if self._completion_log_path is not None:
+                    with open(self._completion_log_path, "a") as f:
+                        f.write(msg + "\n")
+
         def reward_fn(completions, **kwargs):
             # Get ground truth from kwargs
             labels = kwargs.get("labels", [])
@@ -172,10 +240,17 @@ class BaseTrainer(ABC):
                 "reasoning": reasonings[0] if reasonings else "",
             }
 
+            # Normalize completions to strings
+            normalized = [_normalize_completion(c) for c in completions]
+
             # Compute raw rewards
             rewards = self.reward_aggregator.compute_rewards_tensor(
-                completions, ground_truth
+                normalized, ground_truth
             )
+
+            # Log completions (raw and normalized)
+            _log_completions(completions, kwargs)
+            self._completion_log_step += 1
 
             # Apply policy-specific transformation
             advantages = self.compute_advantages(rewards)
