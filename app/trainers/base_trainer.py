@@ -341,6 +341,15 @@ class BaseTrainer(ABC):
                     return [v]
             return []
 
+        def _first_scalar(value, default):
+            if value is None:
+                return default
+            if isinstance(value, list):
+                if not value:
+                    return default
+                return _first_scalar(value[0], default)
+            return value
+
         def reward_fn(completions, **kwargs):
             if self._completion_log_step == 0:
                 try:
@@ -355,10 +364,10 @@ class BaseTrainer(ABC):
 
             # Build ground truth
             ground_truth = {
-                "label": labels[0] if labels else "",
-                "table": tables[0] if tables else {},
-                "chart_type": chart_types[0] if chart_types else "",
-                "reasoning": reasonings[0] if reasonings else "",
+                "label": _first_scalar(labels, ""),
+                "table": _first_scalar(tables, {}),
+                "chart_type": _first_scalar(chart_types, ""),
+                "reasoning": _first_scalar(reasonings, ""),
             }
 
             # Normalize completions to strings
