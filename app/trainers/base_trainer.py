@@ -6,6 +6,7 @@ from pathlib import Path
 
 import torch
 from trl import GRPOConfig, GRPOTrainer as TRLGRPOTrainer
+import inspect
 
 from configs import TrainingConfig
 from rewards import RewardAggregator
@@ -108,28 +109,34 @@ class BaseTrainer(ABC):
 
     def _create_trl_trainer(self):
         """Create the underlying TRL GRPOTrainer."""
-        grpo_config = GRPOConfig(
-            output_dir=str(self.checkpoint_manager.run_dir / "trl_output"),
-            per_device_train_batch_size=self.config.batch_size,
-            num_train_epochs=self.config.num_epochs,
-            num_generations=self.config.num_generations,
-            max_prompt_length=self.config.max_prompt_length,
-            max_completion_length=self.config.max_completion_length,
-            learning_rate=self.config.learning_rate,
-            warmup_ratio=self.config.warmup_ratio,
-            weight_decay=self.config.weight_decay,
-            max_grad_norm=self.config.max_grad_norm,
-            gradient_accumulation_steps=self.config.gradient_accumulation_steps,
-            logging_steps=self.config.logging_steps,
-            save_steps=self.config.checkpoint.save_every_n_steps,
-            bf16=self.config.bf16,
-            gradient_checkpointing=self.config.gradient_checkpointing,
+        config_kwargs = {
+            "output_dir": str(self.checkpoint_manager.run_dir / "trl_output"),
+            "per_device_train_batch_size": self.config.batch_size,
+            "num_train_epochs": self.config.num_epochs,
+            "num_generations": self.config.num_generations,
+            "max_prompt_length": self.config.max_prompt_length,
+            "max_completion_length": self.config.max_completion_length,
+            "learning_rate": self.config.learning_rate,
+            "warmup_ratio": self.config.warmup_ratio,
+            "weight_decay": self.config.weight_decay,
+            "max_grad_norm": self.config.max_grad_norm,
+            "gradient_accumulation_steps": self.config.gradient_accumulation_steps,
+            "logging_steps": self.config.logging_steps,
+            "save_steps": self.config.checkpoint.save_every_n_steps,
+            "bf16": self.config.bf16,
+            "gradient_checkpointing": self.config.gradient_checkpointing,
             # Generation settings
-            temperature=self.config.temperature,
-            top_p=self.config.top_p,
-            # GRPO specific
-            kl_coef=self.config.kl_coef,
-        )
+            "temperature": self.config.temperature,
+            "top_p": self.config.top_p,
+            # GRPO specific (optional depending on TRL version)
+            "kl_coef": self.config.kl_coef,
+        }
+
+        # Filter kwargs to those supported by the installed TRL version
+        allowed = set(inspect.signature(GRPOConfig).parameters.keys())
+        filtered_kwargs = {k: v for k, v in config_kwargs.items() if k in allowed}
+
+        grpo_config = GRPOConfig(**filtered_kwargs)
 
         # Create reward function
         reward_fn = self._create_reward_function()

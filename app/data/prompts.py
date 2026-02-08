@@ -108,8 +108,14 @@ def format_conversation(question: str, image_token: str = "<image>") -> list:
     Returns:
         List of message dicts
     """
+    # Use list-of-dicts content for all roles to keep schema consistent
     return [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {
+            "role": "system",
+            "content": [
+                {"type": "text", "text": SYSTEM_PROMPT},
+            ],
+        },
         {
             "role": "user",
             "content": [

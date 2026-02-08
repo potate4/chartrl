@@ -160,8 +160,9 @@ def load_training_dataset(
 
     def format_example(example):
         """Format a single example for GRPO."""
-        # Build conversation format
-        conversation = format_conversation(example["query"])
+        # Build conversation format (list of messages with consistent content schema)
+        question_text = _normalize_text(example.get("query"))
+        prompt = format_conversation(question_text)
 
         # Process image
         image = example.get("image")
@@ -169,7 +170,7 @@ def load_training_dataset(
             image = process_image_for_model(image)
 
         return {
-            "prompt": conversation,
+            "prompt": prompt,
             "images": [image] if image is not None else [],
             "label": _normalize_label(example.get("label")),
             "table": _normalize_table(example.get("table")),
