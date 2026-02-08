@@ -132,6 +132,13 @@ def _normalize_table(value) -> Dict[str, Any]:
     return {}
 
 
+def _get_first(example: Dict[str, Any], keys: List[str]):
+    for k in keys:
+        if k in example:
+            return example.get(k)
+    return None
+
+
 def load_training_dataset(
     config,
     processor=None,
@@ -157,7 +164,9 @@ def load_training_dataset(
 
     def format_example(example):
         """Format a single example for GRPO."""
-        question_text = _normalize_text(example.get("query"))
+        question_text = _normalize_text(
+            _get_first(example, ["query", "question", "prompt", "input"])
+        )
         prompt = format_conversation(question_text)
 
         image = example.get("image")
@@ -167,10 +176,15 @@ def load_training_dataset(
         return {
             "prompt": prompt,
             "images": [image] if image is not None else [],
-            "label": _normalize_label(example.get("label")),
-            "table": _normalize_table(example.get("table")),
-            "chart_type": _normalize_text(example.get("chart_type")),
-            "reasoning": _normalize_text(example.get("reasoning")),
+            # Provide both singular and plural field names for TRL compatibility
+            "label": _normalize_label(_get_first(example, ["label", "answer", "answers", "output"])),
+            "labels": [_normalize_label(_get_first(example, ["label", "answer", "answers", "output"]))],
+            "table": _normalize_table(_get_first(example, ["table", "tables", "chart_table", "data_table"])),
+            "tables": [_normalize_table(_get_first(example, ["table", "tables", "chart_table", "data_table"]))],
+            "chart_type": _normalize_text(_get_first(example, ["chart_type", "chart", "type"])),
+            "chart_types": [_normalize_text(_get_first(example, ["chart_type", "chart", "type"]))],
+            "reasoning": _normalize_text(_get_first(example, ["reasoning", "rationale", "explanation"])),
+            "reasonings": [_normalize_text(_get_first(example, ["reasoning", "rationale", "explanation"]))],
         }
 
     dataset = dataset.map(
@@ -286,3 +300,8 @@ def create_dataloader(
         num_workers=num_workers,
         collate_fn=collate_fn,
     )
+def _get_first(example: Dict[str, Any], keys: List[str]):
+    for k in keys:
+        if k in example:
+            return example.get(k)
+    return None

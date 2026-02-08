@@ -332,12 +332,26 @@ class BaseTrainer(ABC):
                 self.metrics_logger.log(summary, step=self._metrics_step)
             self._metrics_step += 1
 
+        def _get_list(kwargs, keys):
+            for k in keys:
+                if k in kwargs:
+                    v = kwargs.get(k)
+                    if isinstance(v, list):
+                        return v
+                    return [v]
+            return []
+
         def reward_fn(completions, **kwargs):
+            if self._completion_log_step == 0:
+                try:
+                    self.logger.info(f"[debug kwargs_keys] {sorted(list(kwargs.keys()))}")
+                except Exception:
+                    pass
             # Get ground truth from kwargs
-            labels = kwargs.get("labels", [])
-            tables = kwargs.get("tables", [])
-            chart_types = kwargs.get("chart_types", [])
-            reasonings = kwargs.get("reasonings", [])
+            labels = _get_list(kwargs, ["labels", "label", "answers", "answer"])
+            tables = _get_list(kwargs, ["tables", "table"])
+            chart_types = _get_list(kwargs, ["chart_types", "chart_type", "type"])
+            reasonings = _get_list(kwargs, ["reasonings", "reasoning", "rationale"])
 
             # Build ground truth
             ground_truth = {
