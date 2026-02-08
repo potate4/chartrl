@@ -686,6 +686,207 @@ if valid:
 
 ---
 
+## Evaluation (Chart-RVR Style)
+
+Evaluate your trained models on the same benchmarks as Chart-RVR paper.
+
+### Datasets for Evaluation
+
+| Dataset | Type | Description |
+|---------|------|-------------|
+| `chartqa-src` | ID | In-distribution (ChartQA) |
+| `evochart` | OOD | EvoChart benchmark |
+| `chartqapro` | OOD | ChartQA Pro |
+| `plotqa` | OOD | PlotQA (5K samples) |
+| `chartfc` | OOD | Chart Fact-Checking |
+| `chartbench` | OOD | ChartBench |
+
+### Cell: Setup Evaluation
+
+```python
+import sys
+import os
+sys.path.insert(0, '/content/chartrl')
+os.chdir('/content/chartrl')
+
+from models import load_vlm_model
+from dataset_process import ChartDataset
+from metrics import relaxed_accuracy
+from utils import get_vlm_output
+from peft import PeftModel
+import torch
+from tqdm import tqdm
+
+def evaluate_checkpoint(checkpoint_path, dataset_name="evochart", num_samples=500):
+    """
+    Evaluate a trained checkpoint on a benchmark dataset.
+
+    Args:
+        checkpoint_path: Path to trained LoRA checkpoint
+        dataset_name: One of chartqa-src, evochart, chartqapro, plotqa, chartfc, chartbench
+        num_samples: Number of samples to evaluate (None = all)
+
+    Returns:
+        dict with accuracy metrics
+    """
+    # Load base model
+    model, processor = load_vlm_model("qwen2-5-3b", mode="eval")
+
+    # Load LoRA adapters
+    print(f"Loading checkpoint: {checkpoint_path}")
+    model = PeftModel.from_pretrained(model, checkpoint_path)
+    model.eval()
+
+    # Load dataset
+    dataset = ChartDataset(dataset_name, processor=processor)
+    test_data = dataset.load_chart_dataset(split="test")
+
+    if num_samples and num_samples < len(test_data):
+        test_data = test_data.shuffle(seed=2026).select(range(num_samples))
+
+    loader = dataset.create_loader(test_data, bsz=1)
+
+    # Evaluate
+    all_preds = []
+    all_labels = []
+
+    for batch in tqdm(loader, desc=f"Evaluating on {dataset_name}"):
+        images, queries, labels, _ = batch
+
+        # Generate with CoT
+        preds, rationales = get_vlm_output(
+            model, processor, images, queries,
+            cot=True, blocks=4
+        )
+
+        all_preds.extend(preds)
+        all_labels.extend(labels)
+
+    # Compute relaxed accuracy
+    ra_correct, flags = relaxed_accuracy(all_labels, all_preds)
+    accuracy = ra_correct / len(all_labels)
+
+    print(f"\n{dataset_name}: {accuracy:.2%} ({ra_correct}/{len(all_labels)})")
+
+    # Cleanup
+    del model
+    torch.cuda.empty_cache()
+
+    return {
+        "dataset": dataset_name,
+        "accuracy": accuracy,
+        "correct": ra_correct,
+        "total": len(all_labels),
+    }
+
+print("Evaluation functions loaded!")
+```
+
+### Cell: Evaluate Single Experiment
+
+```python
+# Evaluate a single trained model
+CHECKPOINT = "./outputs/grpo_baseline/run_xxx/checkpoints/step_xxx"  # Update this!
+
+results = evaluate_checkpoint(
+    checkpoint_path=CHECKPOINT,
+    dataset_name="evochart",  # OOD benchmark
+    num_samples=500,  # Use None for full eval
+)
+print(f"Accuracy: {results['accuracy']:.2%}")
+```
+
+### Cell: Full 4-Way Evaluation
+
+```python
+import json
+from pathlib import Path
+
+def find_best_checkpoint(experiment_name):
+    """Find the latest/best checkpoint for an experiment."""
+    exp_dir = Path(f"./outputs/{experiment_name}")
+    if not exp_dir.exists():
+        return None
+
+    # Find latest run
+    runs = sorted(exp_dir.glob("run_*"))
+    if not runs:
+        return None
+
+    # Find latest checkpoint
+    ckpt_dir = runs[-1] / "checkpoints"
+    if not ckpt_dir.exists():
+        return None
+
+    ckpts = sorted(ckpt_dir.glob("step_*"), key=lambda x: int(x.name.split("_")[1]))
+    return str(ckpts[-1]) if ckpts else None
+
+# Evaluate all 4 experiments
+experiments = ["grpo_baseline", "grpo_hcpc", "nsr_baseline", "nsr_hcpc"]
+datasets = ["chartqa-src", "evochart"]  # ID and OOD
+
+all_results = {}
+
+for exp in experiments:
+    ckpt = find_best_checkpoint(exp)
+    if ckpt is None:
+        print(f"Skipping {exp} - no checkpoint found")
+        continue
+
+    all_results[exp] = {}
+
+    for ds in datasets:
+        print(f"\n{'='*60}")
+        print(f"Evaluating {exp} on {ds}")
+        print(f"{'='*60}")
+
+        result = evaluate_checkpoint(
+            checkpoint_path=ckpt,
+            dataset_name=ds,
+            num_samples=500,
+        )
+        all_results[exp][ds] = result["accuracy"]
+
+# Print comparison table
+print("\n" + "="*70)
+print("EVALUATION RESULTS")
+print("="*70)
+print(f"{'Experiment':<20} {'ChartQA (ID)':>15} {'EvoChart (OOD)':>15} {'OOD Gap':>10}")
+print("-"*70)
+
+for exp in experiments:
+    if exp in all_results:
+        id_acc = all_results[exp].get("chartqa-src", 0)
+        ood_acc = all_results[exp].get("evochart", 0)
+        gap = ood_acc - id_acc
+        print(f"{exp:<20} {id_acc:>14.1%} {ood_acc:>14.1%} {gap:>+9.1%}")
+    else:
+        print(f"{exp:<20} {'N/A':>15} {'N/A':>15} {'N/A':>10}")
+
+print("="*70)
+
+# Save results
+with open("eval_results.json", "w") as f:
+    json.dump(all_results, f, indent=2)
+print("\nResults saved to eval_results.json")
+
+# Backup to Drive
+!cp eval_results.json {DRIVE_BACKUP_DIR}/
+```
+
+### Key Metric: OOD Generalization Gap
+
+The main hypothesis of HCPC is that promoting diversity reduces the OOD gap:
+
+```
+OOD Gap = EvoChart Accuracy - ChartQA Accuracy
+```
+
+- **Smaller (less negative) gap = Better generalization**
+- HCPC experiments should have smaller gaps than baselines
+
+---
+
 ## Quick Reference
 
 ```bash
@@ -698,8 +899,8 @@ python scripts/train.py --experiment <name> --resume
 # Quick test
 python scripts/train.py --experiment <name> --subset-size 100
 
-# Evaluate
-python scripts/evaluate.py --checkpoint outputs/<name>/best
+# Evaluate (using main.py from root)
+python main.py --mode eval --vlm-name qwen2-5-3b --dataset-name evochart --cot True --grpo-lora True
 
 # Run all
 python scripts/run_experiments.py

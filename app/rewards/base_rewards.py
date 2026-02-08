@@ -2,6 +2,8 @@
 
 import re
 import json
+import math
+import difflib
 from typing import Dict, Any, Optional, List
 
 import torch
@@ -86,8 +88,21 @@ def format_reward(completion: str) -> float:
     return min(reward, 1.4)
 
 
+def _try_float(value: str) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        cleaned = str(value).strip()
+        cleaned = cleaned.replace(",", "")
+        if cleaned.endswith("%"):
+            cleaned = cleaned[:-1]
+        return float(cleaned)
+    except Exception:
+        return None
+
+
 def accuracy_reward(completion: str, label: str, tolerance: float = 0.05) -> float:
-    """Chart-RVR accuracy reward (numeric tolerance or exact text)."""
+    """Continuous accuracy reward with smooth decay as deviation increases."""
     if not label:
         return 0.0
 
@@ -103,17 +118,20 @@ def accuracy_reward(completion: str, label: str, tolerance: float = 0.05) -> flo
     if not pred:
         return 0.0
 
-    try:
-        sol = float(label) + 1e-6  # avoid zero division
-        pred_num = float(pred)
-        reward = int(float(abs(pred_num - sol) / sol) <= tolerance)
-        return float(reward)
-    except Exception:
-        try:
-            return float(int(str(label).lower() == str(pred).lower()))
-        except Exception:
-            return 0.0
+    label_num = _try_float(label)
+    pred_num = _try_float(pred)
+    if label_num is not None and pred_num is not None:
+        denom = abs(label_num) if abs(label_num) > 1e-8 else 1.0
+        rel_error = abs(pred_num - label_num) / denom
+        # Smooth decay from 1.0 at exact match; no flat tolerance region.
+        k = 10.0
+        return float(max(0.0, min(1.0, math.exp(-k * rel_error))))
 
+    try:
+        ratio = difflib.SequenceMatcher(None, str(label).lower(), str(pred).lower()).ratio()
+        return float(ratio)
+    except Exception:
+        return 0.0
 
 def length_reward(completion: str) -> float:
     """Length reward (Chart-RVR)."""
