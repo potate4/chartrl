@@ -92,6 +92,13 @@ def parse_json_table(table_str: str) -> Dict[str, Any]:
     # Clean common issues
     table_str = table_str.strip()
 
+    # If wrapped in ```json ... ``` take the inner block
+    if "```json" in table_str:
+        try:
+            table_str = table_str.split("```json", 1)[-1].split("```", 1)[0].strip()
+        except Exception:
+            pass
+
     # Try direct parse
     try:
         return json.loads(table_str)

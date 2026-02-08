@@ -1,380 +1,228 @@
-"""Base reward functions from Chart-RVR."""
+"""Base reward functions from Chart-RVR (commit-aligned)."""
 
 import re
 import json
 from typing import Dict, Any, Optional, List
 
-from utils.parsing import (
-    parse_response,
-    normalize_answer,
-    try_parse_numeric,
-    split_reasoning_steps,
-)
-from utils.similarity import compute_similarity
+import torch
+import torch.nn.functional as F
+from sentence_transformers import SentenceTransformer
+
+
+_TEXT_REWARD_MODEL = None
+
+
+def _get_text_reward_model():
+    global _TEXT_REWARD_MODEL
+    if _TEXT_REWARD_MODEL is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        _TEXT_REWARD_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device=device)
+        _TEXT_REWARD_MODEL.eval()
+    return _TEXT_REWARD_MODEL
+
+
+def _text_sim(pred: str, gt: str) -> float:
+    if not pred or not gt:
+        return 0.0
+    model = _get_text_reward_model()
+    device = model.device
+    p_emb = model.encode(pred, convert_to_tensor=True, device=device)
+    gt_emb = model.encode(gt, convert_to_tensor=True, device=device)
+    cos = F.cosine_similarity(p_emb, gt_emb, dim=-1)
+    return cos.max(dim=0).values.mean().item()
 
 
 def format_reward(completion: str) -> float:
-    """
-    Check if output follows the expected format.
-
-    Expected format:
-        <think>
-        <type>...</type>
-        <table>...</table>
-        ...reasoning...
-        </think>
-        <answer>...</answer>
-
-    Returns:
-        1.0 if format is correct, 0.0 otherwise
-    """
-    # Check for required tags and order
-    pattern = r"<think>.*?<type>.*?</type>.*?<table>.*?</table>.*?</think>.*?<answer>.*?</answer>"
-    return 1.0 if re.search(pattern, completion, re.DOTALL) else 0.0
+    """Reward function that checks if the completion has a specific format."""
+    pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
+    match = re.match(pattern, completion, re.DOTALL | re.MULTILINE)
+    return 2.0 if match else 0.0
 
 
-def accuracy_reward(
-    completion: str,
-    label: str,
-    tolerance: float = 0.05,
-) -> float:
-    """
-    Check if answer matches ground truth.
-
-    Handles both numeric (with tolerance) and text matching.
-
-    Args:
-        completion: Model output
-        label: Ground truth answer
-        tolerance: Relative tolerance for numeric comparison
-
-    Returns:
-        1.0 if correct, 0.0 otherwise
-    """
-    # Extract answer from completion
-    parsed = parse_response(completion)
-    pred_answer = parsed["answer"]
-
-    if not pred_answer:
+def accuracy_reward(completion: str, label: str, tolerance: float = 0.05) -> float:
+    """Chart-RVR accuracy reward (numeric tolerance or exact text)."""
+    if not label:
         return 0.0
 
-    # Try numeric comparison first
-    pred_num = try_parse_numeric(pred_answer)
-    label_num = try_parse_numeric(label)
-
-    if pred_num is not None and label_num is not None:
-        # Numeric comparison with tolerance
-        if label_num != 0:
-            rel_error = abs(pred_num - label_num) / abs(label_num)
-            return 1.0 if rel_error <= tolerance else 0.0
+    try:
+        if "<answer>" not in completion or "<think>" not in completion:
+            pred = ""
         else:
-            return 1.0 if abs(pred_num - label_num) <= tolerance else 0.0
+            pred = completion.split("<answer>")[-1].strip().split("</answer>")[0].strip()
+            pred = pred.rstrip(".") if pred.endswith(".") else pred
+    except Exception:
+        pred = ""
 
-    # Fall back to string comparison
-    pred_norm = normalize_answer(pred_answer)
-    label_norm = normalize_answer(label)
+    if not pred:
+        return 0.0
 
-    return 1.0 if pred_norm == label_norm else 0.0
+    try:
+        sol = float(label) + 1e-6  # avoid zero division
+        pred_num = float(pred)
+        reward = int(float(abs(pred_num - sol) / sol) <= tolerance)
+        return float(reward)
+    except Exception:
+        try:
+            return float(int(str(label).lower() == str(pred).lower()))
+        except Exception:
+            return 0.0
 
 
-def length_reward(
-    completion: str,
-    min_tokens: int = 128,
-    max_tokens: int = 768,
-) -> float:
-    """
-    Reward appropriate output length (token-count proxy).
-
-    Args:
-        completion: Model output
-        min_tokens: Minimum token count for reward
-        max_tokens: Maximum token count for reward
-
-    Returns:
-        1.0 if within range, 0.0 otherwise
-    """
+def length_reward(completion: str) -> float:
+    """Length reward (Chart-RVR)."""
     if not completion:
         return 0.0
-    token_count = len(completion.split())
-    return 1.0 if (min_tokens <= token_count <= max_tokens) else 0.0
+
+    reward = 0.0
+    try:
+        rationale = completion.split("<think>")[-1].strip().split("</think>")[0].strip()
+    except Exception:
+        rationale = ""
+
+    if len(rationale) > 150:
+        reward += 1.0
+    if len(rationale) > 250:
+        reward -= 1.0
+    if len(rationale) > 70:
+        reward += 1.0
+    if len(rationale) > 150:
+        reward -= 1.0
+
+    steps = rationale.split("<step-")
+    reward += min(0.25 * len(steps), 1.5)
+
+    if len(rationale) > 500:
+        reward = 0.0
+    return reward
 
 
-def chart_type_reward(
-    completion: str,
-    chart_type: str,
-) -> float:
-    """
-    Check if chart type prediction is correct.
+def token_count_reward(completion: str) -> float:
+    _PATTERNS = [
+        re.compile(r"<type>"),
+        re.compile(r"</type>"),
+        re.compile(r"<think>"),
+        re.compile(r"</think>"),
+        re.compile(r"<answer>"),
+        re.compile(r"</answer>"),
+        re.compile(r"<table>"),
+        re.compile(r"</table>"),
+        re.compile(r"<think>\n<type>"),
+        re.compile(r"</type>\n<table>"),
+    ]
+    return 2.0 * int(all(len(p.findall(completion)) == 1 for p in _PATTERNS))
 
-    Args:
-        completion: Model output
-        chart_type: Ground truth chart type
 
-    Returns:
-        1.0 if correct, 0.0 otherwise
-    """
-    parsed = parse_response(completion)
-    pred_type = parsed["type"]
-
-    if not pred_type or not chart_type:
+def chart_type_reward(completion: str, chart_type: str) -> float:
+    if not chart_type:
+        return 0.0
+    try:
+        pred_type = completion.split("<type>")[-1].strip().split("</type>")[0].strip().lower()
+        return 1.0 if pred_type == str(chart_type).strip().lower() else 0.0
+    except Exception:
         return 0.0
 
-    # Normalize and compare
-    pred_type = pred_type.strip().lower()
-    chart_type = chart_type.strip().lower()
 
-    # Handle common variations
-    type_aliases = {
-        "bar chart": "bar",
-        "bar graph": "bar",
-        "line chart": "line",
-        "line graph": "line",
-        "pie chart": "pie",
-        "scatter plot": "scatterplot",
-        "scatter": "scatterplot",
-        "stacked bar chart": "stacked bar",
-        "stacked bar graph": "stacked bar",
-        "stacked area chart": "stacked area",
-        "area chart": "area",
-    }
-
-    pred_type = type_aliases.get(pred_type, pred_type)
-    chart_type = type_aliases.get(chart_type, chart_type)
-
-    return 1.0 if pred_type == chart_type else 0.0
+def _extract_table_block(completion: str) -> str:
+    try:
+        return completion.split("<table>")[-1].strip().split("</table>")[0].strip()
+    except Exception:
+        return ""
 
 
-def table_reward(
-    completion: str,
-    table: Dict[str, Any],
-) -> float:
-    """
-    Reward for accurate table extraction (Chart-RVR).
+def _parse_table_from_completion(completion: str) -> Optional[Dict[str, Any]]:
+    tab_struct = _extract_table_block(completion)
+    if not tab_struct:
+        return None
+    if "```json" in tab_struct:
+        block = tab_struct.split("```json")[-1].split("```")[0].strip()
+    else:
+        block = tab_struct.replace("\n", "").strip("\n").strip()
+    try:
+        return json.loads(block, parse_int=str, parse_float=str, parse_constant=str)
+    except Exception:
+        return None
 
-    Formula:
-    - Column header accuracy (exact match fraction)
-    - Cell accuracy (exact positional match fraction)
-    - +0.5 bonus if JSON is strictly parseable
 
-    Args:
-        completion: Model output
-        table: Ground truth table
+def _compare_tables(pred: Dict[str, Any], gt: Dict[str, Any]) -> float:
+    try:
+        gt["columns"] = sorted(gt["columns"], key=lambda x: str(x).lower())
+        pred["columns"] = sorted(pred["columns"], key=lambda x: str(x).lower())
+    except Exception:
+        pass
 
-    Returns:
-        Reward value
-    """
-    parsed = parse_response(completion)
-    pred_table = parsed["table"]
-    parseable_json = parsed.get("table_parse_success_strict", False)
+    try:
+        if all(isinstance(row, list) for row in gt.get("rows", [])):
+            gt["rows"] = sorted([g for g in gt["rows"]])
+        if all(isinstance(row, list) for row in pred.get("rows", [])):
+            pred["rows"] = sorted([g for g in pred["rows"]])
+    except Exception:
+        pass
 
-    if not pred_table:
-        return 0.0
+    reward = 0.0
+    try:
+        min_cols = min(len(pred.get("columns", [])), len(gt.get("columns", [])))
+        for col in range(min_cols):
+            if str(pred["columns"][col]).lower() == str(gt["columns"][col]).lower():
+                reward += 0.5 * float(1 / len(pred["columns"]))
+    except Exception:
+        pass
 
-    reward = 0.5 if parseable_json else 0.0
-
-    if not table:
-        return reward
-
-    # Column header accuracy (exact match fraction)
-    gt_cols = table.get("columns", [])
-    pred_cols = pred_table.get("columns", [])
-    if gt_cols:
-        col_matches = 0
-        for c in gt_cols:
-            if str(c).strip().lower() in [str(pc).strip().lower() for pc in pred_cols]:
-                col_matches += 1
-        reward += col_matches / len(gt_cols)
-
-    # Cell accuracy (exact positional match fraction)
-    gt_rows = table.get("rows", [])
-    pred_rows = pred_table.get("rows", [])
-    if gt_rows:
-        total_cells = 0
-        matched_cells = 0
-        for i, gt_row in enumerate(gt_rows):
-            if not isinstance(gt_row, list):
-                gt_row = [gt_row]
-            total_cells += len(gt_row)
-            if i >= len(pred_rows):
-                continue
-            pred_row = pred_rows[i]
-            if not isinstance(pred_row, list):
-                pred_row = [pred_row]
-            for j, gt_cell in enumerate(gt_row):
-                if j >= len(pred_row):
-                    continue
-                if _values_match(gt_cell, pred_row[j]):
-                    matched_cells += 1
-        if total_cells > 0:
-            reward += matched_cells / total_cells
+    try:
+        if all(isinstance(row, list) for row in pred.get("rows", [])) and all(
+            isinstance(row, list) for row in gt.get("rows", [])
+        ):
+            min_rows = min(len(pred["rows"]), len(gt["rows"]))
+            for row in range(min_rows):
+                min_cols_in_row = min(len(pred["rows"][row]), len(gt["rows"][row]))
+                for row_id in range(min_cols_in_row):
+                    if pred["rows"][row][row_id] == gt["rows"][row][row_id]:
+                        reward += 0.5 * float(1.0 / len(pred["rows"]))
+    except Exception:
+        pass
 
     return reward
 
 
-def _compare_table_rows(
-    gt_rows: List,
-    pred_rows: List,
-    tolerance: float = 0.05,
-) -> float:
-    """Compare table rows with tolerance."""
-    if not gt_rows or not pred_rows:
+def table_reward(completion: str, table: Dict[str, Any]) -> float:
+    if not table:
         return 0.0
-
-    # Flatten to values
-    def flatten(rows):
-        values = []
-        for row in rows:
-            if isinstance(row, list):
-                values.extend(row)
-            elif isinstance(row, dict):
-                values.extend(row.values())
-            else:
-                values.append(row)
-        return values
-
-    gt_vals = flatten(gt_rows)
-    pred_vals = flatten(pred_rows)
-
-    if not gt_vals:
+    reward = 0.0
+    pred_table = _parse_table_from_completion(completion)
+    if pred_table is None:
         return 0.0
-
-    # Count matches
-    matches = 0
-    pred_used = [False] * len(pred_vals)
-
-    for gt_val in gt_vals:
-        for i, pred_val in enumerate(pred_vals):
-            if pred_used[i]:
-                continue
-            if _values_match(gt_val, pred_val, tolerance):
-                matches += 1
-                pred_used[i] = True
-                break
-
-    return matches / len(gt_vals)
-
-
-def _values_match(v1, v2, tolerance: float = 0.05) -> bool:
-    """Check if two values match."""
-    # String match
-    if str(v1).strip().lower() == str(v2).strip().lower():
-        return True
-
-    # Numeric match
+    reward += 0.5  # parseable JSON
     try:
-        n1 = float(v1)
-        n2 = float(v2)
-        if n2 != 0:
-            return abs(n1 - n2) / abs(n2) <= tolerance
-        return abs(n1 - n2) <= tolerance
-    except (ValueError, TypeError):
-        return False
+        reward += _compare_tables(pred_table, table)
+    except Exception:
+        pass
+    try:
+        if set(pred_table) == {"columns", "rows"}:
+            reward += 0.25
+    except Exception:
+        pass
+    return reward
 
 
-def process_reward(
-    completion: str,
-    reasoning: str,
-) -> float:
-    """
-    Reward for process conformity (Chart-RVR).
-
-    Computes:
-    - Reg: mean step-wise similarity for first m steps
-    - Rrs: similarity for remaining steps
-
-    Args:
-        completion: Model output
-        reasoning: Ground truth reasoning
-
-    Returns:
-        Similarity score (0-1)
-    """
-    parsed = parse_response(completion)
-    pred_reasoning = parsed["reasoning"]
-
-    if not pred_reasoning or not reasoning:
+def process_reward(completion: str, reasoning: str) -> float:
+    if not reasoning:
         return 0.0
-
-    pred_steps = split_reasoning_steps(pred_reasoning)
-    gt_steps = split_reasoning_steps(reasoning)
-
-    if not pred_steps or not gt_steps:
+    try:
+        steps = completion.split("</table>")[-1].strip().split("</think>")[0].strip()
+    except Exception:
+        steps = ""
+    if not steps:
         return 0.0
-
-    m = min(2, len(pred_steps), len(gt_steps))
-    if m == 0:
-        return 0.0
-
-    # Step-wise conformity for first m steps
-    step_sims = []
-    for i in range(m):
-        step_sims.append(compute_similarity(pred_steps[i], gt_steps[i]))
-    reg = sum(step_sims) / len(step_sims) if step_sims else 0.0
-
-    # Reasoning alignment for remaining steps
-    pred_tail = " ".join(pred_steps[m:])
-    gt_tail = " ".join(gt_steps[m:])
-    rrs = compute_similarity(pred_tail, gt_tail) if pred_tail and gt_tail else 0.0
-
-    return reg + rrs
+    return _text_sim(steps, reasoning)
 
 
-def compute_base_rewards(
-    completion: str,
-    ground_truth: Dict[str, Any],
-) -> Dict[str, float]:
-    """
-    Compute all base rewards for a completion.
-
-    Args:
-        completion: Model output
-        ground_truth: Dict with label, table, chart_type, reasoning
-
-    Returns:
-        Dict mapping reward names to values
-    """
+def compute_base_rewards(completion: str, ground_truth: Dict[str, Any]) -> Dict[str, float]:
     rewards = {}
-
-    # Format reward
     rewards["format"] = format_reward(completion)
-
-    # Accuracy reward
-    rewards["accuracy"] = accuracy_reward(
-        completion,
-        ground_truth.get("label", ""),
-    )
-
-    # Length reward
+    rewards["accuracy"] = accuracy_reward(completion, ground_truth.get("label", ""))
     rewards["length"] = length_reward(completion)
-
-    # Chart type reward
-    if ground_truth.get("chart_type"):
-        rewards["chart_type"] = chart_type_reward(
-            completion,
-            ground_truth["chart_type"],
-        )
-    else:
-        rewards["chart_type"] = 0.0
-
-    # Table reward
-    if ground_truth.get("table"):
-        rewards["table"] = table_reward(
-            completion,
-            ground_truth["table"],
-        )
-    else:
-        rewards["table"] = 0.0
-
-    # Process reward
-    if ground_truth.get("reasoning"):
-        rewards["process"] = process_reward(
-            completion,
-            ground_truth["reasoning"],
-        )
-    else:
-        rewards["process"] = 0.0
-
-    # Total
+    rewards["token_count"] = token_count_reward(completion)
+    rewards["chart_type"] = chart_type_reward(completion, ground_truth.get("chart_type", ""))
+    rewards["table"] = table_reward(completion, ground_truth.get("table", {}))
+    rewards["process"] = process_reward(completion, ground_truth.get("reasoning", ""))
     rewards["total"] = sum(rewards.values())
-
     return rewards

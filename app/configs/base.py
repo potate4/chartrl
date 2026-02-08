@@ -33,7 +33,7 @@ class RewardConfig:
     use_format_reward: bool = True
     use_accuracy_reward: bool = True
     use_length_reward: bool = True
-    use_token_count_reward: bool = False
+    use_token_count_reward: bool = True
     use_chart_type_reward: bool = True
     use_table_reward: bool = True
     use_process_reward: bool = True
