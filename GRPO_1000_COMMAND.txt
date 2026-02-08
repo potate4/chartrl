@@ -1,0 +1,85 @@
+# ====================================================================
+# GRPO 1000 SAMPLES - VERIFIED COMMAND
+# ====================================================================
+# Time: ~8.5 hours
+# Cost: ~$1.30 (L4 GPU)
+# Expected accuracy: 48-52% (vs 35.5% at 100 samples)
+# ====================================================================
+
+# STEP 1: Pre-flight check (30 seconds)
+# --------------------------------------------------------------------
+python -c "
+import os, shutil
+free_gb = shutil.disk_usage('.')[2] // (2**30)
+print(f'Free space: {free_gb} GB (need 10+ GB)')
+print(f'DeepSpeed config: {\"OK\" if os.path.exists(\"deepspeed_zero3.yaml\") else \"MISSING\"}')
+print(f'Output dir clean: {\"OK\" if not os.path.exists(\"./checkpoints/grpo-1000-seed2025\") else \"WARNING: EXISTS\"}')
+print('Ready to train!' if free_gb > 20 else 'WARNING: Low disk space!')
+"
+
+# STEP 2: Run training (~8.5 hours)
+# --------------------------------------------------------------------
+accelerate launch --config_file=deepspeed_zero3.yaml main.py \
+  --mode grpo \
+  --vlm-name qwen2-5-3b \
+  --dataset-name evochart \
+  --seed 2026 \
+  --subset-size 1000 \
+  --num-epochs 1 \
+  --num-generations 2 \
+  --batch-size 2 \
+  --save-steps 100 \
+  --output-dir ./checkpoints/grpo-1000-seed2025 \
+  --logging-dir ./logs/grpo-1000-seed2025 \
+  2>&1 | tee grpo_1000.log
+
+# STEP 3: Backup checkpoint (1 minute)
+# --------------------------------------------------------------------
+python -c "
+import shutil, os
+from google.colab import drive
+drive.mount('/content/drive')
+os.makedirs('/content/drive/MyDrive/thesis/checkpoints/', exist_ok=True)
+shutil.copytree('./checkpoints/grpo-1000-seed2025', '/content/drive/MyDrive/thesis/checkpoints/grpo-1000-seed2025', dirs_exist_ok=True)
+print('Checkpoint backed up to Google Drive!')
+"
+
+# ====================================================================
+# MONITORING COMMANDS (run in separate cells while training)
+# ====================================================================
+
+# Watch training progress
+tail -f grpo_1000.log
+
+# Check current step
+grep "it/s]" grpo_1000.log | tail -3
+
+# Check latest accuracy
+grep "Rewards Accuracy:" grpo_1000.log | tail -5
+
+# Check GPU
+nvidia-smi
+
+# ====================================================================
+# TROUBLESHOOTING
+# ====================================================================
+
+# If OOM error → Add gradient checkpointing (slower but uses less memory)
+# Remove --disable-gradient-checkpointing from command (already removed above)
+
+# If disk full → Clean old checkpoints or save to Drive
+rm -rf ./checkpoints/*-100-*  # Remove old 100-sample checkpoints
+
+# If disconnected → Training continues, reconnect and check:
+tail -50 grpo_1000.log
+
+# ====================================================================
+# VERIFIED PARAMETERS (from your successful runs)
+# ====================================================================
+# - Dataset: evochart (EvoChart)
+# - Model: Qwen2.5-VL-3B (3.7B params, 0.49% trainable with LoRA)
+# - GPU: L4 24GB
+# - Previous GRPO 100: 50 min, 35.5% accuracy ✓
+# - Previous NSR 100: 96 min, 38.0% accuracy ✓
+# - Scaling to 1000: Expected 48-52% accuracy
+# ====================================================================

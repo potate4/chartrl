@@ -1,0 +1,265 @@
+Novel Training Methodologies to Enhance Chart-RVR Beyond NSR
+Chart-RVR's 84.56% ChartQA and 53.36% EvoChart scores can be substantially improved by integrating
+recent advances in reinforcement learning, reasoning architectures, and inference strategies. This report
+identifies 18+ validated techniques from 2024-2025 research that synergize with GRPO-based training and
+NSR. The highest-impact approaches—DAPO's dynamic sampling, Selective Sample Replay (SSR), and
+Program-of-Thoughts reasoning—can each deliver 3-8% accuracy gains with modest implementation effort,
+while the full stack of recommended techniques could push EvoChart OOD performance above 70%.
+Reinforcement learning advances yield immediate GRPO improvements
+Recent work has identified critical failure modes in vanilla GRPO that directly impact chart reasoning. DAPO
+(Decoupled Clip and Dynamic Sampling Policy Optimization) from ByteDance (March 2025) introduces
+four key fixes: 
+arXiv
+ Clip-Higher prevents entropy collapse by expanding the importance sampling ratio's
+upper bound; Dynamic Sampling filters prompts where all sampled responses receive identical rewards (all
+correct or all wrong);  
+Dapo-sia
+proportionally; 
+Token-Level Policy Gradient ensures longer reasoning chains influence training
+Sebastian Raschka
+ and Overlong Reward Shaping adds soft penalties for truncated outputs. 
+On AIME 2024, DAPO achieves 50% accuracy versus 30% for vanilla GRPO—a 20-point absolute
+improvement in 50% fewer training steps. 
+arXiv
+arXiv
+For Chart-RVR specifically, Dynamic Sampling addresses a fundamental issue: many chart questions are either
+trivially easy (model always correct) or impossibly hard (always wrong). Filtering these eliminates gradient
+noise and focuses learning on the capability boundary where actual improvement occurs. 
+Implementation requires minimal code changes—simply discard batches where reward variance is zero.
+Dapo-sia
+Selective Sample Replay (SSR) from VL-Rethinker (April 2025) tackles the complementary "Vanishing
+Advantages" problem 
+arXiv
+ by maintaining a replay buffer of high-advantage samples.  
+arXiv
+When
+GRPO computes advantages, samples near the model's decision boundary (mixed correctness within groups) are
+stored and strategically replayed. 
+GitHub
+OpenReview
+vanilla GRPO.  
+DEV Community
+ On MathVista, SSR alone contributes +3.2% improvement over
+The technique integrates directly with existing training loops—after computing
+advantages, store non-zero-advantage samples in a buffer, then mix replayed samples with new rollouts each
+iteration weighted by advantage magnitude.
+RLOO (REINFORCE Leave-One-Out) from Cohere offers an alternative optimizer requiring 50-70% less
+VRAM than PPO by eliminating the value network entirely. 
+Hugging Face
+sample's baseline becomes the mean reward of the other K-1 samples.  
+ For K samples per prompt, each
+GitHub
+similar to GRPO 
+Rlhfbook
+Medium
+This is mathematically
+ but simpler and more memory-efficient—particularly valuable for the 3B parameter
+Qwen2.5-VL backbone. Win-rate improvements of 10-32% over PPO baselines have been demonstrated.
+arXiv
+Chart-specific architectures unlock structured reasoning
+Program-of-Thoughts (PoT) learning from TinyChart (EMNLP 2024) represents the highest-impact chart
+specific technique. Instead of computing numerical answers directly, the model generates Python code that an
+interpreter executes. This offloads arithmetic to a symbolic system, eliminating calculation errors that plague
+neural reasoning. TinyChart achieves 83.6% ChartQA with only 3B parameters— 
+arXiv
+matching
+Chart-RVR's performance while providing verifiable intermediate reasoning. The ChartQA-PoT dataset
+contains 21,303 QA pairs with Python programs 
+arXiv
+arXiv
+ that can augment GRPO training.
+Integration with GRPO is natural: add code execution correctness as an additional reward component. When the
+model generates code, execute it and compare results against ground truth. This provides dense, unambiguous
+supervision for the ~42% of ChartQA questions requiring numerical computation.
+ChartMoE (ICLR 2025) replaces traditional linear projectors with a Mixture-of-Experts architecture learning
+multiple alignment pathways simultaneously: chart-to-table, chart-to-JSON, chart-to-code, plus a vanilla expert
+preserving general knowledge. This achieves 84.64% ChartQA— 
+OpenReview
+arXiv
+slightly exceeding Chart
+RVR. The key insight is that different output formats capture complementary information. MoE routing can be
+optimized via RL, and multi-format outputs enable cross-validation reward signals.
+ChartGemma (COLING 2025) demonstrates that generating instruction-tuning data directly from chart images
+rather than underlying data tables captures 21% more visual information (82% vs 61% accuracy on visual
+grounding). This suggests Chart-RVR's table extraction step may be losing information. Visual-first instruction
+data could improve the initial chart understanding phase.
+Advanced reasoning techniques improve both accuracy and OOD
+LLaVA-CoT's structured multi-stage reasoning decomposes visual reasoning into four phases:
+Summarization → Visual Interpretation → Logical Reasoning → Conclusion.  
+Medium
+This maps directly to
+Chart-RVR's existing pipeline (chart type → table → process → answer). The innovation is Stage-Wise
+Retracing Search (SWIRES) for test-time scaling, enabling backtracking when intermediate stages appear
+incorrect. 
+Medium
+Hugging Face
+ LLaVA-CoT achieves +9.4% improvement over base models on multimodal reasoning,
+trained on just 100K samples. 
+GRPO rewards can be extended to evaluate each stage independently, providing dense supervision. SWIRES
+requires no training changes—it's purely an inference-time enhancement for handling difficult OOD examples.
+R3V (Reflection on CoT Rationales) enables self-improvement through iterative refinement. The model
+bootstraps positive and negative solution pairs, then trains with self-refine and self-select losses. The self-refine
+signal teaches correction of flawed rationales; self-select teaches choosing correct answers by comparing
+candidate reasoning chains. This achieves 23-60% relative improvement over GPT-distilled baselines and
+generalizes well to OOD benchmarks including ChartQA.
+R3V integrates with GRPO by using self-generated solutions to create richer training data. Generate multiple
+reasoning paths per chart question, filter by correctness, then use GRPO to rank chains within groups. Adding
+"rationale quality" as a reward component (beyond just answer correctness) improves reasoning faithfulness.
+Chain-of-Table (ICLR 2024) uses the extracted table itself as intermediate reasoning representation. Instead of
+text-only CoT, the model generates table transformation operations (
+f_select_row , 
+f_sort , 
+f_add_column ) that
+arXiv
+iteratively manipulate the data. This achieves +11.6% over standard CoT and +7.9% over program-aided
+methods on table reasoning benchmarks. 
+Since Chart-RVR already extracts tables, Chain-of-Table is directly applicable. Define chart-specific operations
+like 
+f_compare_bars or 
+f_calculate_trend , then train the model to generate operation sequences with GRPO
+rewards for valid operation selection and execution.
+Critic-V (2024) decouples reasoning from verification using an actor-critic framework where the Critic
+provides natural language critiques rather than scalar rewards.  Trained on 29,012 multimodal QA pairs
+with ranked critiques, Critic-V achieves +11.8% on MathVista and +7-10% on MathVerse. For Chart-RVR, a
+dedicated Critic model could verify table extraction accuracy, arithmetic correctness, and answer format validity
+—providing fine-grained feedback beyond binary accuracy.
+arXiv
+OOD robustness techniques address the EvoChart gap
+The 31-point gap between ChartQA (84.56%) and EvoChart (53.36%) indicates substantial distribution shift
+vulnerability. Several techniques specifically target this.
+Disentangled Curriculum Learning addresses "visual forgetting" through two stages: first, train on text-only
+reasoning to build logical foundations; second, anchor reasoning to vision with Perception-Grounded CoT
+annotations. A Pivotal Perception Reward couples visual attention to cognitive uncertainty markers ("wait",
+"verify"), teaching the model when to re-examine the chart.  
+arXiv
+problem compatible with GRPO.
+This formulates perception timing as an RL
+Training-Free Dynamic Adapter (TDA) from CVPR 2024 enables test-time adaptation without
+backpropagation. During inference, high-confidence predictions populate a positive cache while uncertain
+predictions populate a negative cache (what the answer is NOT). Progressive pseudo-label refinement improves
+robustness to distribution shift.  
+arXiv
+time prompt tuning, 
+Farinamatteo
+GitHub
+TDA is 10x faster and 13x more memory efficient than test
+ achieving consistent OOD improvements across ImageNet variants. For
+EvoChart, this provides free accuracy gains at inference without retraining.
+MMRL (Multi-Modal Representation Learning) uses decoupled representation and class tokens to balance
+task adaptation with generalization. Representation tokens learn chart-specific features at higher encoder layers;
+class tokens are regularized toward frozen pre-trained features via KL divergence. During OOD inference,
+relying more heavily on class tokens preserves generalization.  
+arXiv
+This modular approach adds minimal
+overhead to existing architectures.
+ChartGen (arXiv 2025) provides a synthetic data augmentation pipeline generating 222.5K unique chart
+image-code pairs across 27 chart types and 11 plotting libraries from only 13K seeds. Two stages—VLM
+based chart redrawing and LLM-based code augmentation—create diverse style variations (colors, fonts,
+layouts, rendering libraries). 
+arXiv
+ Specifically generating charts resembling EvoChart's distribution could
+dramatically improve OOD performance through curriculum-based progression from simple to complex styles.
+Inference strategies deliver free accuracy gains
+Self-consistency with majority voting is the lowest-hanging fruit. Sampling N=10-20 diverse reasoning paths
+(temperature ~0.7) and selecting the most frequent answer improves accuracy by 3-5% with linear compute
+cost. Confidence-Informed Self-Consistency (CISC, 2025) achieves comparable gains with 46-67% fewer
+samples by weighting votes by model-generated confidence scores.
+Cloud Security Alliance
+Test-time compute scaling from Google DeepMind (2024) demonstrates that allocating compute adaptively
+based on problem difficulty achieves 4x efficiency improvement over naive best-of-N. 
+The key insight: easy questions need minimal compute, medium questions benefit from
+sequential refinement, and hard questions require parallel exploration. 
+arXiv
+MarkTechPost
+ For charts, use initial
+sampling confidence to estimate difficulty, then scale compute accordingly. On problems with moderate base
+success rates, optimal test-time compute allocation matches a 14x larger model. 
+Cloud Security Alliance
+Stage-level beam search outperforms both token-level beam search and best-of-N at equivalent compute for
+structured reasoning. 
+Medium
+ Instead of searching over tokens, generate K candidates at each reasoning stage,
+expand, then prune using verification scores. LLaVA-CoT demonstrates +8.9% improvement using this
+approach. 
+Hugging Face
+ Chart reasoning's natural decomposition (chart parsing → value extraction →
+calculation → answer) maps perfectly to stage-level search.
+Best-of-N with math verification adds chart-specific verifiers to candidate selection. Check whether extracted
+numbers plausibly match visual positions, whether arithmetic operations are valid, and whether answer formats
+match question requirements. Even simple heuristic verifiers improve selection accuracy over random sampling.
+Recommended implementation roadmap
+Phase 1: Immediate wins (Week 1-2)
+Implement Dynamic Sampling from DAPO by filtering batches where all GRPO samples have identical
+rewards. Add SSR by maintaining a replay buffer of high-advantage samples. These require minimal code
+changes and deliver 3-8% combined improvement. Deploy self-consistency (N=10) at inference for +3-5%
+additional gains with no training changes.
+Phase 2: Reasoning enhancements (Week 3-4)
+Integrate Program-of-Thoughts by adding code execution verification to GRPO rewards. Structure the
+reasoning pipeline into explicit LLaVA-CoT stages with stage-specific reward components. Add Chain-of-Table
+operations for table reasoning. Expected additional improvement: 5-10%.
+Phase 3: OOD focus (Month 2)
+Implement disentangled curriculum (text reasoning → visual grounding) to address visual forgetting. Deploy
+TDA for training-free test-time adaptation on EvoChart. Generate synthetic training data using ChartGen
+matching EvoChart's distribution. Expected OOD improvement: 10-15%.
+Phase 4: Advanced techniques (Month 3+)
+Train dedicated Critic-V model for chart reasoning verification with natural language feedback. Implement
+MCTS-guided exploration for step-level reward generation. Add MoE routing for chart-type and question-type
+specialization.
+Technique
+Expected Impact
+Implementation Effort
+GRPO Compatibility
+DAPO Dynamic Sampling
++3-5%
+Low
+Direct integration
+Selective Sample Replay
++2-4%
+Low
+Drop-in enhancement
+Program-of-Thoughts
++4-6%
+Medium
+Code execution reward
+LLaVA-CoT Stages
++3-5%
+Medium
+Stage-specific rewards
+Chain-of-Table
++5-8%
+Medium
+Operation sequence reward
+R3V Self-Training
++3-5%
+Medium
+Diverse rollout generation
+Critic-V Verification
++5-8%
+High
+NL feedback as reward
+Self-Consistency (N=10)
++3-5%
+Low
+Inference-only
+TDA Test-Time Adaptation
++3-5% OOD
+Low
+Training-free
+ChartGen Augmentation
++8-12% OOD
+Medium
+Training data expansion
+Conclusion
+The most impactful immediate improvements combine DAPO's dynamic sampling (filtering uninformative
+gradient signals), SSR (prioritizing high-value training samples), and Program-of-Thoughts (offloading
+arithmetic to symbolic execution). These techniques are well-validated, straightforward to implement, and
+synergize with existing GRPO training and planned NSR integration.
+For OOD robustness—the critical gap between 84% in-domain and 53% out-of-domain—disentangled
+curriculum learning (preventing visual forgetting), ChartGen synthetic augmentation (expanding
+distribution coverage), and training-free test-time adaptation (inference-time robustness) represent the most
+promising paths. The combination of these training and inference improvements could realistically push
+EvoChart performance above 70% while maintaining or improving ChartQA accuracy.
+The research landscape strongly favors dense, verifiable supervision (code execution, table operations, stage
+level rewards) over end-to-end black-box training. Chart reasoning's inherent structure—explicit intermediate
+representations in tables and calculations—makes it particularly amenable to these advances. Prioritizing
+techniques that leverage this structure will yield the largest gains relative to implementation effort.

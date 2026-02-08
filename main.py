@@ -718,7 +718,8 @@ if __name__ == "__main__":
         gradient_checkpointing=not args.disable_gradient_checkpointing,  # Configurable via --disable-gradient-checkpointing
 
         # ===== RESUMABILITY =====
-        resume_from_checkpoint=True,  # Auto-resume if checkpoint exists
+        # NOTE: Resumption is now handled explicitly in code (see lines 823-847)
+        # resume_from_checkpoint=True,  # Removed - handled explicitly below
         load_best_model_at_end=False,  # Don't load best (no eval)
         )
 
@@ -819,6 +820,29 @@ if __name__ == "__main__":
             eval_dataset=None,  # Skip eval during training
             processing_class=processor,
         )
-        
 
-        trainer.train()
+        # ===================================================================
+        # FIX: Explicitly check for and resume from checkpoints
+        # ===================================================================
+        import glob
+
+        checkpoint_to_resume = None
+
+        if os.path.exists(output_dir):
+            # Find all existing checkpoints
+            checkpoints = sorted(
+                glob.glob(os.path.join(output_dir, "checkpoint-*")),
+                key=lambda x: int(x.split('-')[-1])
+            )
+
+            if checkpoints:
+                checkpoint_to_resume = checkpoints[-1]
+                logging.info("=" * 80)
+                logging.info(f"✓ FOUND EXISTING CHECKPOINT: {checkpoint_to_resume}")
+                logging.info(f"✓ Will resume training from step {checkpoint_to_resume.split('-')[-1]}")
+                logging.info("=" * 80)
+            else:
+                logging.info("No existing checkpoints found. Starting fresh training.")
+
+        # Start or resume training
+        trainer.train(resume_from_checkpoint=checkpoint_to_resume)

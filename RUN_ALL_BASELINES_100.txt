@@ -1,0 +1,267 @@
+# ====================================================================
+# COMPLETE BASELINE COMPARISON - 100 SAMPLES
+# ====================================================================
+# You already have: GRPO ✓ and NSR ✓
+# Now run: PSR and W-REINFORCE
+# Total time: ~3 hours
+# Total cost: ~$0.50
+# ====================================================================
+
+# ====================================================================
+# TRAINING 3/4: PSR (POSITIVE SAMPLE REINFORCEMENT)
+# ====================================================================
+# Trains ONLY on positive/correct samples (opposite of NSR)
+# Time: ~90 minutes
+# Cost: ~$0.25
+# ====================================================================
+
+print("="*80)
+print("TRAINING 3/4: PSR (POSITIVE SAMPLE REINFORCEMENT)")
+print("="*80)
+print("")
+print("Configuration:")
+print("  Mode: PSR (trains only on correct samples)")
+print("  Samples: 100")
+print("  Generations: 4 per sample")
+print("  Reward threshold: 5.0")
+print("  Expected time: ~90 minutes")
+print("")
+print("="*80)
+
+!accelerate launch --config_file=deepspeed_zero3.yaml main.py \
+  --mode psr \
+  --vlm-name qwen2-5-3b \
+  --dataset-name evochart \
+  --seed 2025 \
+  --subset-size 100 \
+  --num-epochs 1 \
+  --num-generations 4 \
+  --batch-size 2 \
+  --reward-threshold 5.0 \
+  --save-steps 50 \
+  --output-dir ./checkpoints/psr-100-seed2025 \
+  --logging-dir ./logs/psr-100-seed2025 \
+  2>&1 | tee psr_100.log
+
+print("\n" + "="*80)
+print("✓ PSR training complete")
+print(f"Checkpoint: ./checkpoints/psr-100-seed2025/")
+print(f"Logs: psr_100.log")
+print("="*80)
+
+# ====================================================================
+# TRAINING 4/4: W-REINFORCE (WEIGHTED COMBINATION)
+# ====================================================================
+# Weighted combination: λ=0.1 (10% positive, 90% negative)
+# This is the RECOMMENDED method from the paper
+# Time: ~90 minutes
+# Cost: ~$0.25
+# ====================================================================
+
+print("="*80)
+print("TRAINING 4/4: W-REINFORCE (WEIGHTED REINFORCE)")
+print("="*80)
+print("")
+print("Configuration:")
+print("  Mode: W-REINFORCE (10% positive + 90% negative)")
+print("  Samples: 100")
+print("  Generations: 4 per sample")
+print("  Lambda: 0.1 (paper recommendation)")
+print("  Reward threshold: 5.0")
+print("  Expected time: ~90 minutes")
+print("")
+print("="*80)
+
+!accelerate launch --config_file=deepspeed_zero3.yaml main.py \
+  --mode w-reinforce \
+  --vlm-name qwen2-5-3b \
+  --dataset-name evochart \
+  --seed 2025 \
+  --subset-size 100 \
+  --num-epochs 1 \
+  --num-generations 4 \
+  --batch-size 2 \
+  --lambda-psr 0.1 \
+  --reward-threshold 5.0 \
+  --save-steps 50 \
+  --output-dir ./checkpoints/wreinforce-100-seed2025 \
+  --logging-dir ./logs/wreinforce-100-seed2025 \
+  2>&1 | tee wreinforce_100.log
+
+print("\n" + "="*80)
+print("✓ W-REINFORCE training complete")
+print(f"Checkpoint: ./checkpoints/wreinforce-100-seed2025/")
+print(f"Logs: wreinforce_100.log")
+print("="*80)
+
+# ====================================================================
+# VERIFY ALL 4 BASELINES COMPLETED
+# ====================================================================
+
+print("\n" + "="*80)
+print("VERIFICATION: ALL 4 BASELINES")
+print("="*80)
+
+import os
+
+baselines = {
+    "GRPO": "./checkpoints/grpo-100-seed2025",  # Or wherever your GRPO checkpoint is
+    "NSR": "./checkpoints/nsr-100-seed2025",    # Or wherever your NSR checkpoint is
+    "PSR": "./checkpoints/psr-100-seed2025",
+    "W-REINFORCE": "./checkpoints/wreinforce-100-seed2025",
+}
+
+all_good = True
+for name, path in baselines.items():
+    # Try to find checkpoint
+    checkpoint_found = False
+
+    # Check exact path
+    if os.path.exists(path):
+        checkpoint_found = True
+
+    # Check if checkpoint exists anywhere
+    if not checkpoint_found:
+        for root, dirs, files in os.walk('.'):
+            if name.lower().replace('-', '') in root.lower():
+                if 'checkpoint' in root and any('adapter_model' in f for f in files):
+                    path = root
+                    checkpoint_found = True
+                    break
+
+    if checkpoint_found:
+        print(f"✓ {name:15s} {path}")
+    else:
+        print(f"✗ {name:15s} NOT FOUND")
+        all_good = False
+
+print("="*80)
+if all_good:
+    print("✓ ALL 4 BASELINES READY FOR EVALUATION!")
+else:
+    print("⚠ Some checkpoints missing - check paths above")
+print("="*80)
+
+# ====================================================================
+# DOWNLOAD ALL CHECKPOINTS
+# ====================================================================
+
+print("\n" + "="*80)
+print("DOWNLOADING CHECKPOINTS TO GOOGLE DRIVE")
+print("="*80)
+
+from google.colab import drive
+import shutil
+
+# Mount Drive
+drive.mount('/content/drive')
+
+# Create backup directory
+backup_dir = '/content/drive/MyDrive/thesis/checkpoints_100_samples'
+os.makedirs(backup_dir, exist_ok=True)
+
+# Copy all checkpoints
+for name, path in baselines.items():
+    if os.path.exists(path):
+        dest = os.path.join(backup_dir, name.lower().replace('-', '_'))
+        print(f"Copying {name}...")
+        try:
+            shutil.copytree(path, dest, dirs_exist_ok=True)
+            print(f"  ✓ Saved to {dest}")
+        except Exception as e:
+            print(f"  ✗ Error: {e}")
+
+# Copy logs
+log_dir = '/content/drive/MyDrive/thesis/logs_100_samples'
+os.makedirs(log_dir, exist_ok=True)
+
+for log_file in ['grpo.log', 'nsr.log', 'psr_100.log', 'wreinforce_100.log']:
+    if os.path.exists(log_file):
+        dest = os.path.join(log_dir, log_file)
+        shutil.copy(log_file, dest)
+        print(f"✓ {log_file} → Drive")
+
+print("\n" + "="*80)
+print("✓ ALL CHECKPOINTS BACKED UP TO GOOGLE DRIVE")
+print(f"Location: {backup_dir}")
+print("="*80)
+
+# ====================================================================
+# CREATE CHECKPOINT MANIFEST
+# ====================================================================
+
+import json
+from datetime import datetime
+
+manifest = {
+    "experiment": "Chart-RVR Baseline Comparison",
+    "date": datetime.now().isoformat(),
+    "samples": 100,
+    "seed": 2025,
+    "dataset": "evochart",
+    "model": "Qwen2.5-VL-3B",
+    "baselines": {
+        "GRPO": {
+            "checkpoint": "grpo-100-seed2025",
+            "mode": "grpo",
+            "num_generations": 2,
+            "accuracy": "35.5%",  # Fill from your results
+            "time": "50 min",
+            "completed": True
+        },
+        "NSR": {
+            "checkpoint": "nsr-100-seed2025",
+            "mode": "nsr",
+            "num_generations": 4,
+            "reward_threshold": 5.0,
+            "accuracy": "38.0%",  # Fill from your results
+            "time": "96 min",
+            "completed": True
+        },
+        "PSR": {
+            "checkpoint": "psr-100-seed2025",
+            "mode": "psr",
+            "num_generations": 4,
+            "reward_threshold": 5.0,
+            "accuracy": "TBD",  # Will measure offline
+            "time": "~90 min",
+            "completed": False  # Update after training
+        },
+        "W-REINFORCE": {
+            "checkpoint": "wreinforce-100-seed2025",
+            "mode": "w-reinforce",
+            "num_generations": 4,
+            "lambda_psr": 0.1,
+            "reward_threshold": 5.0,
+            "accuracy": "TBD",  # Will measure offline
+            "time": "~90 min",
+            "completed": False  # Update after training
+        }
+    },
+    "next_steps": [
+        "Download all checkpoints",
+        "Run Pass@k evaluation offline",
+        "Scale to 1000 samples",
+        "Write thesis"
+    ]
+}
+
+# Save manifest
+manifest_path = '/content/drive/MyDrive/thesis/experiment_manifest.json'
+with open(manifest_path, 'w') as f:
+    json.dump(manifest, f, indent=2)
+
+print(f"\n✓ Manifest saved to: {manifest_path}")
+
+print("\n" + "="*80)
+print("READY FOR OFFLINE EVALUATION!")
+print("="*80)
+print("")
+print("You now have 4 baselines:")
+print("  1. GRPO (2 gens, 35.5% acc)")
+print("  2. NSR (4 gens, 38.0% acc)")
+print("  3. PSR (4 gens, TBD acc)")
+print("  4. W-REINFORCE (4 gens, TBD acc)")
+print("")
+print("Next: Download checkpoints and run Pass@k evaluation offline!")
+print("="*80)

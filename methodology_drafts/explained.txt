@@ -1,0 +1,446 @@
+NSR for Chart Reasoning
+Table of Contents
+1. Key Jargon Explained
+2. What Chart-RVR Paper Did
+3. What NSR Paper Did
+4. What We're Doing
+5. Why This Should Work Better
+Key Jargon Explained
+Basic ML Concepts
+Vision-Language Model (VLM)
+A model that can understand both images and text
+Example: You show it a chart image and ask "What's the value of the blue bar?" and it answers "42"
+Like GPT but can also "see" images
+Fine-tuning
+Taking a pre-trained model and training it more on specific data
+Like teaching a general doctor to become a heart specialist
+The model already knows language and vision, we're teaching it to be better at charts
+Reinforcement Learning (RL)
+Training by rewards and penalties, not just showing correct examples
+Like training a dog: give treat when it does right, say "no" when it does wrong
+Model tries different answers, gets rewarded for good ones, penalized for bad ones
+Chain-of-Thought (CoT) / Rationale
+Making the model explain its reasoning step-by-step before answering
+Instead of: Q: "What's 25% of 80?" A: "20"
+You get: "First, 25% = 1/4. Then 80 ÷ 4 = 20. Answer: 20"
+Makes models more accurate and explainable
+Training Methods
+SFT (Supervised Fine-Tuning)
+Show model: question → correct answer (with reasoning)
+Repeat thousands of times
+Model learns to copy the pattern
+Simple, but limited
+PPO (Proximal Policy Optimization)
+Classic RL algorithm
+Generate multiple answers, reward good ones, penalize bad ones
+Keep changes small each step (that's the "proximal" part)
+Standard approach, but complex
+GRPO (Group Relative Policy Optimization)
+Simplified version of PPO
+Instead of comparing to old model, compare answers within a group
+Generate 4-8 answers per question, pick best ones, learn from those
+Easier to implement than PPO
+PSR (Positive Sample Reinforcement)
+Only learn from CORRECT answers
+If model gets it right → increase probability of that answer path
+Ignores wrong answers completely
+Makes model confident but less diverse
+NSR (Negative Sample Reinforcement)
+Only learn from WRONG answers
+If model gets it wrong → decrease probability of that answer path
+Ignores correct answers completely
+Surprising finding: This alone works as well as traditional methods!
+W-REINFORCE (Weighted REINFORCE)
+Combine PSR and NSR, but downweight PSR
+Use formula: Small_Weight × PSR + Full_Weight × NSR
+Typical: λ=0.1 means 10% PSR strength, 100% NSR strength
+Gets best of both worlds
+Performance Metrics
+Pass@1
+Model gets 1 attempt to answer correctly
+Most strict metric
+What you care about if model only gives one answer
+Pass@k (e.g., Pass@256)
+Model gets k attempts to answer correctly
+If ANY of the k answers is correct, counts as pass
+Measures: "Does the model know the answer at all?"
+High Pass@256 means knowledge is there, just not always surfaced
+Entropy
+Measures randomness/diversity of model's outputs
+High entropy = model gives varied answers
+Low entropy = model always gives same answer
+Think: High entropy = creative, Low entropy = robotic
+In-Domain vs Out-of-Distribution (OOD)
+In-Domain: Test on similar data to training (e.g., same chart styles)
+OOD: Test on different data (e.g., new chart styles never seen in training)
+OOD tests generalization: Can model handle new situations?
+Reward Components (Chart-Specific)
+Format Reward
+Checks if answer follows required structure
+Example: Must have 
+<think>...</think><answer>...</answer>  tags
+Binary: follows format = +1, doesn't = 0
+Chart Type Reward
+Did model correctly identify chart type (bar, line, pie, etc.)?
+Verifiable: We know the ground truth type
+Helps model learn to classify charts
+Table Reconstruction Reward
+Can model extract the data table from the chart?
+Example: Bar chart → {"columns": ["Year", "Sales"], "rows": 2020, 100], [2021, 150}
+Tests if model truly "understands" the chart's data
+Process Conformity Reward
+Is the reasoning process aligned with correct methodology?
+Checks if model follows logical steps
+Uses text similarity to gold reasoning steps
+Accuracy Reward
+Did model get the final answer correct?
+Most important reward
+Usually +1 for correct, 0 for incorrect
+What Chart-RVR Paper Did
+The Problem They Solved
+Problem:
+Current VLMs are bad at explaining chart reasoning
+They might get answers right, but can't show their work
+When they're wrong, you don't know why
+Models struggle on charts with different visual styles (OOD)
+Their Solution
+Step 1: Create Training Data
+Took 6,000 chart questions from ChartQA, PlotQA, ChartFC
+Used a very large model (Qwen2.5-VL-72B) to generate step-by-step reasoning
+Format:
+<think><type>bar chart</type><table>{...}</table>reasoning steps</think><answer>42</answer> 
+This gives the model examples of good reasoning
+Step 2: Design Reward System
+Don't just reward correct final answers
+Also reward:
+Correct chart type identification
+Correct data table extraction
+Following logical reasoning process
+Proper formatting
+Total reward = Format + Type + Table + Process + Accuracy
+Step 3: Train with GRPO
+For each question, generate 4-8 different answers
+Calculate reward for each answer
+Increase probability of high-reward answers
+Decrease probability of low-reward answers
+Repeat for multiple epochs
+What They Achieved
+Results:
+ChartQA: 84.56% (vs 82% for base model without reasoning)
+Better explainability: Reasoning helps humans understand model's logic
+But: OOD performance still not great (53% on EvoChart)
+Key Insight:
+Surrogate tasks (chart type, table) help the model learn better
+Process rewards make reasoning more coherent
+But standard GRPO still has limitations
+What NSR Paper Did
+The Problem They Investigated
+Question:
+In RL, we reward correct answers and penalize incorrect ones
+But which matters more: rewards or penalties?
+Can we decompose these two learning signals?
+The Experiment
+What they did:
+Took standard RL (which uses both positive and negative signals)
+Split it into two:
+PSR: Only increase probability of correct answers (ignore wrong ones)
+NSR: Only decrease probability of wrong answers (ignore correct ones)
+Tested on math reasoning (MATH dataset)
+The Surprising Discovery
+Results were shocking:
+PSR (only reinforce correct):
+Pass@1: 77.1% ← Best immediate accuracy
+Pass@256: 93.2% ← But poor at finding answers with multiple tries
+Entropy drops rapidly ← Model becomes very confident in one path
+NSR (only penalize incorrect):
+Pass@1: 75.7% ← Slightly lower immediate accuracy
+Pass@256: 96.9% ← Best at finding answers with multiple tries
+Entropy stays high ← Model maintains multiple strategies
+Why is this surprising?
+Common wisdom: You need positive rewards to learn
+NSR shows: Just avoiding mistakes is enough (and sometimes better!)
+NSR preserves diversity while PSR kills it
+How NSR Works (Intuitive Explanation)
+Imagine you're learning to solve puzzles:
+PSR approach:
+Teacher says: "This solution is great! Do exactly this next time!"
+You memorize that exact solution
+When you see a similar puzzle, you try the same approach
+Problem: If the puzzle is slightly different, you're stuck
+NSR approach:
+Teacher says: "This approach is wrong, don't do it"
+You think: "Okay, that didn't work. Let me try something else"
+You still have many possible approaches to explore
+Next time, you naturally avoid the bad paths and try alternatives
+The key insight:
+PSR makes you confident but inflexible
+NSR makes you exploratory and robust
+In complex problems with many valid solutions, NSR wins
+The Math Behind It (Simplified)
+PSR does:
+If answer is CORRECT:
+Increase probability of that answer path
+NSR does:
+If answer is WRONG:
+Decrease probability of that answer path
+Redistribute probability to OTHER paths (that might be correct)
+Why NSR maintains diversity:
+NSR doesn't tell you what TO do, just what NOT to do
+Leaves room for model to explore alternatives
+Probability "flows" from wrong paths to all plausible alternatives
+Some of those alternatives are actually better than the model's current favorite
+W-REINFORCE: Best of Both Worlds
+The formula:
+Update = λ × PSR_signal + 1.0 × NSR_signal
+where λ = 0.1 (downweight positive reinforcement)
+In practice:
+Mostly use NSR (full strength)
+Add a little bit of PSR (10% strength)
+This gives you:
+Diversity preservation from NSR
+Slight accuracy boost from PSR
+Optimal balance for most tasks
+Their results:
+W-REINFORCE with λ=0.1: 76.6% Pass@1, 96.7% Pass@256
+Best on both metrics
+Sweet spot between exploration and exploitation
+What We're Doing
+The Core Idea
+Hypothesis:
+Chart-RVR showed that verifiable rewards help chart reasoning
+NSR showed that negative reinforcement preserves diversity
+Our idea: Combine them!
+Use NSR's training approach with Chart-RVR's reward structure
+Why Combine These?
+Chart reasoning has unique challenges:
+1. Visual Diversity
+Charts come in many styles: different colors, layouts, fonts
+In-domain: Standard red/blue bars, clean fonts
+OOD: Weird colors, hand-drawn style, unusual layouts
+Need: Model that can handle variation
+2. Multiple Valid Reasoning Paths
+To find "What's the total in 2020?":
+Path A: Identify chart type → Find 2020 column → Read values → Sum
+Path B: Extract table → Filter 2020 row → Sum values
+Path C: Visual estimation → Verify with data points → Calculate
+All are valid! PSR might collapse to just one
+3. Step-by-step Reasoning Required
+Can't just guess the answer
+Need: chart type, data extraction, calculation
+Each step could be done multiple ways
+NSR is perfect for this because:
+Preserves multiple valid reasoning strategies
+Maintains flexibility in visual interpretation
+Should improve OOD robustness (unseen chart styles)
+The Pipeline (Step by Step)
+Step 1: Use Existing Data
+Chart-RVR already created 6K samples with CoT reasoning
+Format: image + question + answer + chart_type + table + reasoning
+We don't need to generate new data
+Step 2: Set Up Three Training Runs
+Run A - GRPO Baseline:
+For each question:
+1. Generate 8 different answers
+2. Calculate reward for each (format + type + table + process + accuracy)
+3. Use standard GRPO:- Increase prob of high-reward answers- Decrease prob of low-reward answers
+4. Update model
+Run B - NSR (Our Proposal):
+For each question:
+1. Generate 8 different answers
+2. Calculate reward for each
+3. Filter to ONLY incorrect answers (reward < threshold)
+4. Use NSR:- Decrease prob of wrong answers- Ignore correct answers completely
+5. Update model
+Run C - W-REINFORCE (Our Proposal):
+For each question:
+1. Generate 8 different answers
+2. Calculate reward for each
+3. Use weighted update:- For correct: Small update (λ=0.1 × reward)- For incorrect: Full update (-1.0 × reward)
+4. Update model
+Step 3: Evaluate Everything
+For each trained model:
+Generate 256 answers per test question
+Calculate Pass@1, Pass@8, Pass@256
+Measure entropy (diversity)
+Test on in-domain (ChartQA) and OOD (EvoChart)
+Measure explainability (do reasoning steps help?)
+Step 4: Compare Results
+Which method has best Pass@1? (Immediate accuracy)
+Which has best Pass@256? (Knowledge coverage)
+Which maintains highest entropy? (Diversity)
+Which performs best on OOD? (Generalization)
+Why This Should Work Better
+The Core Argument
+Chart-RVR's limitation:
+Uses standard GRPO → Combines positive and negative signals equally
+This can cause:
+Collapse to single reasoning strategy (loss of diversity)
+Overfitting to in-domain visual styles
+Poor OOD performance
+Our improvement with NSR:
+Use mostly negative signals → Preserves diversity
+Should lead to:
+Multiple valid reasoning strategies maintained
+Better handling of visual variations
+Improved OOD performance
+Concrete Example
+Scenario: Chart with unusual color scheme (OOD)
+Let's say the model sees a bar chart where:
+Training data: Blue=Category A, Red=Category B (standard colors)
+Test data: Purple=Category A, Orange=Category B (unusual colors)
+What GRPO does:
+Training:- Generate answer: "Blue bar represents Category A" → Correct → Reinforce- Generate answer: "Red bar represents Category A" → Wrong → Penalize
+Result: Model learns "Blue = A, Red = B" very strongly
+Testing on purple/orange:- Model is confused, has high confidence in wrong color mappings- Struggles to adapt
+What NSR does:
+Training:- Generate answer: "Red bar represents Category A" → Wrong → Penalize strongly- Generate answer: "Blue bar represents Category A" → Correct → Ignore
+Result: Model learns "Don't use Red for A" but maintains flexibility on what DOES represent A
+Testing on purple/orange:- Model hasn't locked onto "Blue = A" too strongly- Can explore "Maybe Purple = A?" or "Let me check the legend"- Adapts better to new colors
+Expected Improvements (Quantified)
+1. Diversity Preservation
+Current (GRPO):
+Entropy starts at 0.12 (base model)
+After training: drops to 0.05
+Interpretation: Model becomes 2.4× less diverse
+Expected (NSR):
+Entropy starts at 0.12
+After training: stays at 0.10
+Interpretation: Model stays nearly as diverse as base model
+Why this matters:
+Higher diversity = more strategies = better coverage
+Pass@256 should improve by ~2-3%
+2. OOD Robustness
+Current (GRPO):
+In-domain (ChartQA): 84.6%
+OOD (EvoChart): 53.4%
+Gap: 31.2% ← Big drop on unseen chart styles
+Expected (NSR):
+In-domain: ~84% (similar)
+OOD: ~57% (better)
+Gap: 27% ← Smaller drop, better generalization
+Why this matters:
+Real-world charts are diverse
+Models need to handle unseen styles
+3-4% OOD improvement is significant
+3. Reasoning Quality
+Current (GRPO):
+Sometimes gives correct answer with wrong reasoning
+Example: "The bar is at 50 (correct) because it's blue (irrelevant)"
+Reasoning can be brittle
+Expected (NSR):
+Maintains multiple reasoning paths
+Example: Model knows to check:
+Path 1: Read axis labels
+Path 2: Extract data table first
+Path 3: Visual estimation + verification
+More robust reasoning
+Why this matters:
+Explainability is crucial for trust
+Better reasoning → better generalization
+4. Pass@k Improvements
+Current (GRPO):
+Metric Score
+Pass@1 84.6%
+Pass@8 85.5%
+Pass@256 86%
+Expected (NSR):
+Metric Score
+Pass@1 84%
+Pass@8 86%
+Pass@256 88%
+Interpretation:
+GRPO: Model knows ~85% of answers, always picks same strategy
+NSR: Model knows ~88% of answers, uses different strategies
+NSR has more knowledge, just not always in the first attempt
+5. W-REINFORCE: Best of Both
+Expected (W-REINFORCE with λ=0.1):
+Metric Score
+Pass@1 85.5%
+Pass@8 86.8%
+Pass@256 88%
+Why this matters:
+Gets immediate accuracy from PSR (10% strength)
+Gets coverage/diversity from NSR (100% strength)
+Optimal for production systems
+Potential Failure Modes (What Could Go Wrong)
+1. NSR Might Be Too Conservative
+Risk:
+NSR only says what NOT to do
+Doesn't explicitly guide toward correct answers
+Model might take longer to converge
+Mitigation:
+Use W-REINFORCE instead (adds small positive signal)
+Increase training epochs if needed
+Monitor convergence carefully
+2. Chart Tasks Might Be Too Constrained
+Risk:
+Math reasoning (NSR paper) has MANY valid solution paths
+Chart reasoning might have fewer alternatives
+If only one correct path, PSR might be better
+Counter-argument:
+Charts actually have many interpretation styles
+Visual understanding has inherent ambiguity
+Diversity should still help
+3. Reward Signal Might Be Too Noisy
+Risk:
+Chart-RVR uses complex multi-component rewards
+NSR relies on clear correct/incorrect signal
+If rewards are noisy, NSR might struggle
+Mitigation:
+Use clear threshold for "correct" vs "incorrect"
+Possibly simplify rewards (focus on accuracy + table)
+Monitor reward distributions
+Summary: The Big Picture
+What we know:
+1. Chart-RVR: Verifiable rewards help chart reasoning
+2. NSR: Negative reinforcement preserves diversity in math reasoning
+What we're testing:
+Does NSR improve chart reasoning?
+Especially: Does diversity help OOD performance?
+Why it should work:
+Charts need flexible visual interpretation
+NSR preserves this flexibility
+Should lead to better generalization
+How we'll know if it works:
+NSR achieves similar Pass@1 to GRPO
+NSR achieves higher Pass@256 than GRPO
+NSR performs significantly better on OOD datasets
+W-REINFORCE beats everything
+The contribution:
+First application of NSR to vision-language tasks
+Shows importance of diversity in multimodal reasoning
+Provides practical method for training robust chart understanding models
+Quick Reference: Method Comparison
+Aspect GRPO PSR NSR W-REINFORCE
+Learning from Both correct &
+incorrect Only correct Only
+incorrect Mostly incorrect
+Diversity Low ↓ Very Low ↓↓ High ↑ Medium
+Pass@1 Good Best Good Best
+Pass@256 Good Poor Best Best
+OOD
+Performance Moderate Poor Good Best
+Training Speed Medium Fast Medium Medium
+When to use General purpose Need max
+accuracy
+Need
+coverage
+Production
+systems
+Glossary (Quick Lookup)
+CoT: Chain-of-Thought, step-by-step reasoning
+Entropy: Measure of diversity/randomness
+GRPO: Group Relative Policy Optimization, simplified RL method
+In-domain: Test data similar to training data
+NSR: Negative Sample Reinforcement, learn from mistakes only
+OOD: Out-of-distribution, test data different from training
+Pass@k: Success if any of k attempts is correct
+PSR: Positive Sample Reinforcement, learn from successes only
+RL: Reinforcement Learning, training with rewards/penalties
+SFT: Supervised Fine-Tuning, learning from examples
+VLM: Vision-Language Model, understands images + text
+W-REINFORCE: Weighted REINFORCE, combines PSR and NSR with weighting
+For questions or clarifications, refer to:
+proposed.md  - The actual thesis proposal
+chart-rvr-paper.txt  - Original Chart-RVR paper
+nsr-paper.txt  - Original NSR paper
