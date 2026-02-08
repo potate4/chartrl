@@ -7,10 +7,10 @@ from pathlib import Path
 import torch
 from trl import GRPOConfig, GRPOTrainer as TRLGRPOTrainer
 
-from ..configs import TrainingConfig
-from ..rewards import RewardAggregator
-from ..utils.checkpointing import CheckpointManager
-from ..utils.logging_utils import get_logger, WandBLogger, MetricsLogger
+from configs import TrainingConfig
+from rewards import RewardAggregator
+from utils.checkpointing import CheckpointManager
+from utils.logging_utils import get_logger, WandBLogger, MetricsLogger
 
 
 class BaseTrainer(ABC):

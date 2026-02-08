@@ -15,8 +15,8 @@ then measure these properties only among rollouts that are actually correct.
 from typing import List, Dict, Any, Tuple
 from dataclasses import dataclass
 
-from ..utils.parsing import parse_response, normalize_answer, try_parse_numeric
-from ..utils.similarity import (
+from utils.parsing import parse_response, normalize_answer, try_parse_numeric
+from utils.similarity import (
     compute_pairwise_similarity,
     compute_table_similarity,
 )

@@ -9,9 +9,9 @@ These metrics measure:
 
 from typing import List, Dict, Any, Tuple
 
-from ..utils.parsing import parse_response
-from ..utils.similarity import compute_pairwise_similarity, compute_table_similarity
-from ..rewards.clc_reward import compute_clc_coherence
+from utils.parsing import parse_response
+from utils.similarity import compute_pairwise_similarity, compute_table_similarity
+from rewards.clc_reward import compute_clc_coherence
 
 
 def compute_table_consistency(
@@ -158,7 +158,7 @@ def _filter_correct_rollouts(
     answer_tolerance: float = 0.05,
 ) -> List[Dict]:
     """Filter to correct rollouts based on ground truth."""
-    from ..utils.parsing import normalize_answer, try_parse_numeric
+    from utils.parsing import normalize_answer, try_parse_numeric
 
     gt_type = ground_truth.get("chart_type", "").lower().strip()
     gt_table = ground_truth.get("table", {})

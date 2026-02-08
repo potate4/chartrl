@@ -4,13 +4,13 @@ import re
 import json
 from typing import Dict, Any, Optional, List
 
-from ..utils.parsing import (
+from utils.parsing import (
     parse_response,
     normalize_answer,
     try_parse_numeric,
     split_reasoning_steps,
 )
-from ..utils.similarity import compute_similarity
+from utils.similarity import compute_similarity
 
 
 def format_reward(completion: str) -> float:

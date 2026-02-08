@@ -53,6 +53,7 @@ print(f"Working directory: {os.getcwd()}")
 # Install required packages
 !pip install -q torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 !pip install -q transformers>=4.45.0 accelerate>=0.34.0 peft>=0.13.0
+!pip install -q trl>=0.12.0  # Required for GRPO trainer
 !pip install -q datasets pillow tqdm wandb
 !pip install -q sentence-transformers deepspeed bitsandbytes
 !pip install -q qwen-vl-utils
@@ -63,6 +64,12 @@ print(f"GPU Available: {torch.cuda.is_available()}")
 if torch.cuda.is_available():
     print(f"GPU Name: {torch.cuda.get_device_name(0)}")
     print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+```
+
+### Alternative: Install from requirements.txt
+
+```python
+!pip install -q -r requirements.txt
 ```
 
 ---
@@ -258,7 +265,7 @@ import sys
 sys.path.insert(0, '.')
 
 # Test imports
-from configs import EXPERIMENTS, list_experiments
+from configs.experiment import EXPERIMENTS, list_experiments
 from data import load_training_dataset
 from models import load_model_for_training
 

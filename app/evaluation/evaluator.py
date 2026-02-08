@@ -14,8 +14,8 @@ from .metrics import (
     compute_pass_at_k_spectrum,
 )
 from .diversity_metrics import compute_diversity_metrics, compute_ood_gap
-from ..utils.parsing import parse_response
-from ..utils.logging_utils import get_logger
+from utils.parsing import parse_response
+from utils.logging_utils import get_logger
 
 
 class Evaluator:
@@ -80,7 +80,7 @@ class Evaluator:
         Returns:
             List of generated responses
         """
-        from ..data.prompts import format_conversation
+        from data.prompts import format_conversation
 
         # Prepare input
         conversation = format_conversation(question)
@@ -260,8 +260,8 @@ def evaluate_model(
     Returns:
         Evaluation results
     """
-    from ..models import load_model_with_checkpoint
-    from ..data import load_eval_dataset
+    from models import load_model_with_checkpoint
+    from data import load_eval_dataset
 
     # Load model
     model, processor = load_model_with_checkpoint(

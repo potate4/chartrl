@@ -17,7 +17,7 @@ CLC catches this by checking:
 from typing import Dict, Any, Set, List
 from dataclasses import dataclass
 
-from ..utils.parsing import (
+from utils.parsing import (
     parse_response,
     extract_numbers,
     extract_table_values,

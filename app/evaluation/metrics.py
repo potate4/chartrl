@@ -3,7 +3,7 @@
 from typing import List, Tuple, Optional
 import re
 
-from ..utils.parsing import normalize_answer, try_parse_numeric
+from utils.parsing import normalize_answer, try_parse_numeric
 
 
 def exact_match(prediction: str, label: str) -> bool:
