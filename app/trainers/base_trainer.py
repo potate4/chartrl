@@ -13,6 +13,7 @@ from rewards import RewardAggregator
 from utils.checkpointing import CheckpointManager
 from utils.logging_utils import get_logger, WandBLogger, MetricsLogger
 import logging
+from collections import deque
 
 
 class BaseTrainer(ABC):
@@ -74,6 +75,8 @@ class BaseTrainer(ABC):
         self._completion_log_step = 0
         self._reward_log_step = 0
         self._training_log_path = None
+        self._metrics_window = deque(maxlen=self.config.log_metrics_window)
+        self._metrics_step = 0
 
     def setup(self):
         """Set up training components."""
@@ -225,6 +228,9 @@ class BaseTrainer(ABC):
 
             prompts = kwargs.get("prompts", None)
             labels = kwargs.get("labels", None)
+            tables = kwargs.get("tables", None)
+            chart_types = kwargs.get("chart_types", None)
+            reasonings = kwargs.get("reasonings", None)
             if self.config.log_completions_max is None or self.config.log_completions_max < 0:
                 n = len(completions)
             else:
@@ -245,11 +251,27 @@ class BaseTrainer(ABC):
                 if rewards_breakdown and i < len(rewards_breakdown):
                     reward_info = f" | rewards={rewards_breakdown[i]}"
 
+                gt_label = ""
+                if isinstance(labels, list) and i < len(labels):
+                    gt_label = str(labels[i])
+                gt_table = ""
+                if isinstance(tables, list) and i < len(tables):
+                    gt_table = str(tables[i])
+                gt_chart_type = ""
+                if isinstance(chart_types, list) and i < len(chart_types):
+                    gt_chart_type = str(chart_types[i])
+                gt_reasoning = ""
+                if isinstance(reasonings, list) and i < len(reasonings):
+                    gt_reasoning = str(reasonings[i])
+
                 msg = (
                     f"[completion_log step={self._completion_log_step} idx={i}] "
                     f"raw_type={type(raw).__name__} raw={raw_preview} | "
                     f"prompt={_truncate(prompt_preview)} | "
-                    f"label={_truncate(label_preview)} | "
+                    f"gt_label={_truncate(gt_label)} | "
+                    f"gt_chart_type={_truncate(gt_chart_type)} | "
+                    f"gt_table={_truncate(gt_table)} | "
+                    f"gt_reasoning={_truncate(gt_reasoning)} | "
                     f"completion={_truncate(norm)}"
                     f"{reward_info}"
                 )
@@ -268,6 +290,47 @@ class BaseTrainer(ABC):
                     f"{breakdown}"
                 )
                 self.logger.info(msg)
+
+        def _update_and_log_metrics(rewards_breakdown):
+            if self.config.log_metrics_every <= 0:
+                return
+            # Aggregate per-step averages
+            if not rewards_breakdown:
+                return
+            keys = rewards_breakdown[0].keys()
+            avg = {}
+            for k in keys:
+                vals = [rb.get(k, 0.0) for rb in rewards_breakdown]
+                avg[k] = sum(vals) / max(len(vals), 1)
+
+            self._metrics_window.append(avg)
+            if (self._metrics_step % self.config.log_metrics_every) != 0:
+                self._metrics_step += 1
+                return
+
+            # Rolling average
+            roll = {}
+            for k in avg.keys():
+                vals = [m.get(k, 0.0) for m in self._metrics_window]
+                roll[k] = sum(vals) / max(len(vals), 1)
+
+            summary = {
+                "step": self._metrics_step,
+                "window": len(self._metrics_window),
+                "avg_total": roll.get("base_total", 0.0) + roll.get("hcpc", 0.0) + roll.get("clc", 0.0),
+                "avg_base_total": roll.get("base_total", 0.0),
+                "avg_base_accuracy": roll.get("base_accuracy", 0.0),
+                "avg_base_format": roll.get("base_format", 0.0),
+                "avg_base_table": roll.get("base_table", 0.0),
+                "avg_base_type": roll.get("base_chart_type", 0.0),
+                "avg_hcpc": roll.get("hcpc", 0.0),
+                "avg_clc": roll.get("clc", 0.0),
+            }
+
+            self.logger.info(f"[metrics_summary] {summary}")
+            if self.metrics_logger is not None:
+                self.metrics_logger.log(summary, step=self._metrics_step)
+            self._metrics_step += 1
 
         def reward_fn(completions, **kwargs):
             # Get ground truth from kwargs
@@ -295,6 +358,7 @@ class BaseTrainer(ABC):
             # Log completions and rewards
             _log_completions(completions, kwargs, rewards_breakdown=rewards_breakdown)
             _log_rewards(rewards_breakdown)
+            _update_and_log_metrics(rewards_breakdown)
             self._completion_log_step += 1
             self._reward_log_step += 1
 

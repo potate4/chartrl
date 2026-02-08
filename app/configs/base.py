@@ -116,6 +116,8 @@ class TrainingConfig:
     log_rewards: bool = True
     log_rewards_every: int = 1
     log_rewards_to_file: bool = False
+    log_metrics_every: int = 10
+    log_metrics_window: int = 50
 
     # Paths
     output_dir: str = "./outputs"
