@@ -525,7 +525,155 @@ os.chdir("/content/chartrl/app")
 
 ---
 
-## Experiment Tracking
+## 4-Way Comparison Experiments
+
+Run these 4 experiments to compare baseline vs HCPC approaches:
+
+| Experiment | Method | Philosophy |
+|------------|--------|------------|
+| `grpo_baseline` | GRPO + GT reasoning similarity | Match "correct" reasoning |
+| `grpo_hcpc` | GRPO + HCPC diversity | Multiple valid paths |
+| `nsr_baseline` | NSR + GT reasoning similarity | Only penalize wrong |
+| `nsr_hcpc` | NSR + HCPC inconsistency penalty | Penalize confused wrong answers |
+
+### Key Difference: process_reward vs d_reason
+
+- **Baseline** uses `process_reward`: similarity to ground truth reasoning
+- **HCPC** uses `d_reason`: diversity among correct rollouts (contradictory goals!)
+- When `use_hcpc=True`, `process_reward` is auto-disabled
+
+### Cell: Run GRPO Baseline
+
+```python
+!python scripts/train.py \
+    --experiment grpo_baseline \
+    --subset-size 500 \
+    --num-epochs 1 \
+    --no-wandb
+
+backup_manager.backup_now()
+```
+
+### Cell: Run GRPO + HCPC
+
+```python
+!python scripts/train.py \
+    --experiment grpo_hcpc \
+    --subset-size 500 \
+    --num-epochs 1 \
+    --no-wandb
+
+backup_manager.backup_now()
+```
+
+### Cell: Run NSR Baseline
+
+```python
+!python scripts/train.py \
+    --experiment nsr_baseline \
+    --subset-size 500 \
+    --num-epochs 1 \
+    --no-wandb
+
+backup_manager.backup_now()
+```
+
+### Cell: Run NSR + HCPC (Best Expected)
+
+```python
+# NSR + HCPC: Wrong answers that are ALSO inconsistent get penalized MORE
+!python scripts/train.py \
+    --experiment nsr_hcpc \
+    --subset-size 500 \
+    --num-epochs 1 \
+    --no-wandb
+
+backup_manager.backup_now()
+```
+
+### Cell: Compare All 4 Experiments
+
+```python
+import json
+from pathlib import Path
+
+def analyze_experiment(exp_name):
+    """Analyze metrics from an experiment."""
+    exp_dir = Path(f"./outputs/{exp_name}")
+    if not exp_dir.exists():
+        return None
+
+    runs = sorted(exp_dir.glob("run_*"))
+    if not runs:
+        return None
+
+    metrics_file = runs[-1] / "metrics.jsonl"
+    if not metrics_file.exists():
+        return None
+
+    metrics = []
+    with open(metrics_file) as f:
+        for line in f:
+            if line.strip():
+                try:
+                    metrics.append(json.loads(line))
+                except:
+                    pass
+
+    if not metrics:
+        return None
+
+    # Get last 20% for final performance
+    final = metrics[int(len(metrics) * 0.8):]
+
+    def avg(key):
+        vals = [m.get(key, 0) for m in final]
+        return sum(vals) / len(vals) if vals else 0
+
+    return {
+        "steps": len(metrics),
+        "accuracy": avg("avg_base_accuracy"),
+        "format": avg("avg_base_format"),
+        "total": avg("avg_total"),
+    }
+
+experiments = ["grpo_baseline", "grpo_hcpc", "nsr_baseline", "nsr_hcpc"]
+
+print("=" * 70)
+print("4-WAY EXPERIMENT COMPARISON")
+print("=" * 70)
+print(f"{'Experiment':<20} {'Steps':>8} {'Accuracy':>10} {'Format':>10} {'Total':>10}")
+print("-" * 70)
+
+results = {}
+for exp in experiments:
+    r = analyze_experiment(exp)
+    results[exp] = r
+    if r:
+        print(f"{exp:<20} {r['steps']:>8} {r['accuracy']:>10.3f} {r['format']:>10.3f} {r['total']:>10.3f}")
+    else:
+        print(f"{exp:<20} {'Not run':>8}")
+
+print("=" * 70)
+
+valid = {k: v for k, v in results.items() if v}
+if valid:
+    best = max(valid.items(), key=lambda x: x[1]["accuracy"])
+    print(f"\nBest by accuracy: {best[0]} ({best[1]['accuracy']:.3f})")
+```
+
+### Expected Results
+
+| Experiment | Expected Accuracy | Why |
+|------------|-------------------|-----|
+| GRPO Baseline | ~45% | May over-reinforce lucky correct |
+| GRPO + HCPC | ~48% | Better diversity signal |
+| NSR Baseline | ~50% | Conservative updates |
+| **NSR + HCPC** | **~55%** | Best - penalizes confused wrong |
+
+---
+
+## Experiment Tracking (Full 6-Way)
 
 | Experiment | Policy | HCPC | Expected ID Acc | Expected OOD Gap |
 |------------|--------|------|-----------------|------------------|

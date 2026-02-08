@@ -44,6 +44,14 @@ class RewardAggregator:
         table_sim_threshold: float = 0.8,
         # CLC weight
         w_clc: float = 1.0,
+        # Base reward flags
+        use_format_reward: bool = True,
+        use_accuracy_reward: bool = True,
+        use_length_reward: bool = True,
+        use_token_count_reward: bool = True,
+        use_chart_type_reward: bool = True,
+        use_table_reward: bool = True,
+        use_process_reward: bool = True,
     ):
         """
         Initialize reward aggregator.
@@ -56,9 +64,20 @@ class RewardAggregator:
             w_reason: HCPC weight for reasoning diversity
             table_sim_threshold: HCPC threshold for table matching
             w_clc: CLC reward weight
+            use_process_reward: Whether to use process reward (GT reasoning similarity)
+                                Set to False when using HCPC (promotes diversity instead)
         """
         self.use_hcpc = use_hcpc
         self.use_clc = use_clc
+
+        # Base reward flags
+        self.use_format_reward = use_format_reward
+        self.use_accuracy_reward = use_accuracy_reward
+        self.use_length_reward = use_length_reward
+        self.use_token_count_reward = use_token_count_reward
+        self.use_chart_type_reward = use_chart_type_reward
+        self.use_table_reward = use_table_reward
+        self.use_process_reward = use_process_reward
 
         # Initialize computers
         self.hcpc_computer = HCPCComputer(
@@ -87,7 +106,20 @@ class RewardAggregator:
         results = []
 
         # Compute base rewards for each rollout
-        base_rewards = [compute_base_rewards(r, ground_truth) for r in rollouts]
+        base_rewards = [
+            compute_base_rewards(
+                r,
+                ground_truth,
+                use_format=self.use_format_reward,
+                use_accuracy=self.use_accuracy_reward,
+                use_length=self.use_length_reward,
+                use_token_count=self.use_token_count_reward,
+                use_chart_type=self.use_chart_type_reward,
+                use_table=self.use_table_reward,
+                use_process=self.use_process_reward,
+            )
+            for r in rollouts
+        ]
 
         # Compute HCPC (group-level)
         hcpc_reward = 0.0
@@ -164,6 +196,14 @@ class RewardAggregator:
         Returns:
             RewardAggregator
         """
+        # When using HCPC, disable process_reward by default
+        # (HCPC promotes diversity, process_reward promotes GT similarity - contradictory)
+        use_process = config.rewards.use_process_reward
+        if config.rewards.use_hcpc and use_process:
+            # Auto-disable if HCPC is on (unless explicitly set)
+            # Check if it was explicitly set in config or just default
+            use_process = False
+
         return cls(
             use_hcpc=config.rewards.use_hcpc,
             use_clc=config.rewards.use_clc,
@@ -172,6 +212,14 @@ class RewardAggregator:
             w_reason=config.rewards.w_reason,
             table_sim_threshold=config.rewards.table_sim_threshold,
             w_clc=config.rewards.w_clc,
+            # Base reward flags
+            use_format_reward=config.rewards.use_format_reward,
+            use_accuracy_reward=config.rewards.use_accuracy_reward,
+            use_length_reward=config.rewards.use_length_reward,
+            use_token_count_reward=config.rewards.use_token_count_reward,
+            use_chart_type_reward=config.rewards.use_chart_type_reward,
+            use_table_reward=config.rewards.use_table_reward,
+            use_process_reward=use_process,
         )
 
 

@@ -262,14 +262,44 @@ def process_reward(completion: str, reasoning: str) -> float:
     return _text_sim(steps, reasoning)
 
 
-def compute_base_rewards(completion: str, ground_truth: Dict[str, Any]) -> Dict[str, float]:
+def compute_base_rewards(
+    completion: str,
+    ground_truth: Dict[str, Any],
+    use_format: bool = True,
+    use_accuracy: bool = True,
+    use_length: bool = True,
+    use_token_count: bool = True,
+    use_chart_type: bool = True,
+    use_table: bool = True,
+    use_process: bool = True,
+) -> Dict[str, float]:
+    """
+    Compute base rewards for a completion.
+
+    Args:
+        completion: Model output string
+        ground_truth: Dict with label, table, chart_type, reasoning
+        use_format: Whether to compute format reward
+        use_accuracy: Whether to compute accuracy reward
+        use_length: Whether to compute length reward
+        use_token_count: Whether to compute token count reward
+        use_chart_type: Whether to compute chart type reward
+        use_table: Whether to compute table reward
+        use_process: Whether to compute process reward (GT reasoning similarity)
+                     Set to False when using HCPC (which promotes diversity instead)
+
+    Returns:
+        Dict of reward component values
+    """
     rewards = {}
-    rewards["format"] = format_reward(completion)
-    rewards["accuracy"] = accuracy_reward(completion, ground_truth.get("label", ""))
-    rewards["length"] = length_reward(completion)
-    rewards["token_count"] = token_count_reward(completion)
-    rewards["chart_type"] = chart_type_reward(completion, ground_truth.get("chart_type", ""))
-    rewards["table"] = table_reward(completion, ground_truth.get("table", {}))
-    rewards["process"] = process_reward(completion, ground_truth.get("reasoning", ""))
+    rewards["format"] = format_reward(completion) if use_format else 0.0
+    rewards["accuracy"] = accuracy_reward(completion, ground_truth.get("label", "")) if use_accuracy else 0.0
+    rewards["length"] = length_reward(completion) if use_length else 0.0
+    rewards["token_count"] = token_count_reward(completion) if use_token_count else 0.0
+    rewards["chart_type"] = chart_type_reward(completion, ground_truth.get("chart_type", "")) if use_chart_type else 0.0
+    rewards["table"] = table_reward(completion, ground_truth.get("table", {})) if use_table else 0.0
+    # process_reward measures similarity to GT reasoning
+    # Disable when using HCPC which promotes diversity instead
+    rewards["process"] = process_reward(completion, ground_truth.get("reasoning", "")) if use_process else 0.0
     rewards["total"] = sum(rewards.values())
     return rewards
