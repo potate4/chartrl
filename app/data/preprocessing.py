@@ -11,11 +11,24 @@ MAX_PIXELS = 16384 * 28 * 28  # 12,845,056
 DEFAULT_PIXELS = 512 * 28 * 28  # ~400k pixels (good balance)
 
 
+def _resolve_resample(resample: Union[str, int]) -> int:
+    if isinstance(resample, int):
+        return resample
+    name = str(resample).lower()
+    if name == "bicubic":
+        return Image.BICUBIC
+    if name == "lanczos":
+        return Image.LANCZOS
+    if name == "bilinear":
+        return Image.BILINEAR
+    return Image.LANCZOS
+
+
 def resize_image(
     image: Image.Image,
     min_pixels: int = MIN_PIXELS,
     max_pixels: int = DEFAULT_PIXELS,
-    resample: int = Image.LANCZOS,
+    resample: Union[str, int] = "lanczos",
 ) -> Image.Image:
     """
     Resize image to fit within pixel constraints.
@@ -57,12 +70,14 @@ def resize_image(
     new_width = max(28, new_width)
     new_height = max(28, new_height)
 
-    return image.resize((new_width, new_height), resample=resample)
+    return image.resize((new_width, new_height), resample=_resolve_resample(resample))
 
 
 def process_image_for_model(
     image: Union[Image.Image, str, bytes],
+    min_pixels: int = MIN_PIXELS,
     max_pixels: int = DEFAULT_PIXELS,
+    resample: Union[str, int] = "lanczos",
 ) -> Image.Image:
     """
     Process image for model input.
@@ -89,7 +104,7 @@ def process_image_for_model(
         image = image.convert("RGB")
 
     # Resize if needed
-    image = resize_image(image, max_pixels=max_pixels)
+    image = resize_image(image, min_pixels=min_pixels, max_pixels=max_pixels, resample=resample)
 
     return image
 

@@ -171,7 +171,12 @@ def load_training_dataset(
 
         image = example.get("image")
         if image is not None:
-            image = process_image_for_model(image)
+            image = process_image_for_model(
+                image,
+                min_pixels=config.image_min_pixels,
+                max_pixels=config.image_max_pixels,
+                resample=config.image_resample,
+            )
 
         return {
             "prompt": prompt,

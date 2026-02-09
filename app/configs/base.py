@@ -94,6 +94,7 @@ class TrainingConfig:
 
     # KL penalty
     kl_coef: float = 0.01
+    beta: float = 0.0
 
     # Dataset
     dataset_name: str = "sanchit97/chart-rvr-grpo-train"
@@ -106,6 +107,7 @@ class TrainingConfig:
 
     # Logging
     logging_steps: int = 10
+    logging_first_step: bool = True
     use_wandb: bool = True
     wandb_project: str = "hcpc-rlvr"
     log_completions: bool = True
@@ -118,6 +120,16 @@ class TrainingConfig:
     log_rewards_to_file: bool = False
     log_metrics_every: int = 10
     log_metrics_window: int = 50
+
+    # TRL / dataset compatibility
+    remove_unused_columns: bool = False
+    apply_advantages_in_reward_fn: bool = True
+    save_total_limit: int = 3
+
+    # Image preprocessing
+    image_min_pixels: int = 4 * 28 * 28
+    image_max_pixels: int = 512 * 28 * 28
+    image_resample: str = "lanczos"
 
     # Paths
     output_dir: str = "./outputs"

@@ -1,9 +1,7 @@
-"""Base reward functions from Chart-RVR (commit-aligned)."""
+"""Base reward functions aligned with legacy grpo_utils.py."""
 
 import re
 import json
-import math
-import difflib
 from typing import Dict, Any, Optional, List
 
 import torch
@@ -17,9 +15,8 @@ _TEXT_REWARD_MODEL = None
 def _get_text_reward_model():
     global _TEXT_REWARD_MODEL
     if _TEXT_REWARD_MODEL is None:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        _TEXT_REWARD_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device=device)
-        _TEXT_REWARD_MODEL.eval()
+        # Legacy behavior: force CUDA
+        _TEXT_REWARD_MODEL = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2").cuda().eval()
     return _TEXT_REWARD_MODEL
 
 
@@ -27,82 +24,20 @@ def _text_sim(pred: str, gt: str) -> float:
     if not pred or not gt:
         return 0.0
     model = _get_text_reward_model()
-    device = model.device
-    p_emb = model.encode(pred, convert_to_tensor=True, device=device)
-    gt_emb = model.encode(gt, convert_to_tensor=True, device=device)
+    p_emb = model.encode(pred, convert_to_tensor=True, device="cuda")
+    gt_emb = model.encode(gt, convert_to_tensor=True, device="cuda")
     cos = F.cosine_similarity(p_emb, gt_emb, dim=-1)
     return cos.max(dim=0).values.mean().item()
 
 
 def format_reward(completion: str) -> float:
-    """
-    Reward function that checks if the completion has the expected format.
-
-    Full format (2.0 points):
-        <think>
-        <type>...</type>
-        <table>...</table>
-        ...reasoning...
-        </think>
-        <answer>...</answer>
-
-    Partial rewards help the model learn the format incrementally.
-    """
-    # Full format match (strict)
-    full_pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
-    if re.match(full_pattern, completion, re.DOTALL | re.MULTILINE):
+    pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
+    if re.match(pattern, completion, re.DOTALL | re.MULTILINE):
         return 2.0
-
-    # Partial rewards for learning the format incrementally
-    reward = 0.0
-
-    # Has think block
-    if "<think>" in completion and "</think>" in completion:
-        reward += 0.3
-
-    # Has answer block
-    if "<answer>" in completion and "</answer>" in completion:
-        reward += 0.3
-
-    # Has type tag (inside think)
-    if "<type>" in completion and "</type>" in completion:
-        reward += 0.2
-
-    # Has table tag (inside think)
-    if "<table>" in completion and "</table>" in completion:
-        reward += 0.2
-
-    # Correct order: think before answer
-    think_pos = completion.find("</think>")
-    answer_pos = completion.find("<answer>")
-    if think_pos > 0 and answer_pos > think_pos:
-        reward += 0.2
-
-    # Type before table
-    type_pos = completion.find("</type>")
-    table_pos = completion.find("<table>")
-    if type_pos > 0 and table_pos > type_pos:
-        reward += 0.2
-
-    # Cap partial reward at 1.4 (full format gets 2.0 bonus)
-    return min(reward, 1.4)
+    return 0.0
 
 
-def _try_float(value: str) -> Optional[float]:
-    if value is None:
-        return None
-    try:
-        cleaned = str(value).strip()
-        cleaned = cleaned.replace(",", "")
-        if cleaned.endswith("%"):
-            cleaned = cleaned[:-1]
-        return float(cleaned)
-    except Exception:
-        return None
-
-
-def accuracy_reward(completion: str, label: str, tolerance: float = 0.05) -> float:
-    """Continuous accuracy reward with smooth decay as deviation increases."""
+def accuracy_reward(completion: str, label: str) -> float:
     if not label:
         return 0.0
 
@@ -118,26 +53,19 @@ def accuracy_reward(completion: str, label: str, tolerance: float = 0.05) -> flo
     if not pred:
         return 0.0
 
-    label_num = _try_float(label)
-    pred_num = _try_float(pred)
-    if label_num is not None and pred_num is not None:
-        denom = abs(label_num) if abs(label_num) > 1e-8 else 1.0
-        rel_error = abs(pred_num - label_num) / denom
-        # Smooth decay from 1.0 at exact match; no flat tolerance region.
-        k = 10.0
-        return float(max(0.0, min(1.0, math.exp(-k * rel_error))))
-
     try:
-        ratio = difflib.SequenceMatcher(None, str(label).lower(), str(pred).lower()).ratio()
-        return float(ratio)
+        sol = float(label) + 1e-6
+        pred_val = float(pred)
+        return float(int(float(abs(pred_val - sol) / sol) <= 0.05))
     except Exception:
-        return 0.0
+        try:
+            return float(int(str(label).lower() == str(pred).lower()))
+        except Exception:
+            return 0.0
 
 def length_reward(completion: str) -> float:
-    """Length reward (Chart-RVR)."""
     if not completion:
         return 0.0
-
     reward = 0.0
     try:
         rationale = completion.split("<think>")[-1].strip().split("</think>")[0].strip()
@@ -156,8 +84,6 @@ def length_reward(completion: str) -> float:
     steps = rationale.split("<step-")
     reward += min(0.25 * len(steps), 1.5)
 
-    if len(rationale) > 500:
-        reward = 0.0
     return reward
 
 

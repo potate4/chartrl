@@ -131,7 +131,9 @@ class BaseTrainer(ABC):
             "max_grad_norm": self.config.max_grad_norm,
             "gradient_accumulation_steps": self.config.gradient_accumulation_steps,
             "logging_steps": self.config.logging_steps,
+            "logging_first_step": self.config.logging_first_step,
             "save_steps": self.config.checkpoint.save_every_n_steps,
+            "save_total_limit": self.config.save_total_limit,
             "bf16": self.config.bf16,
             "gradient_checkpointing": self.config.gradient_checkpointing,
             # Generation settings
@@ -139,6 +141,8 @@ class BaseTrainer(ABC):
             "top_p": self.config.top_p,
             # GRPO specific (optional depending on TRL version)
             "kl_coef": self.config.kl_coef,
+            "beta": self.config.beta,
+            "remove_unused_columns": self.config.remove_unused_columns,
         }
 
         # Filter kwargs to those supported by the installed TRL version
@@ -192,23 +196,15 @@ class BaseTrainer(ABC):
                     return content
                 return str(completion)
             if isinstance(completion, list):
-                parts = []
-                for item in completion:
-                    if isinstance(item, str):
-                        parts.append(item)
-                    elif isinstance(item, dict):
-                        text = item.get("text")
-                        if isinstance(text, str):
-                            parts.append(text)
-                        else:
-                            content = item.get("content")
-                            if isinstance(content, str):
-                                parts.append(content)
-                            elif isinstance(content, list):
-                                for sub in content:
-                                    if isinstance(sub, dict) and isinstance(sub.get("text"), str):
-                                        parts.append(sub.get("text"))
-                return "\n".join(parts)
+                # Legacy behavior: take last assistant message text only
+                for msg in reversed(completion):
+                    if isinstance(msg, dict) and msg.get("role") == "assistant":
+                        content = msg.get("content", "")
+                        if isinstance(content, list):
+                            text_parts = [part.get("text", "") for part in content if part.get("type") == "text"]
+                            return " ".join(text_parts)
+                        return content
+                return ""
             return str(completion)
 
         def _truncate(text: str) -> str:
@@ -380,10 +376,10 @@ class BaseTrainer(ABC):
             self._completion_log_step += 1
             self._reward_log_step += 1
 
-            # Apply policy-specific transformation
-            advantages = self.compute_advantages(rewards)
-
-            return advantages
+            if self.config.apply_advantages_in_reward_fn:
+                advantages = self.compute_advantages(rewards)
+                return advantages
+            return rewards
 
         return reward_fn
 

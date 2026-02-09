@@ -41,6 +41,9 @@ from models import load_model_for_training
 from trainers import get_trainer
 from utils.logging_utils import setup_logging, log_config
 from utils.checkpointing import CheckpointManager
+import random
+import numpy as np
+import torch
 
 
 def parse_args():
@@ -213,6 +216,16 @@ def main():
 
     # Get config
     config = get_experiment_config(args.experiment, **overrides)
+
+    # Set seeds for reproducibility (match legacy training)
+    random.seed(config.seed)
+    np.random.seed(config.seed)
+    torch.manual_seed(config.seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(config.seed)
+        torch.cuda.manual_seed_all(config.seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
     # Setup logging
     logger = setup_logging(

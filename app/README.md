@@ -122,7 +122,7 @@ python scripts/train.py --experiment grpo_baseline \
     --num-epochs 5 \
     --batch-size 4 \
     --learning-rate 1e-6 \
-    --num-generations 8
+    --num-generations 4
 ```
 
 Or modify `configs/experiment.py` for permanent changes.

@@ -489,7 +489,7 @@ If you run out of GPU memory, add these flags:
 !python scripts/train.py \
     --experiment grpo_baseline \
     --batch-size 4 \
-    --num-generations 8
+    --num-generations 4
 ```
 
 ---
