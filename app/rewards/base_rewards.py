@@ -2,6 +2,8 @@
 
 import re
 import json
+import math
+import difflib
 from typing import Dict, Any, Optional, List
 
 import torch
@@ -31,10 +33,44 @@ def _text_sim(pred: str, gt: str) -> float:
 
 
 def format_reward(completion: str) -> float:
-    pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
-    if re.match(pattern, completion, re.DOTALL | re.MULTILINE):
+    """
+    Reward function that checks if the completion has the expected format.
+
+    Full format (2.0 points):
+        <think>
+        <type>...</type>
+        <table>...</table>
+        ...reasoning...
+        </think>
+        <answer>...</answer>
+
+    Partial rewards help the model learn the format incrementally.
+    """
+    full_pattern = r"^<think>\n<type>.*?</type>\n<table>.*?</table>.*?</think>\n<answer>.*?</answer>$"
+    if re.match(full_pattern, completion, re.DOTALL | re.MULTILINE):
         return 2.0
-    return 0.0
+
+    reward = 0.0
+    if "<think>" in completion and "</think>" in completion:
+        reward += 0.3
+    if "<answer>" in completion and "</answer>" in completion:
+        reward += 0.3
+    if "<type>" in completion and "</type>" in completion:
+        reward += 0.2
+    if "<table>" in completion and "</table>" in completion:
+        reward += 0.2
+
+    think_pos = completion.find("</think>")
+    answer_pos = completion.find("<answer>")
+    if think_pos > 0 and answer_pos > think_pos:
+        reward += 0.2
+
+    type_pos = completion.find("</type>")
+    table_pos = completion.find("<table>")
+    if type_pos > 0 and table_pos > type_pos:
+        reward += 0.2
+
+    return min(reward, 1.4)
 
 
 def accuracy_reward(completion: str, label: str) -> float:
@@ -56,10 +92,13 @@ def accuracy_reward(completion: str, label: str) -> float:
     try:
         sol = float(label) + 1e-6
         pred_val = float(pred)
-        return float(int(float(abs(pred_val - sol) / sol) <= 0.05))
+        rel_error = float(abs(pred_val - sol) / sol)
+        k = 10.0
+        return float(max(0.0, min(1.0, math.exp(-k * rel_error))))
     except Exception:
         try:
-            return float(int(str(label).lower() == str(pred).lower()))
+            ratio = difflib.SequenceMatcher(None, str(label).lower(), str(pred).lower()).ratio()
+            return float(ratio)
         except Exception:
             return 0.0
 
