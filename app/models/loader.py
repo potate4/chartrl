@@ -7,6 +7,7 @@ import torch
 from transformers import (
     AutoProcessor,
     Qwen2_5_VLForConditionalGeneration,
+    Qwen2_5_VLProcessor,
     AutoModelForCausalLM,
 )
 from transformers.utils import is_flash_attn_2_available
@@ -92,14 +93,22 @@ def load_model_for_training(
     Returns:
         Tuple of (model, processor)
     """
-    # Load processor
-    processor = AutoProcessor.from_pretrained(
-        config.model_name,
-        cache_dir=config.cache_dir,
-        trust_remote_code=True,
-    )
-    if hasattr(processor, "tokenizer") and processor.tokenizer is not None:
-        processor.tokenizer.padding_side = "left"
+    # Load processor (match legacy baseline for Qwen2.5-VL)
+    if "qwen" in config.model_name.lower():
+        processor = Qwen2_5_VLProcessor.from_pretrained(
+            config.model_name,
+            padding_side="left",
+            trust_remote_code=True,
+            cache_dir=config.cache_dir,
+        )
+    else:
+        processor = AutoProcessor.from_pretrained(
+            config.model_name,
+            cache_dir=config.cache_dir,
+            trust_remote_code=True,
+        )
+        if hasattr(processor, "tokenizer") and processor.tokenizer is not None:
+            processor.tokenizer.padding_side = "left"
 
     # For GRPO training, we need device_map=None
     # TRL/DeepSpeed will handle device placement

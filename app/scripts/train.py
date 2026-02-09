@@ -235,6 +235,10 @@ def main():
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
+    # Ensure bf16 only when CUDA is available
+    if not torch.cuda.is_available():
+        config.bf16 = False
+
     # Setup logging
     logger = setup_logging(
         log_level="INFO",
