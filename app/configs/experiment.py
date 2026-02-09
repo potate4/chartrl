@@ -44,7 +44,7 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
         use_python_list_dataset=True,
         wandb_project="chartrl-nsr",
         checkpoint=CheckpointConfig(
-            save_every_n_steps=50,
+            save_every_n_steps=10,
             keep_last_n=3,
             keep_best=False,
         ),
