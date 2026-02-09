@@ -61,6 +61,8 @@ class TrainingConfig:
     # Model settings
     model_name: str = "Qwen/Qwen2.5-VL-3B-Instruct"
     use_flash_attention: bool = True
+    attn_implementation: Optional[str] = None
+    torch_dtype_auto: bool = False
 
     # LoRA settings
     lora_r: int = 8
@@ -76,8 +78,8 @@ class TrainingConfig:
     batch_size: int = 2
     gradient_accumulation_steps: int = 4
     learning_rate: float = 1e-6
-    warmup_ratio: float = 0.03
-    weight_decay: float = 0.01
+    warmup_ratio: Optional[float] = 0.03
+    weight_decay: Optional[float] = 0.01
     max_grad_norm: float = 1.0
 
     # GRPO specific
@@ -93,7 +95,7 @@ class TrainingConfig:
     reward_threshold: float = 0.5  # For NSR/W-REINFORCE correct/wrong split
 
     # KL penalty
-    kl_coef: float = 0.01
+    kl_coef: Optional[float] = 0.01
     beta: float = 0.0
 
     # Dataset
@@ -124,6 +126,7 @@ class TrainingConfig:
     # TRL / dataset compatibility
     remove_unused_columns: bool = False
     apply_advantages_in_reward_fn: bool = True
+    use_python_list_dataset: bool = False
     save_total_limit: int = 3
 
     # Image preprocessing

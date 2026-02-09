@@ -98,19 +98,24 @@ def load_model_for_training(
         cache_dir=config.cache_dir,
         trust_remote_code=True,
     )
+    if hasattr(processor, "tokenizer") and processor.tokenizer is not None:
+        processor.tokenizer.padding_side = "left"
 
     # For GRPO training, we need device_map=None
     # TRL/DeepSpeed will handle device placement
     model_kwargs = {
-        "torch_dtype": torch.bfloat16 if config.bf16 else torch.float32,
+        "torch_dtype": "auto" if config.torch_dtype_auto else (torch.bfloat16 if config.bf16 else torch.float32),
         "cache_dir": config.cache_dir,
         "trust_remote_code": True,
     }
 
-    # Flash attention can cause issues with some GRPO setups
-    model_kwargs["attn_implementation"] = _resolve_attn_implementation(
-        config.use_flash_attention
-    )
+    # Explicit attention implementation only if requested
+    if config.attn_implementation:
+        model_kwargs["attn_implementation"] = config.attn_implementation
+    elif config.use_flash_attention:
+        model_kwargs["attn_implementation"] = _resolve_attn_implementation(
+            config.use_flash_attention
+        )
 
     # Load base model
     if "qwen" in config.model_name.lower():

@@ -1,7 +1,8 @@
 """Prompt templates for HCPC-RLVR training and evaluation."""
 
 # System prompt that defines the output format (Chart-RVR)
-SYSTEM_PROMPT = """        You are a vision-language assistant. You are given a chart image and a query about the chart. 
+SYSTEM_PROMPT = """
+        You are a vision-language assistant. You are given a chart image and a query about the chart. 
         Think step-by-step about how to answer the query based on the chart image and then provide the final answer.
 
         ### Output format
@@ -116,13 +117,10 @@ def format_conversation(question: str, image_token: str = "<image>") -> list:
     Returns:
         List of message dicts
     """
-    # Use list-of-dicts content for all roles to keep schema consistent
     return [
         {
             "role": "system",
-            "content": [
-                {"type": "text", "text": SYSTEM_PROMPT},
-            ],
+            "content": SYSTEM_PROMPT,
         },
         {
             "role": "user",

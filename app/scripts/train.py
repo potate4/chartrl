@@ -217,10 +217,17 @@ def main():
     # Get config
     config = get_experiment_config(args.experiment, **overrides)
 
+    # Align HF cache env with config (legacy behavior)
+    os.environ["HF_HUB_CACHE"] = config.cache_dir
+    os.environ["TRANSFORMERS_CACHE"] = config.cache_dir
+    os.environ["HF_HOME"] = config.cache_dir
+    os.environ["FLASH_ATTENTION_2_ENABLED"] = "1"
+
     # Set seeds for reproducibility (match legacy training)
     random.seed(config.seed)
     np.random.seed(config.seed)
     torch.manual_seed(config.seed)
+    os.environ["PYTHONHASHSEED"] = str(config.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed(config.seed)
         torch.cuda.manual_seed_all(config.seed)
@@ -241,6 +248,8 @@ def main():
     # Load dataset
     logger.info("Loading dataset...")
     train_dataset = load_training_dataset(config, processor)
+    if config.use_python_list_dataset:
+        train_dataset = [train_dataset[i] for i in range(len(train_dataset))]
     logger.info(f"Loaded {len(train_dataset)} training samples")
 
     # Get trainer class

@@ -147,7 +147,7 @@ class BaseTrainer(ABC):
 
         # Filter kwargs to those supported by the installed TRL version
         allowed = set(inspect.signature(GRPOConfig).parameters.keys())
-        filtered_kwargs = {k: v for k, v in config_kwargs.items() if k in allowed}
+        filtered_kwargs = {k: v for k, v in config_kwargs.items() if k in allowed and v is not None}
 
         grpo_config = GRPOConfig(**filtered_kwargs)
 
