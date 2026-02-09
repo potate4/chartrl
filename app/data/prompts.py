@@ -1,7 +1,7 @@
 """Prompt templates for HCPC-RLVR training and evaluation."""
 
 # System prompt that defines the output format (Chart-RVR)
-SYSTEM_PROMPT = """
+SYSTEM_PROMPT = r"""
         You are a vision-language assistant. You are given a chart image and a query about the chart. 
         Think step-by-step about how to answer the query based on the chart image and then provide the final answer.
 
