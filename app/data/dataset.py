@@ -192,20 +192,11 @@ def load_training_dataset(
             "reasonings": [_normalize_text(_get_first(example, ["reasoning", "rationale", "explanation"]))],
         }
 
-    # If using python list dataset (legacy behavior), avoid Arrow serialization
-    if getattr(config, "use_python_list_dataset", False):
-        formatted = []
-        for ex in dataset:
-            formatted.append(format_example(ex))
-        return formatted
-
-    dataset = dataset.map(
-        format_example,
-        remove_columns=dataset.column_names,
-        desc="Formatting training data",
-    )
-
-    return dataset
+    # Match legacy behavior: always build a Python list (avoid Arrow serialization)
+    formatted = []
+    for ex in dataset:
+        formatted.append(format_example(ex))
+    return formatted
 
 
 def load_eval_dataset(
