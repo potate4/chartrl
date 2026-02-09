@@ -249,7 +249,7 @@ def main():
     # Load dataset
     logger.info("Loading dataset...")
     train_dataset = load_training_dataset(config, processor)
-    if config.use_python_list_dataset:
+    if config.use_python_list_dataset and not isinstance(train_dataset, list):
         train_dataset = [train_dataset[i] for i in range(len(train_dataset))]
     logger.info(f"Loaded {len(train_dataset)} training samples")
 

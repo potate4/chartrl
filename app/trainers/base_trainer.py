@@ -260,16 +260,22 @@ class BaseTrainer(ABC):
                 if isinstance(reasonings, list) and i < len(reasonings):
                     gt_reasoning = str(_first_scalar(reasonings[i], ""))
 
+                # Build a readable multi-line block per rollout
+                reward_block = ""
+                if rewards_breakdown and i < len(rewards_breakdown):
+                    rb = rewards_breakdown[i]
+                    reward_kv = ", ".join(f"{k}={rb.get(k):.4f}" for k in rb.keys())
+                    reward_block = f"\nrewards: {reward_kv}"
+
                 msg = (
-                    f"[completion_log step={self._completion_log_step} idx={i}] "
-                    f"raw_type={type(raw).__name__} raw={raw_preview} | "
-                    f"prompt={_truncate(prompt_preview)} | "
-                    f"gt_label={_truncate(gt_label)} | "
-                    f"gt_chart_type={_truncate(gt_chart_type)} | "
-                    f"gt_table={_truncate(gt_table)} | "
-                    f"gt_reasoning={_truncate(gt_reasoning)} | "
-                    f"completion={_truncate(norm)}"
-                    f"{reward_info}"
+                    f"[completion_log step={self._completion_log_step} idx={i}]\n"
+                    f"prompt: {_truncate(prompt_preview)}\n"
+                    f"gt_label: {_truncate(gt_label)}\n"
+                    f"gt_chart_type: {_truncate(gt_chart_type)}\n"
+                    f"gt_table: {_truncate(gt_table)}\n"
+                    f"gt_reasoning: {_truncate(gt_reasoning)}\n"
+                    f"completion: {_truncate(norm)}"
+                    f"{reward_block}"
                 )
                 self.logger.info(msg)
 

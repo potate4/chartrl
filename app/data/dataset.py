@@ -142,7 +142,7 @@ def _get_first(example: Dict[str, Any], keys: List[str]):
 def load_training_dataset(
     config,
     processor=None,
-) -> Dataset:
+):
     """
     Load training dataset formatted for GRPO training.
 
@@ -191,6 +191,13 @@ def load_training_dataset(
             "reasoning": _normalize_text(_get_first(example, ["reasoning", "rationale", "explanation"])),
             "reasonings": [_normalize_text(_get_first(example, ["reasoning", "rationale", "explanation"]))],
         }
+
+    # If using python list dataset (legacy behavior), avoid Arrow serialization
+    if getattr(config, "use_python_list_dataset", False):
+        formatted = []
+        for ex in dataset:
+            formatted.append(format_example(ex))
+        return formatted
 
     dataset = dataset.map(
         format_example,
