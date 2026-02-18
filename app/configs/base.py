@@ -125,7 +125,7 @@ class TrainingConfig:
 
     # TRL / dataset compatibility
     remove_unused_columns: bool = False
-    apply_advantages_in_reward_fn: bool = True
+    apply_advantages_in_reward_fn: bool = False
     use_python_list_dataset: bool = False
     save_total_limit: int = 3
 
