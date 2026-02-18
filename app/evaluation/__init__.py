@@ -6,6 +6,7 @@ from .diversity_metrics import (
     compute_reasoning_diversity,
     compute_coherence,
     compute_diversity_metrics,
+    compute_ood_gap,
 )
 from .evaluator import Evaluator, evaluate_model
 
@@ -17,6 +18,7 @@ __all__ = [
     "compute_reasoning_diversity",
     "compute_coherence",
     "compute_diversity_metrics",
+    "compute_ood_gap",
     "Evaluator",
     "evaluate_model",
 ]

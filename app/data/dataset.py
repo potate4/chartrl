@@ -225,17 +225,27 @@ def load_eval_dataset(
     """
     dataset_map = {
         "chartqa": "HuggingFaceM4/ChartQA",
-        "evochart": "lmms-lab/EvoChart",
         "chartqapro": "charxiv/ChartQAPro",
     }
 
-    hf_name = dataset_map.get(dataset_name.lower(), dataset_name)
-
-    dataset = load_dataset(
-        hf_name,
-        split=split,
-        cache_dir=cache_dir,
-    )
+    name = dataset_name.lower()
+    if "evochart" in name:
+        # EvoChart-QA benchmark (single train split)
+        if cache_dir and Path(cache_dir, "evochart_dataset").exists():
+            dataset = Dataset.load_from_disk(str(Path(cache_dir, "evochart_dataset")))
+        else:
+            dataset = load_dataset("MuyeHuang/EvoChart-QA-Benchmark", cache_dir=cache_dir)
+            if cache_dir:
+                Path(cache_dir).mkdir(parents=True, exist_ok=True)
+                dataset.save_to_disk(str(Path(cache_dir, "evochart_dataset")))
+        dataset = dataset["train"]
+    else:
+        hf_name = dataset_map.get(name, dataset_name)
+        dataset = load_dataset(
+            hf_name,
+            split=split,
+            cache_dir=cache_dir,
+        )
 
     if subset_size:
         dataset = dataset.select(range(min(subset_size, len(dataset))))
