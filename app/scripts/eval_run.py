@@ -19,6 +19,9 @@ Usage:
     # Custom generation settings
     python scripts/eval_run.py --dataset chartqa --subset 100 \
       --checkpoint path/to/ckpt --num-samples 4 --temperature 0.7
+
+    # Resume a crashed run (picks up where it left off)
+    python scripts/eval_run.py --resume outputs/eval_results/base_chartqa_20260219_143201
 """
 
 import argparse
@@ -65,7 +68,7 @@ def parse_args():
                    default="Qwen/Qwen2.5-VL-3B-Instruct",
                    help="Base model name (default: Qwen2.5-VL-3B)")
     # Dataset
-    p.add_argument("--dataset", "-d", type=str, required=True,
+    p.add_argument("--dataset", "-d", type=str, default=None,
                    help="Dataset: chartqa, evochart, chartqapro, or HF path")
     p.add_argument("--split", type=str, default="test",
                    help="Dataset split (default: test)")
@@ -84,6 +87,10 @@ def parse_args():
                    help="Root dir for result folders")
     p.add_argument("--run-name", type=str, default=None,
                    help="Run label (auto-generated if omitted)")
+
+    # Resume
+    p.add_argument("--resume", type=str, default=None,
+                   help="Path to existing run dir to resume (reads per_sample.jsonl)")
 
     # Misc
     p.add_argument("--cache-dir", type=str, default="./cache")
@@ -163,12 +170,60 @@ def generate_responses(model, processor, image, question, args):
 # Main eval loop
 # ---------------------------------------------------------------------------
 
+def _load_resumed_state(run_dir):
+    """Load previous results from a crashed run's per_sample.jsonl."""
+    per_sample_path = Path(run_dir) / "per_sample.jsonl"
+    if not per_sample_path.exists():
+        return 0, [], []
+
+    records = []
+    with open(per_sample_path) as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                records.append(json.loads(line))
+
+    return len(records), records, [r["idx"] for r in records]
+
+
 def run_eval(args):
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # --- Resume mode: load config from previous run ---
+    resuming = False
+    skip_indices = set()
+    prev_records = []
+
+    if args.resume:
+        resume_dir = Path(args.resume)
+        if not resume_dir.exists():
+            print(f"Resume dir not found: {resume_dir}")
+            sys.exit(1)
+
+        # Load previous config to fill in missing args
+        prev_config_path = resume_dir / "config.json"
+        if prev_config_path.exists():
+            with open(prev_config_path) as f:
+                prev_config = json.load(f)
+            # Override args from previous run (dataset, checkpoint, etc.)
+            for key in ["dataset", "checkpoint", "base_model", "split", "subset",
+                        "num_samples", "temperature", "top_p", "max_new_tokens",
+                        "cache_dir", "seed"]:
+                if key in prev_config and getattr(args, key.replace("-", "_"), None) is None:
+                    setattr(args, key.replace("-", "_"), prev_config[key])
+
+        num_done, prev_records, done_indices = _load_resumed_state(resume_dir)
+        skip_indices = set(done_indices)
+        resuming = True
+        run_dir = resume_dir
+        run_name = resume_dir.name
+        stamp = prev_config.get("timestamp", datetime.now().strftime("%Y%m%d_%H%M%S"))
+    else:
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        model_tag = Path(args.checkpoint).name if args.checkpoint else "base"
+        run_name = args.run_name or f"{model_tag}_{args.dataset}_{stamp}"
+        run_dir = Path(args.output_dir) / run_name
+        run_dir.mkdir(parents=True, exist_ok=True)
+
     model_tag = Path(args.checkpoint).name if args.checkpoint else "base"
-    run_name = args.run_name or f"{model_tag}_{args.dataset}_{stamp}"
-    run_dir = Path(args.output_dir) / run_name
-    run_dir.mkdir(parents=True, exist_ok=True)
 
     # Set up logging to both console and file
     log_path = run_dir / "eval.log"
@@ -179,19 +234,23 @@ def run_eval(args):
     ch = logging.StreamHandler(sys.stdout)
     ch.setFormatter(fmt)
     logger.addHandler(ch)
-    fh = logging.FileHandler(str(log_path))
+    fh = logging.FileHandler(str(log_path), mode="a" if resuming else "w")
     fh.setFormatter(fmt)
     logger.addHandler(fh)
 
-    # Save config
-    config = vars(args).copy()
-    config["run_name"] = run_name
-    config["timestamp"] = stamp
-    with open(run_dir / "config.json", "w") as f:
-        json.dump(config, f, indent=2)
+    # Save config (only on fresh run)
+    if not resuming:
+        config = vars(args).copy()
+        config["run_name"] = run_name
+        config["timestamp"] = stamp
+        with open(run_dir / "config.json", "w") as f:
+            json.dump(config, f, indent=2)
 
     logger.info("=" * 60)
-    logger.info("HCPC-RLVR Evaluation")
+    if resuming:
+        logger.info(f"RESUMING evaluation ({len(skip_indices)} samples already done)")
+    else:
+        logger.info("HCPC-RLVR Evaluation")
     logger.info("=" * 60)
     logger.info(f"Model:      {model_tag}")
     logger.info(f"Base:       {args.base_model}")
@@ -216,11 +275,11 @@ def run_eval(args):
     )
     logger.info(f"Dataset loaded: {len(dataset)} samples")
 
-    # Per-sample log file
+    # Per-sample log file (append if resuming)
     per_sample_path = run_dir / "per_sample.jsonl"
-    psf = open(per_sample_path, "w")
+    psf = open(per_sample_path, "a" if resuming else "w")
 
-    # Accumulators
+    # Accumulators — reload from previous records if resuming
     total_correct = 0
     total_done = 0
     all_correct_flags = []  # for Pass@k: list of list[bool]
@@ -230,9 +289,29 @@ def run_eval(args):
     all_correct_rate = []
     all_format_ok = 0
     all_times = []
+
+    if resuming:
+        for rec in prev_records:
+            total_done += 1
+            total_correct += int(rec.get("relaxed_accuracy", False))
+            all_correct_flags.append(rec.get("correct", []))
+            div = rec.get("diversity", {})
+            all_c_table.append(div.get("c_table", 0.0))
+            all_d_reason.append(div.get("d_reason", 0.0))
+            all_coherence.append(div.get("coherence", 0.0))
+            all_correct_rate.append(div.get("correct_rate", 0.0))
+            fmt_ok = rec.get("format_compliance", {}).get("fully_compliant", False)
+            all_format_ok += int(fmt_ok)
+            all_times.append(rec.get("time_seconds", 0.0))
+        logger.info(f"Restored {total_done} previous results (Acc so far: {total_correct/total_done:.3f})")
+
     total_start = time.time()
+    remaining = len(dataset) - len(skip_indices)
+    logger.info(f"Samples remaining: {remaining}")
 
     for idx in range(len(dataset)):
+        if idx in skip_indices:
+            continue
         sample_start = time.time()
         example = dataset[idx]
 
@@ -328,7 +407,8 @@ def run_eval(args):
         psf.flush()
 
     psf.close()
-    total_time = time.time() - total_start
+    session_time = time.time() - total_start
+    total_time = sum(all_times)  # actual inference time across all sessions
 
     # Aggregate metrics
     accuracy = total_correct / total_done if total_done else 0.0
@@ -359,6 +439,7 @@ def run_eval(args):
         "avg_time_per_sample": round(avg(all_times), 2),
         "total_time_seconds": round(total_time, 1),
         "total_time_human": _format_time(total_time),
+        "session_time_seconds": round(session_time, 1),
         "num_samples_evaluated": total_done,
         "timestamp": stamp,
     }
@@ -403,5 +484,8 @@ def _format_time(seconds: float) -> str:
 
 if __name__ == "__main__":
     args = parse_args()
+    if not args.resume and not args.dataset:
+        print("Error: --dataset is required (unless using --resume)")
+        sys.exit(1)
     torch.manual_seed(args.seed)
     run_eval(args)

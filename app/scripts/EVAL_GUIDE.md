@@ -49,7 +49,7 @@ Any directory containing `adapter_config.json` + `adapter_model.safetensors` wor
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--dataset`, `-d` | **required** | `chartqa`, `evochart`, `chartqapro`, or any HF dataset path |
+| `--dataset`, `-d` | **required**\* | `chartqa`, `evochart`, `chartqapro`, or any HF dataset path |
 | `--checkpoint`, `-c` | `None` | Path to LoRA checkpoint dir. Omit = base model |
 | `--base-model` | `Qwen/Qwen2.5-VL-3B-Instruct` | Base model HF name |
 | `--split` | `test` | Dataset split |
@@ -60,8 +60,11 @@ Any directory containing `adapter_config.json` + `adapter_model.safetensors` wor
 | `--max-new-tokens` | `768` | Max generation length |
 | `--output-dir` | `outputs/eval_results` | Root folder for results |
 | `--run-name` | auto-generated | Custom label for this run |
+| `--resume` | `None` | Path to a crashed run dir to resume from |
 | `--cache-dir` | `./cache` | HF cache dir |
 | `--seed` | `42` | Random seed |
+
+\* `--dataset` is not required when using `--resume` (it reads from the previous run's config).
 
 ---
 
@@ -191,11 +194,47 @@ Then compare the 4 `summary.json` files side by side. Later when you train `grpo
 - **Quick sanity check**: `--subset 5 --num-samples 2` to verify everything works before a full run
 - **Custom run names**: use `--run-name` to keep results organized (`base_chartqa`, `grpo70_chartqa`, `hcpc70_chartqa`)
 - **Fewer rollouts = faster**: `--num-samples 1` skips diversity/Pass@k but gives you accuracy in 1/8 the time
-- **Resume after crash**: not built-in, but `per_sample.jsonl` is flushed after each sample so you can see exactly where it stopped
+- **Resume after crash**: use `--resume outputs/eval_results/<run_name>` to pick up where it left off (see below)
 
 ---
 
-## 9. Metrics Glossary
+## 9. Resuming a Crashed Run
+
+If your PC crashes or the script gets killed mid-run, you don't lose progress. Every sample is flushed to `per_sample.jsonl` immediately, so all completed samples are saved.
+
+To resume:
+
+```bash
+python scripts/eval_run.py --resume outputs/eval_results/base_chartqa_20260219_143201
+```
+
+That's it — no other flags needed. It will:
+
+1. Read `config.json` from the previous run to restore all settings (dataset, checkpoint, temperature, etc.)
+2. Read `per_sample.jsonl` to find which samples are already done
+3. Load the model and dataset
+4. Skip completed samples, continue from where it left off
+5. Append new results to the same `per_sample.jsonl`
+6. Rewrite `summary.json` at the end with combined metrics
+
+Example output when resuming:
+
+```
+15:20:01 | ============================================================
+15:20:01 | RESUMING evaluation (409 samples already done)
+15:20:01 | ============================================================
+15:20:01 | Model:      checkpoint-70
+15:20:01 | Dataset:    chartqa (split=test)
+15:20:18 | Model loaded in 17.1s
+15:20:20 | Restored 409 previous results (Acc so far: 0.682)
+15:20:20 | Samples remaining: 91
+15:20:32 | [410/500] Q: "What is the value..." | Label: 42 | Pred: 42 | OK | Acc: 0.683 (11.8s)
+...
+```
+
+---
+
+## 10. Metrics Glossary
 
 | Metric | What it measures |
 |--------|-----------------|
