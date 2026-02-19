@@ -9,6 +9,7 @@ from typing import Dict, Any, Optional, List
 import torch
 import torch.nn.functional as F
 from sentence_transformers import SentenceTransformer
+from utils.parsing import normalize_answer, try_parse_numeric
 
 
 _TEXT_REWARD_MODEL = None
@@ -90,17 +91,25 @@ def accuracy_reward(completion: str, label: str) -> float:
         return 0.0
 
     try:
-        sol = float(label) + 1e-6
-        pred_val = float(pred)
-        rel_error = float(abs(pred_val - sol) / sol)
-        k = 10.0
-        return float(max(0.0, min(1.0, math.exp(-k * rel_error))))
+        sol = try_parse_numeric(str(label))
+        pred_val = try_parse_numeric(str(pred))
+        if sol is not None and pred_val is not None:
+            sol = sol + 1e-6
+            rel_error = float(abs(pred_val - sol) / abs(sol))
+            k = 10.0
+            return float(max(0.0, min(1.0, math.exp(-k * rel_error))))
     except Exception:
-        try:
-            ratio = difflib.SequenceMatcher(None, str(label).lower(), str(pred).lower()).ratio()
-            return float(ratio)
-        except Exception:
-            return 0.0
+        pass
+
+    try:
+        norm_label = normalize_answer(str(label))
+        norm_pred = normalize_answer(str(pred))
+        if norm_label and norm_pred and (norm_label in norm_pred or norm_pred in norm_label):
+            return 1.0
+        ratio = difflib.SequenceMatcher(None, norm_label, norm_pred).ratio()
+        return float(ratio)
+    except Exception:
+        return 0.0
 
 def length_reward(completion: str) -> float:
     if not completion:

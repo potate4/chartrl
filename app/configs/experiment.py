@@ -9,6 +9,7 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
     return RewardConfig(
         use_hcpc=use_hcpc,
         use_clc=False,  # CLC disabled for now
+        use_process_reward=not use_hcpc,
         # Keep other defaults
         w_type=1.0,
         w_table=2.0,

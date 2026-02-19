@@ -220,6 +220,21 @@ def normalize_answer(answer: str) -> str:
     # Strip and lowercase
     normalized = answer.strip().lower()
 
+    # Drop common lead-in phrases
+    normalized = re.sub(
+        r"^(the\s+answer\s+is|answer\s+is|it\s+is|it's|approximately|about)\s+",
+        "",
+        normalized,
+    )
+
+    # Normalize british/american spelling variants
+    normalized = normalized.replace("grey", "gray")
+
+    # Remove currency words/symbols and commas
+    normalized = normalized.replace(",", "")
+    normalized = re.sub(r"\b(usd|dollar|dollars)\b", "", normalized)
+    normalized = normalized.replace("$", "").strip()
+
     # Remove trailing punctuation
     normalized = re.sub(r"[.,;:!?]+$", "", normalized)
 
@@ -227,6 +242,57 @@ def normalize_answer(answer: str) -> str:
     normalized = " ".join(normalized.split())
 
     return normalized
+
+
+def _parse_numeric_with_units(text: str) -> Optional[float]:
+    """
+    Parse a numeric value with optional magnitude suffixes/words.
+
+    Examples:
+        "42 million" -> 42000000
+        "$42m" -> 42000000
+        "3.5 billion" -> 3500000000
+        "12%" -> 0.12
+    """
+    if not text:
+        return None
+
+    cleaned = text.strip().lower()
+    cleaned = cleaned.replace(",", "")
+    cleaned = cleaned.replace("$", "")
+
+    # Handle percent word
+    cleaned = cleaned.replace("percent", "%")
+
+    pattern = re.compile(
+        r"(-?\d+(?:\.\d+)?)\s*(%|k|m|b|t|thousand|million|billion|trillion)?"
+    )
+
+    match = pattern.search(cleaned)
+    if not match:
+        return None
+
+    number = float(match.group(1))
+    suffix = match.group(2)
+
+    if suffix == "%":
+        return number / 100.0
+
+    multipliers = {
+        "k": 1e3,
+        "thousand": 1e3,
+        "m": 1e6,
+        "million": 1e6,
+        "b": 1e9,
+        "billion": 1e9,
+        "t": 1e12,
+        "trillion": 1e12,
+    }
+
+    if suffix in multipliers:
+        return number * multipliers[suffix]
+
+    return number
 
 
 def try_parse_numeric(value: str) -> Optional[float]:
@@ -241,6 +307,11 @@ def try_parse_numeric(value: str) -> Optional[float]:
     """
     if not value:
         return None
+
+    # First try parsing with unit suffixes/words
+    parsed = _parse_numeric_with_units(value)
+    if parsed is not None:
+        return parsed
 
     # Clean the string
     cleaned = value.strip()

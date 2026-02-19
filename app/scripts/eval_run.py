@@ -198,17 +198,18 @@ def run_eval(args):
             print(f"Resume dir not found: {resume_dir}")
             sys.exit(1)
 
-        # Load previous config to fill in missing args
+        # Load previous config — always use previous run's settings on resume
         prev_config_path = resume_dir / "config.json"
-        if prev_config_path.exists():
-            with open(prev_config_path) as f:
-                prev_config = json.load(f)
-            # Override args from previous run (dataset, checkpoint, etc.)
-            for key in ["dataset", "checkpoint", "base_model", "split", "subset",
-                        "num_samples", "temperature", "top_p", "max_new_tokens",
-                        "cache_dir", "seed"]:
-                if key in prev_config and getattr(args, key.replace("-", "_"), None) is None:
-                    setattr(args, key.replace("-", "_"), prev_config[key])
+        if not prev_config_path.exists():
+            print(f"No config.json found in {resume_dir}")
+            sys.exit(1)
+        with open(prev_config_path) as f:
+            prev_config = json.load(f)
+        for key in ["dataset", "checkpoint", "base_model", "split", "subset",
+                    "num_samples", "temperature", "top_p", "max_new_tokens",
+                    "cache_dir", "seed"]:
+            if key in prev_config:
+                setattr(args, key.replace("-", "_"), prev_config[key])
 
         num_done, prev_records, done_indices = _load_resumed_state(resume_dir)
         skip_indices = set(done_indices)

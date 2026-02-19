@@ -197,8 +197,14 @@ class HCPCComputer:
                 return abs(pred_num - label_num) / abs(label_num) <= self.answer_tolerance
             return abs(pred_num - label_num) <= self.answer_tolerance
 
-        # String comparison
-        return normalize_answer(pred) == normalize_answer(label)
+        # String comparison (allow containment for sentence-style answers)
+        pred_norm = normalize_answer(pred)
+        label_norm = normalize_answer(label)
+        if not pred_norm or not label_norm:
+            return False
+        if pred_norm == label_norm:
+            return True
+        return pred_norm in label_norm or label_norm in pred_norm
 
     def _compute_type_consistency(self, rollouts: List[Dict]) -> float:
         """
