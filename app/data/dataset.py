@@ -230,19 +230,14 @@ def load_eval_dataset(
 
     name = dataset_name.lower()
     if "evochart" in name:
-        # EvoChart-QA benchmark (single train split)
-        if cache_dir and Path(cache_dir, "evochart_dataset").exists():
-            dataset = load_from_disk(str(Path(cache_dir, "evochart_dataset")))
+        clean_path = Path(cache_dir, "evochart_dataset_clean")
+        if clean_path.exists():
+            dataset = load_from_disk(str(clean_path))
         else:
-            dataset = load_dataset(
-                "gsarch/EvoChart-QA",
-                cache_dir=cache_dir,
-            )
-            if cache_dir:
-                Path(cache_dir).mkdir(parents=True, exist_ok=True)
-                dataset.save_to_disk(str(Path(cache_dir, "evochart_dataset")))
+            dataset = load_dataset("gsarch/EvoChart-QA", cache_dir=cache_dir)
         if isinstance(dataset, DatasetDict):
             dataset = dataset["train"]
+
     else:
         hf_name = dataset_map.get(name, dataset_name)
         dataset = load_dataset(
