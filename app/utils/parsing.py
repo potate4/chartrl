@@ -278,19 +278,10 @@ def _parse_numeric_with_units(text: str) -> Optional[float]:
     if suffix == "%":
         return number
 
-    multipliers = {
-        "k": 1e3,
-        "thousand": 1e3,
-        "m": 1e6,
-        "million": 1e6,
-        "b": 1e9,
-        "billion": 1e9,
-        "t": 1e12,
-        "trillion": 1e12,
-    }
-
-    if suffix in multipliers:
-        return number * multipliers[suffix]
+    # Treat magnitude suffixes/words as cosmetic by default
+    # (e.g., "1.5 billion" -> 1.5)
+    if suffix in {"k", "m", "b", "t", "thousand", "million", "billion", "trillion"}:
+        return number
 
     return number
 
