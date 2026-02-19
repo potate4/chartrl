@@ -6,6 +6,26 @@ import re
 from utils.parsing import normalize_answer, try_parse_numeric
 
 
+def _normalize_numeric_prediction(prediction: str, label: str) -> str:
+    """
+    Normalize prediction string for numeric comparison.
+
+    Strips currency symbols and thousand separators. Strips percent signs only
+    when the label is not expressed as a percent.
+    """
+    if not prediction:
+        return prediction
+
+    pred = prediction.replace(",", "").replace("$", "")
+
+    # If label doesn't look like a percent, strip percent signs in prediction
+    label_str = str(label or "")
+    if "%" not in label_str:
+        pred = pred.replace("%", "")
+
+    return pred
+
+
 def exact_match(prediction: str, label: str) -> bool:
     """
     Check for exact string match after normalization.
@@ -42,10 +62,16 @@ def relaxed_accuracy(
         True if match, False otherwise
     """
     # Try numeric comparison first
-    pred_num = try_parse_numeric(prediction)
     label_num = try_parse_numeric(label)
+    if label_num is not None:
+        prediction = _normalize_numeric_prediction(prediction, label)
+    pred_num = try_parse_numeric(prediction)
 
     if pred_num is not None and label_num is not None:
+        # If the label is a plain integer (e.g., years), require exact match
+        label_str = str(label).strip()
+        if re.fullmatch(r"-?\d+", label_str):
+            return pred_num == label_num
         if label_num != 0:
             rel_error = abs(pred_num - label_num) / abs(label_num)
             return rel_error <= tolerance
