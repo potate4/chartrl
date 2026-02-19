@@ -36,8 +36,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import torch
-from datasets import Dataset, Image as HFImage
-from PIL import UnidentifiedImageError
+from datasets import Dataset
 
 from data.dataset import load_eval_dataset
 from data.prompts import format_conversation
@@ -275,9 +274,6 @@ def run_eval(args):
         args.dataset, split=args.split,
         cache_dir=args.cache_dir, subset_size=args.subset,
     )
-    # Avoid crashing on corrupted images by disabling auto-decode
-    if "image" in dataset.column_names:
-        dataset = dataset.cast_column("image", HFImage(decode=False))
     logger.info(f"Dataset loaded: {len(dataset)} samples")
 
     # Per-sample log file (append if resuming)
@@ -318,23 +314,10 @@ def run_eval(args):
         if idx in skip_indices:
             continue
         sample_start = time.time()
-        try:
-            example = dataset[idx]
-        except (UnidentifiedImageError, OSError, ValueError) as e:
-            logger.info(f"[{idx}] Skipping example due to image decode error: {e}")
-            continue
+        example = dataset[idx]
 
         # Extract fields (handle multiple possible column names)
         image = example.get("image")
-        # Decode image if it's in deferred format
-        if isinstance(image, dict) and "bytes" in image:
-            try:
-                from PIL import Image
-                import io
-                image = Image.open(io.BytesIO(image["bytes"])).convert("RGB")
-            except Exception as e:
-                logger.info(f"[{idx}] Skipping example due to image bytes decode error: {e}")
-                continue
         question = example.get("query") or example.get("question") or ""
         label = example.get("label") or example.get("answer") or ""
         chart_type = example.get("chart_type", "")
