@@ -235,13 +235,18 @@ def load_eval_dataset(
             dataset = Dataset.load_from_disk(str(Path(cache_dir, "evochart_dataset")))
         else:
             try:
-                dataset = load_dataset("MuyeHuang/EvoChart-QA-Benchmark", cache_dir=cache_dir)
+                dataset = load_dataset(
+                    "MuyeHuang/EvoChart-QA-Benchmark",
+                    cache_dir=cache_dir,
+                    verification_mode="no_checks",
+                )
             except Exception:
                 # Work around occasional split-metadata mismatch by forcing re-download
                 dataset = load_dataset(
                     "MuyeHuang/EvoChart-QA-Benchmark",
                     cache_dir=cache_dir,
                     download_mode="force_redownload",
+                    verification_mode="no_checks",
                 )
             if cache_dir:
                 Path(cache_dir).mkdir(parents=True, exist_ok=True)
