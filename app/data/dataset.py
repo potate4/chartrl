@@ -4,7 +4,7 @@ from typing import Optional, Dict, List, Any, Callable
 from pathlib import Path
 import json
 
-from datasets import load_dataset, Dataset
+from datasets import load_dataset, Dataset, DatasetDict, load_from_disk
 from torch.utils.data import DataLoader
 from PIL import Image
 
@@ -232,7 +232,7 @@ def load_eval_dataset(
     if "evochart" in name:
         # EvoChart-QA benchmark (single train split)
         if cache_dir and Path(cache_dir, "evochart_dataset").exists():
-            dataset = Dataset.load_from_disk(str(Path(cache_dir, "evochart_dataset")))
+            dataset = load_from_disk(str(Path(cache_dir, "evochart_dataset")))
         else:
             try:
                 dataset = load_dataset(
@@ -251,7 +251,8 @@ def load_eval_dataset(
             if cache_dir:
                 Path(cache_dir).mkdir(parents=True, exist_ok=True)
                 dataset.save_to_disk(str(Path(cache_dir, "evochart_dataset")))
-        dataset = dataset["train"]
+        if isinstance(dataset, DatasetDict):
+            dataset = dataset["train"]
     else:
         hf_name = dataset_map.get(name, dataset_name)
         dataset = load_dataset(
