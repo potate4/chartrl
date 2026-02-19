@@ -253,3 +253,6 @@ list_experiments()
   --id-dataset chartqa \
   --ood-dataset evochart \
   --num-samples 4
+
+
+  python scripts/eval_run.py --dataset evochart --subset 500 --num-samples 4

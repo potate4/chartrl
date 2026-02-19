@@ -153,6 +153,8 @@ class RewardAggregator:
                     "hcpc_c_table": hcpc_result.c_table,
                     "hcpc_d_reason": hcpc_result.d_reason,
                     "hcpc_correct_rate": hcpc_result.correct_rate,
+                    "hcpc_num_correct": float(hcpc_result.num_correct),
+                    "hcpc_num_rollouts": float(len(rollouts)),
                 })
 
             results.append(AggregatedReward(
