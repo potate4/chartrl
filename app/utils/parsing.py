@@ -276,7 +276,7 @@ def _parse_numeric_with_units(text: str) -> Optional[float]:
     suffix = match.group(2)
 
     if suffix == "%":
-        return number / 100.0
+        return number
 
     multipliers = {
         "k": 1e3,
