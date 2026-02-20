@@ -448,13 +448,33 @@ class BaseTrainer(ABC):
         self.setup()
 
         resume_path = self._get_resume_path()
+        is_trl_ckpt = resume_path and self._is_trl_checkpoint(resume_path)
 
-        # Resume from checkpoint if needed.
-        # If it's a TRL checkpoint, let TRL handle the full resume (model, optimizer,
+        # For TRL checkpoints, let TRL handle the full resume (model, optimizer,
         # scheduler, step). Custom _resume_from_checkpoint is only for our own
-        # CheckpointManager-format checkpoints.
-        if self.config.checkpoint.resume and not (resume_path and self._is_trl_checkpoint(resume_path)):
+        # CheckpointManager-format checkpoints (under checkpoints/step_*).
+        if self.config.checkpoint.resume and not is_trl_ckpt:
             self._resume_from_checkpoint()
+
+        # For TRL checkpoint resume: remove optimizer files to prevent OOM.
+        # TRL loads optimizer state eagerly before the first forward pass,
+        # consuming ~2x model memory. On a fresh start the optimizer is
+        # allocated lazily during backward, so memory peaks are lower.
+        # Removing the file makes TRL skip optimizer restore; it will
+        # reinitialize on first backward just like a fresh run.
+        hidden_optimizer_files = []
+        if is_trl_ckpt:
+            ckpt_dir = Path(resume_path)
+            for fname in ("optimizer.pt", "optimizer.safetensors"):
+                opt_path = ckpt_dir / fname
+                if opt_path.exists():
+                    bak_path = opt_path.with_name(fname + ".bak")
+                    opt_path.rename(bak_path)
+                    hidden_optimizer_files.append((bak_path, opt_path))
+                    self.logger.info(
+                        f"Temporarily moved {fname} to avoid OOM on resume "
+                        f"(optimizer will reinitialize)"
+                    )
 
         self.logger.info("Starting training...")
         self.logger.info(f"Policy method: {self.config.policy_method}")
@@ -467,6 +487,10 @@ class BaseTrainer(ABC):
         except KeyboardInterrupt:
             self.logger.info("Training interrupted by user")
         finally:
+            # Restore optimizer files so checkpoint remains intact
+            for bak_path, orig_path in hidden_optimizer_files:
+                if bak_path.exists():
+                    bak_path.rename(orig_path)
             self._cleanup()
 
         self.logger.info("Training complete")
