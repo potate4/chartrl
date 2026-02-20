@@ -82,13 +82,26 @@ class BaseTrainer(ABC):
         """Set up training components."""
         # Create run directory
         if self.config.checkpoint.resume and not self.config.checkpoint.from_scratch:
-            # Try to resume from latest run
-            latest_run = self.checkpoint_manager.get_latest_run()
-            if latest_run:
-                self.checkpoint_manager.set_run_dir(latest_run)
-                self.logger.info(f"Resuming from run: {latest_run}")
+            if self.config.checkpoint.resume_from:
+                # Specific checkpoint path given — derive run dir from it
+                ckpt_path = Path(self.config.checkpoint.resume_from)
+                # Checkpoint is typically at <run_dir>/trl_output/checkpoint-N
+                # Walk up to find the run dir (parent of trl_output)
+                run_dir = ckpt_path.parent.parent if ckpt_path.parent.name.startswith("trl_output") or "trl_output" in str(ckpt_path.parent) else ckpt_path.parent
+                if run_dir.exists():
+                    self.checkpoint_manager.set_run_dir(run_dir)
+                    self.logger.info(f"Resuming into run dir: {run_dir}")
+                else:
+                    self.logger.warning(f"Could not derive run dir from {ckpt_path}, creating new run")
+                    self._create_new_run()
             else:
-                self._create_new_run()
+                # Try to resume from latest run
+                latest_run = self.checkpoint_manager.get_latest_run()
+                if latest_run:
+                    self.checkpoint_manager.set_run_dir(latest_run)
+                    self.logger.info(f"Resuming from run: {latest_run}")
+                else:
+                    self._create_new_run()
         else:
             self._create_new_run()
 
@@ -470,6 +483,8 @@ class BaseTrainer(ABC):
 
     def _get_resume_path(self) -> Optional[str]:
         """Get path for TRL's resume_from_checkpoint."""
+        if self.config.checkpoint.resume_from:
+            return self.config.checkpoint.resume_from
         if self._resume_step > 0:
             ckpt = self.checkpoint_manager.get_latest_checkpoint()
             if ckpt:

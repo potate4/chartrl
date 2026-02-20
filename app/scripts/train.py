@@ -205,8 +205,9 @@ def main():
         overrides["use_wandb"] = False
 
     # Checkpoint settings
+    # --resume-from implies --resume
     overrides["checkpoint"] = {
-        "resume": args.resume,
+        "resume": args.resume or (args.resume_from is not None),
         "resume_from": args.resume_from,
         "from_scratch": args.from_scratch,
     }
