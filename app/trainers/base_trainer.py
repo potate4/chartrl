@@ -437,12 +437,23 @@ class BaseTrainer(ABC):
         """
         pass
 
+    def _is_trl_checkpoint(self, path: str) -> bool:
+        """Check if a checkpoint path is a TRL/transformers-format checkpoint."""
+        p = Path(path)
+        # TRL checkpoints live under trl_output/ and contain trainer_state.json
+        return p.exists() and "trl_output" in str(p)
+
     def train(self):
         """Run training."""
         self.setup()
 
-        # Resume from checkpoint if needed
-        if self.config.checkpoint.resume:
+        resume_path = self._get_resume_path()
+
+        # Resume from checkpoint if needed.
+        # If it's a TRL checkpoint, let TRL handle the full resume (model, optimizer,
+        # scheduler, step). Custom _resume_from_checkpoint is only for our own
+        # CheckpointManager-format checkpoints.
+        if self.config.checkpoint.resume and not (resume_path and self._is_trl_checkpoint(resume_path)):
             self._resume_from_checkpoint()
 
         self.logger.info("Starting training...")
@@ -452,7 +463,7 @@ class BaseTrainer(ABC):
 
         # Train
         try:
-            self._trl_trainer.train(resume_from_checkpoint=self._get_resume_path())
+            self._trl_trainer.train(resume_from_checkpoint=resume_path)
         except KeyboardInterrupt:
             self.logger.info("Training interrupted by user")
         finally:
