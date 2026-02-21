@@ -160,6 +160,12 @@ def parse_args():
 def main():
     args = parse_args()
 
+    # Disable wandb completely when requested to avoid interactive prompts
+    if args.no_wandb:
+        os.environ["WANDB_DISABLED"] = "true"
+        os.environ["WANDB_MODE"] = "disabled"
+        os.environ["WANDB_SILENT"] = "true"
+
     # Handle information commands
     if args.list_experiments:
         list_experiments()

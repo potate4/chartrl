@@ -160,6 +160,9 @@ class BaseTrainer(ABC):
 
         # Filter kwargs to those supported by the installed TRL version
         allowed = set(inspect.signature(GRPOConfig).parameters.keys())
+        # Ensure Hugging Face reporting does not auto-enable wandb when disabled
+        if "report_to" in allowed:
+            config_kwargs["report_to"] = "wandb" if self.config.use_wandb else "none"
         filtered_kwargs = {k: v for k, v in config_kwargs.items() if k in allowed and v is not None}
 
         grpo_config = GRPOConfig(**filtered_kwargs)
