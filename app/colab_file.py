@@ -239,8 +239,8 @@ list_experiments()
     --num-generations 4
 
 !python scripts/train.py \
-    --experiment grpo_baseline \
-    --subset-size 500 \
+    --experiment grpo_hcpc \
+    --subset-size 1000 \
     --num-epochs 2 \
     --no-wandb \
     --batch-size 2 \
@@ -256,3 +256,24 @@ list_experiments()
 
 
   python scripts/eval_run.py --dataset evochart --subset 500 --num-samples 4
+
+
+  python scripts/train.py \
+    --resume-from /home/cse/Desktop/sumaiya223/chartrl/app/outputs/grpo_hcpc/run_20260219_191830/trl_output/checkpoint-850 \
+    --experiment grpo_hcpc \
+    --subset-size 1000 \
+    --num-epochs 2 \
+    --no-wandb \
+    --batch-size 1 \
+    --num-generations 4 
+
+
+
+    python scripts/train.py \
+    --resume-from /home/cse/Desktop/sumaiya223/chartrl/app/outputs/grpo_hcpc/run_20260219_191830/trl_output/checkpoint-850 \
+    --experiment grpo_hcpc \
+    --subset-size 1000 \
+    --num-epochs 2 \
+    --no-wandb \
+    --batch-size 1 \
+    --num-generations 4 
