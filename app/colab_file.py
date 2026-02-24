@@ -277,3 +277,9 @@ list_experiments()
     --no-wandb \
     --batch-size 1 \
     --num-generations 4 
+
+
+
+python scripts/eval_run.py --dataset chartqa --subset 500 \
+      --checkpoint outputs/grpo_hcpc/run_20260219_191830/trl_output/checkpoint-2000 \
+      --num-samples 4

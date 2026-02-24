@@ -116,7 +116,7 @@ def load_model(args):
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         args.base_model,
         torch_dtype=torch.bfloat16,
-        device_map="auto",
+        device_map="cuda:0",
         trust_remote_code=True,
         cache_dir=args.cache_dir,
     )
@@ -135,30 +135,36 @@ def load_model(args):
 
 @torch.no_grad()
 def generate_responses(model, processor, image, question, args):
-    """Generate num_samples responses for a single question."""
+    """Generate num_samples responses for a single question (batched)."""
     conversation = format_conversation(question)
     text = processor.apply_chat_template(
         conversation, tokenize=False, add_generation_prompt=True,
     )
 
+    # Batch: replicate the same prompt num_samples times
     inputs = processor(
-        text=[text], images=[image], return_tensors="pt", padding=True,
+        text=[text] * args.num_samples,
+        images=[image] * args.num_samples,
+        return_tensors="pt",
+        padding=True,
     )
     # Move to model device
     device = next(model.parameters()).device
     inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
 
+    prompt_len = inputs["input_ids"].shape[1]
+    generated = model.generate(
+        **inputs,
+        max_new_tokens=args.max_new_tokens,
+        temperature=args.temperature,
+        top_p=args.top_p,
+        do_sample=True,
+    )
+
     outputs = []
-    for _ in range(args.num_samples):
-        generated = model.generate(
-            **inputs,
-            max_new_tokens=args.max_new_tokens,
-            temperature=args.temperature,
-            top_p=args.top_p,
-            do_sample=True,
-        )
+    for i in range(generated.shape[0]):
         response = processor.decode(
-            generated[0][inputs["input_ids"].shape[1]:],
+            generated[i][prompt_len:],
             skip_special_tokens=True,
         )
         outputs.append(response)
