@@ -116,16 +116,21 @@ def load_model(args):
     model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
         args.base_model,
         torch_dtype=torch.bfloat16,
-        device_map="cuda:0",
         trust_remote_code=True,
         cache_dir=args.cache_dir,
-    )
+    ).to("cuda")
 
     if args.checkpoint:
         print(f"Loading LoRA adapter: {args.checkpoint}")
         model = PeftModel.from_pretrained(model, args.checkpoint, is_trainable=False)
+        model = model.to("cuda")
 
     model.eval()
+
+    # Verify model is on GPU
+    device = next(model.parameters()).device
+    print(f"Model device: {device}")
+
     return model, processor
 
 
@@ -153,6 +158,9 @@ def generate_responses(model, processor, image, question, args):
                    "video_grid_thw"}
 
     device = next(model.parameters()).device
+    if not hasattr(generate_responses, "_logged_device"):
+        print(f"[generate_responses] Model device: {device}")
+        generate_responses._logged_device = True
     n = args.num_samples
     inputs = {}
     for k, v in single_inputs.items():
