@@ -24,7 +24,7 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
 _SHARED = dict(
     seed=2026,
     learning_rate=1e-5,
-    gradient_accumulation_steps=2,
+    gradient_accumulation_steps=4,
     warmup_ratio=None,
     weight_decay=None,
     kl_coef=None,
