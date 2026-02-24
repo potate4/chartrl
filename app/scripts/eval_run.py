@@ -141,16 +141,33 @@ def generate_responses(model, processor, image, question, args):
         conversation, tokenize=False, add_generation_prompt=True,
     )
 
-    # Batch: replicate the same prompt num_samples times
-    inputs = processor(
-        text=[text] * args.num_samples,
-        images=[image] * args.num_samples,
-        return_tensors="pt",
-        padding=True,
+    # Process image ONCE (expensive CPU op), then replicate text tensors for batch
+    single_inputs = processor(
+        text=[text], images=[image], return_tensors="pt", padding=True,
     )
-    # Move to model device
+
+    # Vision inputs (pixel_values, image_grid_thw) are NOT batch-dim-first in
+    # Qwen2.5-VL — they represent patches/images, so repeat them N times.
+    # Text inputs (input_ids, attention_mask) ARE batch-first, so expand dim 0.
+    vision_keys = {"pixel_values", "image_grid_thw", "pixel_values_videos",
+                   "video_grid_thw"}
+
     device = next(model.parameters()).device
-    inputs = {k: v.to(device) if hasattr(v, "to") else v for k, v in inputs.items()}
+    n = args.num_samples
+    inputs = {}
+    for k, v in single_inputs.items():
+        if not hasattr(v, "to"):
+            inputs[k] = v
+            continue
+        v = v.to(device)
+        if k in vision_keys:
+            # Repeat along dim 0: [P, ...] -> [P*n, ...]
+            inputs[k] = v.repeat(n, *([1] * (v.dim() - 1)))
+        elif v.shape[0] == 1:
+            # Expand batch dim: [1, ...] -> [n, ...]
+            inputs[k] = v.expand(n, *v.shape[1:]).contiguous()
+        else:
+            inputs[k] = v
 
     prompt_len = inputs["input_ids"].shape[1]
     generated = model.generate(
