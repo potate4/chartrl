@@ -156,6 +156,8 @@ class BaseTrainer(ABC):
             "kl_coef": self.config.kl_coef,
             "beta": self.config.beta,
             "remove_unused_columns": self.config.remove_unused_columns,
+            # generation_batch_size must be divisible by num_generations
+            "generation_batch_size": self.config.num_generations,
         }
 
         # Filter kwargs to those supported by the installed TRL version
