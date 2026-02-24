@@ -121,12 +121,12 @@ class RewardAggregator:
             for r in rollouts
         ]
 
-        # Compute HCPC (group-level)
-        hcpc_reward = 0.0
+        # Compute HCPC (per-rollout: only correct rollouts get bonus)
+        hcpc_per_rollout = [0.0] * len(rollouts)
         hcpc_result = None
         if self.use_hcpc:
             hcpc_result = self.hcpc_computer.compute(rollouts, ground_truth)
-            hcpc_reward = hcpc_result.reward
+            hcpc_per_rollout = hcpc_result.per_rollout_rewards
 
         # Compute CLC for each rollout
         clc_results = []
@@ -138,11 +138,12 @@ class RewardAggregator:
 
         # Aggregate
         for i, (base, clc) in enumerate(zip(base_rewards, clc_results)):
-            total = base["total"] + hcpc_reward + clc.reward
+            hcpc_i = hcpc_per_rollout[i]
+            total = base["total"] + hcpc_i + clc.reward
 
             breakdown = {
                 **{f"base_{k}": v for k, v in base.items()},
-                "hcpc": hcpc_reward,
+                "hcpc": hcpc_i,
                 "clc": clc.reward,
                 "clc_coherence": clc.coherence,
             }
@@ -160,7 +161,7 @@ class RewardAggregator:
             results.append(AggregatedReward(
                 total=total,
                 base=base["total"],
-                hcpc=hcpc_reward,
+                hcpc=hcpc_i,
                 clc=clc.reward,
                 breakdown=breakdown,
             ))
