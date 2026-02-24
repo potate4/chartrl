@@ -25,12 +25,13 @@ from utils.similarity import (
 @dataclass
 class HCPCResult:
     """Result of HCPC computation."""
-    reward: float
-    c_type: float          # Type consistency
-    c_table: float         # Table consistency
-    d_reason: float        # Reasoning diversity
-    correct_rate: float    # Fraction of correct rollouts
-    num_correct: int       # Number of correct rollouts
+    reward: float                       # Group-level reward (for logging)
+    per_rollout_rewards: List[float]    # Per-rollout: bonus for correct, 0 for wrong
+    c_type: float                       # Type consistency
+    c_table: float                      # Table consistency
+    d_reason: float                     # Reasoning diversity
+    correct_rate: float                 # Fraction of correct rollouts
+    num_correct: int                    # Number of correct rollouts
     details: Dict[str, Any]
 
 
@@ -92,10 +93,13 @@ class HCPCComputer:
         num_correct = len(correct_rollouts)
         correct_rate = num_correct / len(rollouts) if rollouts else 0.0
 
+        n_rollouts = len(rollouts)
+
         # Need at least 2 correct rollouts for cross-rollout metrics
         if num_correct < 2:
             return HCPCResult(
                 reward=0.0,
+                per_rollout_rewards=[0.0] * n_rollouts,
                 c_type=0.0,
                 c_table=0.0,
                 d_reason=0.0,
@@ -122,8 +126,16 @@ class HCPCComputer:
         )
         reward = correct_rate * weighted_sum
 
+        # Per-rollout: only correct rollouts receive the HCPC bonus
+        correct_set = set(correct_indices)
+        per_rollout_rewards = [
+            reward if i in correct_set else 0.0
+            for i in range(n_rollouts)
+        ]
+
         return HCPCResult(
             reward=reward,
+            per_rollout_rewards=per_rollout_rewards,
             c_type=c_type,
             c_table=c_table,
             d_reason=d_reason,
