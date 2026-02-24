@@ -19,36 +19,43 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
     )
 
 
+# Shared base config for all experiments — only policy_method, lambda_psr,
+# and use_hcpc differ between experiments. This ensures fair comparison.
+_SHARED = dict(
+    seed=2026,
+    learning_rate=1e-5,
+    gradient_accumulation_steps=2,
+    warmup_ratio=None,
+    weight_decay=None,
+    kl_coef=None,
+    temperature=1.0,
+    top_p=1.0,
+    remove_unused_columns=False,
+    apply_advantages_in_reward_fn=False,
+    image_min_pixels=320 * 28 * 28,
+    image_max_pixels=320 * 28 * 28,
+    image_resample="bicubic",
+    lora_target_modules=["q_proj", "v_proj"],
+    torch_dtype_auto=True,
+    attn_implementation=None,
+    use_flash_attention=False,
+    use_python_list_dataset=True,
+    wandb_project="chartrl-nsr",
+    checkpoint=CheckpointConfig(
+        save_every_n_steps=10,
+        keep_last_n=3,
+        keep_best=False,
+    ),
+)
+
+
 # The 6 experiments from the methodology
 EXPERIMENTS: Dict[str, TrainingConfig] = {
     # Experiment 1: GRPO baseline (Chart-RVR reproduction)
     "grpo_baseline": TrainingConfig(
         experiment_name="grpo_baseline",
         policy_method="grpo",
-        seed=2026,
-        learning_rate=1e-5,
-        gradient_accumulation_steps=2,
-        warmup_ratio=None,
-        weight_decay=None,
-        kl_coef=None,
-        temperature=1.0,
-        top_p=1.0,
-        remove_unused_columns=False,
-        apply_advantages_in_reward_fn=False,
-        image_min_pixels=320 * 28 * 28,
-        image_max_pixels=320 * 28 * 28,
-        image_resample="bicubic",
-        lora_target_modules=["q_proj", "v_proj"],
-        torch_dtype_auto=True,
-        attn_implementation=None,
-        use_flash_attention=False,
-        use_python_list_dataset=True,
-        wandb_project="chartrl-nsr",
-        checkpoint=CheckpointConfig(
-            save_every_n_steps=10,
-            keep_last_n=3,
-            keep_best=False,
-        ),
+        **_SHARED,
         rewards=_make_reward_config(use_hcpc=False),
     ),
 
@@ -56,6 +63,7 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
     "grpo_hcpc": TrainingConfig(
         experiment_name="grpo_hcpc",
         policy_method="grpo",
+        **_SHARED,
         rewards=_make_reward_config(use_hcpc=True),
     ),
 
@@ -63,6 +71,7 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
     "nsr_baseline": TrainingConfig(
         experiment_name="nsr_baseline",
         policy_method="nsr",
+        **_SHARED,
         rewards=_make_reward_config(use_hcpc=False),
     ),
 
@@ -70,6 +79,7 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
     "nsr_hcpc": TrainingConfig(
         experiment_name="nsr_hcpc",
         policy_method="nsr",
+        **_SHARED,
         rewards=_make_reward_config(use_hcpc=True),
     ),
 
@@ -78,6 +88,7 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
         experiment_name="w_reinforce_baseline",
         policy_method="w_reinforce",
         lambda_psr=0.1,
+        **_SHARED,
         rewards=_make_reward_config(use_hcpc=False),
     ),
 
@@ -86,6 +97,7 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
         experiment_name="w_reinforce_hcpc",
         policy_method="w_reinforce",
         lambda_psr=0.1,
+        **_SHARED,
         rewards=_make_reward_config(use_hcpc=True),
     ),
 }
