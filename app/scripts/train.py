@@ -127,6 +127,16 @@ def parse_args():
         action="store_true",
         help="Disable WandB logging",
     )
+    parser.add_argument(
+        "--bf16",
+        action="store_true",
+        help="Force bf16 on",
+    )
+    parser.add_argument(
+        "--no-bf16",
+        action="store_true",
+        help="Force bf16 off",
+    )
 
     # Information commands
     parser.add_argument(
@@ -209,6 +219,13 @@ def main():
         overrides["num_generations"] = args.num_generations
     if args.no_wandb:
         overrides["use_wandb"] = False
+    if args.bf16 and args.no_bf16:
+        print("Error: use only one of --bf16 or --no-bf16")
+        return
+    if args.bf16:
+        overrides["bf16"] = True
+    if args.no_bf16:
+        overrides["bf16"] = False
 
     # Checkpoint settings
     # --resume-from implies --resume
