@@ -160,18 +160,12 @@ def _filter_correct_rollouts(
     """Filter to correct rollouts based on ground truth."""
     from utils.parsing import normalize_answer, try_parse_numeric
 
-    gt_type = ground_truth.get("chart_type", "").lower().strip()
     gt_table = ground_truth.get("table", {})
     gt_answer = ground_truth.get("label", "")
 
     correct = []
 
     for rollout in parsed_rollouts:
-        # Check type
-        pred_type = rollout.get("type", "").lower().strip()
-        if gt_type and pred_type != gt_type:
-            continue
-
         # Check table
         pred_table = rollout.get("table", {})
         if gt_table:

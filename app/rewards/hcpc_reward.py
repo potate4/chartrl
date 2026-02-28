@@ -156,9 +156,8 @@ class HCPCComputer:
         Filter to fully correct rollouts.
 
         A rollout is fully correct if:
-        1. Chart type matches ground truth
-        2. Table similarity >= threshold
-        3. Answer matches ground truth
+        1. Table similarity >= threshold
+        2. Answer matches ground truth
 
         Args:
             parsed_rollouts: List of parsed rollout dicts
@@ -167,7 +166,6 @@ class HCPCComputer:
         Returns:
             Tuple of (correct_rollouts, indices)
         """
-        gt_type = ground_truth.get("chart_type", "").lower().strip()
         gt_table = ground_truth.get("table", {})
         gt_answer = ground_truth.get("label", "")
 
@@ -175,11 +173,6 @@ class HCPCComputer:
         correct_indices = []
 
         for i, rollout in enumerate(parsed_rollouts):
-            # Check type
-            pred_type = rollout.get("type", "").lower().strip()
-            if gt_type and pred_type != gt_type:
-                continue
-
             # Check table similarity
             pred_table = rollout.get("table", {})
             if gt_table:
