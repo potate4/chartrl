@@ -231,11 +231,11 @@ list_experiments()
     --no-wandb
 
 !python scripts/train.py \
-    --experiment grpo_hcpc \
-    --subset-size 4 \
-    --num-epochs 1 \
+    --experiment grpo_baseline \
+    --subset-size 1000 \
+    --num-epochs 2 \
     --no-wandb \
-    --batch-size 2 \
+    --batch-size 1 \
     --num-generations 4
 
 !python scripts/train.py \
@@ -277,3 +277,14 @@ list_experiments()
     --no-wandb \
     --batch-size 1 \
     --num-generations 4 
+
+
+
+
+python app/scripts/train.py \
+  --experiment grpo_hcpc \
+  --subset-size 1000 \
+  --num-epochs 2 \
+  --no-wandb \
+  --batch-size 2 \
+  --num-generations 4

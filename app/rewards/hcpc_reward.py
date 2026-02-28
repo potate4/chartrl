@@ -48,7 +48,7 @@ class HCPCComputer:
         w_type: float = 1.0,
         w_table: float = 2.0,
         w_reason: float = 1.5,
-        table_sim_threshold: float = 0.8,
+        table_sim_threshold: float = 0.6,
         answer_tolerance: float = 0.05,
     ):
         """
@@ -283,7 +283,7 @@ def compute_hcpc_reward(
     w_type: float = 1.0,
     w_table: float = 2.0,
     w_reason: float = 1.5,
-    table_sim_threshold: float = 0.8,
+    table_sim_threshold: float = 0.6,
 ) -> float:
     """
     Convenience function to compute HCPC reward.

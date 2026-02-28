@@ -154,7 +154,7 @@ def compute_diversity_metrics(
 def _filter_correct_rollouts(
     parsed_rollouts: List[Dict],
     ground_truth: Dict[str, Any],
-    table_threshold: float = 0.8,
+    table_threshold: float = 0.6,
     answer_tolerance: float = 0.05,
 ) -> List[Dict]:
     """Filter to correct rollouts based on ground truth."""

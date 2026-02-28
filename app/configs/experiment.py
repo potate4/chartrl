@@ -15,7 +15,7 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
         w_table=2.0,
         w_reason=1.5,
         w_clc=1.0,
-        table_sim_threshold=0.8,
+        table_sim_threshold=0.6,
     )
 
 
