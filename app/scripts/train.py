@@ -137,6 +137,16 @@ def parse_args():
         action="store_true",
         help="Force bf16 off",
     )
+    parser.add_argument(
+        "--torch-dtype-auto",
+        action="store_true",
+        help="Force torch_dtype=auto",
+    )
+    parser.add_argument(
+        "--no-torch-dtype-auto",
+        action="store_true",
+        help="Force torch_dtype auto off (use bf16/float32 setting)",
+    )
 
     # Information commands
     parser.add_argument(
@@ -226,6 +236,13 @@ def main():
         overrides["bf16"] = True
     if args.no_bf16:
         overrides["bf16"] = False
+    if args.torch_dtype_auto and args.no_torch_dtype_auto:
+        print("Error: use only one of --torch-dtype-auto or --no-torch-dtype-auto")
+        return
+    if args.torch_dtype_auto:
+        overrides["torch_dtype_auto"] = True
+    if args.no_torch_dtype_auto:
+        overrides["torch_dtype_auto"] = False
 
     # Checkpoint settings
     # --resume-from implies --resume
