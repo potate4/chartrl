@@ -74,6 +74,19 @@ def parse_response(text: str) -> Dict[str, Any]:
     return result
 
 
+def _normalize_table_obj(obj: Any) -> Dict[str, Any]:
+    """Return a canonical table dict or {} for malformed parsed JSON."""
+    if not isinstance(obj, dict):
+        return {}
+
+    columns = obj.get("columns", [])
+    rows = obj.get("rows", [])
+    if not isinstance(columns, list) or not isinstance(rows, list):
+        return {}
+
+    return {"columns": columns, "rows": rows}
+
+
 def parse_json_table(table_str: str) -> Dict[str, Any]:
     """
     Parse JSON table string into dictionary.
@@ -101,7 +114,7 @@ def parse_json_table(table_str: str) -> Dict[str, Any]:
 
     # Try direct parse
     try:
-        return json.loads(table_str)
+        return _normalize_table_obj(json.loads(table_str))
     except json.JSONDecodeError:
         pass
 
@@ -109,7 +122,7 @@ def parse_json_table(table_str: str) -> Dict[str, Any]:
     try:
         # Replace single quotes with double quotes
         fixed = table_str.replace("'", '"')
-        return json.loads(fixed)
+        return _normalize_table_obj(json.loads(fixed))
     except json.JSONDecodeError:
         pass
 
@@ -117,7 +130,7 @@ def parse_json_table(table_str: str) -> Dict[str, Any]:
     try:
         match = re.search(r"\{.*\}", table_str, re.DOTALL)
         if match:
-            return json.loads(match.group())
+            return _normalize_table_obj(json.loads(match.group()))
     except json.JSONDecodeError:
         pass
 

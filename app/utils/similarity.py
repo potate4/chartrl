@@ -111,6 +111,9 @@ def compute_table_similarity(table1: dict, table2: dict) -> float:
     Returns:
         Similarity score in [0, 1]
     """
+    if not isinstance(table1, dict) or not isinstance(table2, dict):
+        return 0.0
+
     if not table1 or not table2:
         return 0.0
 
