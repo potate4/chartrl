@@ -3,6 +3,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+import shutil
 
 import torch
 from trl import GRPOConfig, GRPOTrainer as TRLGRPOTrainer
@@ -78,6 +79,52 @@ class BaseTrainer(ABC):
         self._metrics_window = deque(maxlen=self.config.log_metrics_window)
         self._metrics_step = 0
 
+    def _derive_run_dir_from_checkpoint(self, ckpt_path: Path) -> Path:
+        """Infer the run directory from a TRL checkpoint path."""
+        if ckpt_path.parent.name.startswith("trl_output") or "trl_output" in str(ckpt_path.parent):
+            return ckpt_path.parent.parent
+        return ckpt_path.parent
+
+    def _is_writable_run_dir(self, run_dir: Path) -> bool:
+        """Best-effort check that a run dir can accept new logs/checkpoints."""
+        try:
+            run_dir.mkdir(parents=True, exist_ok=True)
+            probe = run_dir / ".write_test"
+            probe.write_text("ok")
+            probe.unlink()
+            return True
+        except Exception:
+            return False
+
+    def _prepare_resume_run_dir(self, ckpt_path: Path) -> Path:
+        """
+        Ensure the resumed run lives under a writable output directory.
+
+        If the source checkpoint is under a read-only mount such as Kaggle input,
+        copy the entire run folder into outputs/<experiment>/<run_id> and resume
+        from the copied checkpoint.
+        """
+        source_run_dir = self._derive_run_dir_from_checkpoint(ckpt_path)
+        if self._is_writable_run_dir(source_run_dir):
+            return ckpt_path
+
+        target_run_dir = self.checkpoint_manager.get_experiment_dir() / source_run_dir.name
+        if not target_run_dir.exists():
+            self.logger.info(f"Copying read-only run dir to writable location: {target_run_dir}")
+            shutil.copytree(source_run_dir, target_run_dir)
+        else:
+            self.logger.info(f"Using existing writable copy of run dir: {target_run_dir}")
+
+        try:
+            relative_ckpt = ckpt_path.relative_to(source_run_dir)
+        except ValueError:
+            relative_ckpt = Path("trl_output") / ckpt_path.name
+
+        copied_ckpt = target_run_dir / relative_ckpt
+        if not copied_ckpt.exists():
+            raise FileNotFoundError(f"Copied checkpoint not found: {copied_ckpt}")
+        return copied_ckpt
+
     def setup(self):
         """Set up training components."""
         # Create run directory
@@ -85,9 +132,9 @@ class BaseTrainer(ABC):
             if self.config.checkpoint.resume_from:
                 # Specific checkpoint path given — derive run dir from it
                 ckpt_path = Path(self.config.checkpoint.resume_from)
-                # Checkpoint is typically at <run_dir>/trl_output/checkpoint-N
-                # Walk up to find the run dir (parent of trl_output)
-                run_dir = ckpt_path.parent.parent if ckpt_path.parent.name.startswith("trl_output") or "trl_output" in str(ckpt_path.parent) else ckpt_path.parent
+                ckpt_path = self._prepare_resume_run_dir(ckpt_path)
+                self.config.checkpoint.resume_from = str(ckpt_path)
+                run_dir = self._derive_run_dir_from_checkpoint(ckpt_path)
                 if run_dir.exists():
                     self.checkpoint_manager.set_run_dir(run_dir)
                     self.logger.info(f"Resuming into run dir: {run_dir}")
