@@ -140,23 +140,26 @@ def table_style_reward(completions, **kwargs):
             block = tab_struct.replace('\n', '').strip("\n").strip()
 
         # print(block)
+        jj = None  # Initialize to None
         try:
             jj = json.loads(block, parse_int=str, parse_float=str, parse_constant=str)
             reward += 0.5            # parseable JSON
         except:
             print("Failed to parse JSON")
-        
-        try:
-            reward += compare_tables(jj, tab) # custom function to compare tables
-        except Exception as e:
-            print(f"Failed to compare tables: {e}")
 
-   # not parseable JSON
-        try:
-            if set(jj) == {"columns", "rows"}:
-                reward += 0.25            # wrong keys
-        except:
-            print("Set compare fail")
+        # Only compare tables if JSON parsing succeeded
+        if jj is not None:
+            try:
+                reward += compare_tables(jj, tab) # custom function to compare tables
+            except Exception as e:
+                print(f"Failed to compare tables: {e}")
+
+            # Check if JSON has correct keys
+            try:
+                if set(jj) == {"columns", "rows"}:
+                    reward += 0.25            # correct keys
+            except:
+                print("Set compare fail")
         rewards.append(reward)
     print("Table style rewards:", rewards)
     return rewards

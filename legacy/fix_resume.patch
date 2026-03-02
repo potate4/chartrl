@@ -1,0 +1,33 @@
+--- main.py.original
++++ main.py.fixed
+@@ -816,7 +816,31 @@
+         processing_class=processor,
+     )
+
++    # ===================================================================
++    # FIX: Explicitly check for and resume from checkpoints
++    # ===================================================================
++    import glob
++
++    checkpoint_to_resume = None
++
++    if os.path.exists(output_dir):
++        # Find all existing checkpoints
++        checkpoints = sorted(
++            glob.glob(os.path.join(output_dir, "checkpoint-*")),
++            key=lambda x: int(x.split('-')[-1])
++        )
++
++        if checkpoints:
++            checkpoint_to_resume = checkpoints[-1]
++            logging.info("=" * 80)
++            logging.info(f"✓ FOUND EXISTING CHECKPOINT: {checkpoint_to_resume}")
++            logging.info(f"✓ Will resume training from step {checkpoint_to_resume.split('-')[-1]}")
++            logging.info("=" * 80)
++        else:
++            logging.info("No existing checkpoints found. Starting fresh training.")
++
++    # Start or resume training
++    trainer.train(resume_from_checkpoint=checkpoint_to_resume)
+
+-    trainer.train()

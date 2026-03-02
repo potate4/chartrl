@@ -1,0 +1,886 @@
+The Surprising Effectiveness of
+Negative Reinforcement in LLM Reasoning
+Xinyu Zhu1 Mengzhou Xia2 Zhepei Wei1 Wei-Lin Chen1
+Danqi Chen2 Yu Meng1
+1Computer Science Department, University of Virginia
+2Princeton Language and Intelligence (PLI), Princeton University
+{xinyuzhu,zhepei.wei,wlchen,yumeng5}@virginia.edu
+{mengzhou,danqic}@cs.princeton.edu
+Abstract
+Reinforcement learning with verifiable rewards (RLVR) is a promising approach
+for training language models (LMs) on reasoning tasks that elicit emergent long
+chains of thought (CoTs). Unlike supervised learning, it updates the model using both correct and incorrect samples via policy gradients. To better understand its mechanism, we decompose the learning signal into reinforcing correct
+responses and penalizing incorrect ones, referred to as Positive and Negative
+Sample Reinforcement (PSR and NSR), respectively. We train Qwen2.5-Math-7B,
+Qwen3-4B and Llama-3.1-8B-Instruct on a mathematical reasoning dataset
+and uncover a surprising result: training with only negative samples—without
+reinforcing correct responses—can be highly effective: it consistently improves
+performance over the base model across the entire Pass@k spectrum (k up to 256),
+often matching or surpassing PPO and GRPO. In contrast, reinforcing only correct
+responses improves Pass@1 but degrades performance at higher k, due to reduced
+diversity. These inference-scaling trends highlight that solely penalizing incorrect responses may contribute more to performance than previously recognized.
+Through gradient analysis, we show that NSR works by suppressing incorrect
+generations and redistributing probability mass toward other plausible candidates,
+guided by the model’s prior beliefs. It refines the model’s existing knowledge rather
+than introducing entirely new behaviors. Building on this insight, we propose a simple variant of the RL objective that upweights NSR, and show that it consistently
+improves overall Pass@k performance on MATH, AIME 2025, and AMC23. Our
+code is available at https://github.com/TianHongZXY/RLVR-Decomposed.
+1 Introduction
+Language models (LMs) have recently demonstrated remarkable capabilities in various complex
+reasoning tasks, including mathematics [7, 17], coding [21, 66], and scientific reasoning [37, 40]. A
+key technique in achieving such success is reinforcement learning with verifiable rewards (RLVR) [15,
+20, 23, 47], which is particularly effective in domains where the correctness of an outcome can be
+automatically verified via tools or functions. RLVR typically employs a binary reward (+1 or −1)
+based on the objective correctness of model responses. This simple yet effective mechanism not only
+mitigates reward hacking [33, 45] but also eliminates the need for extensive human annotations and
+complex reward model training [27, 77].
+RLVR’s appeal is multifaceted: it offers a conceptually simple formulation [23], exhibits notable
+sample efficiency [12, 28, 52], and enables inference-time scaling behaviors [13, 35, 60, 68, 74].
+However, the precise mechanisms driving its effectiveness remain underexplored, particularly how
+it utilizes correct and incorrect samples. To address this, we decompose RLVR into two learning
+paradigms: Positive Sample Reinforcement (PSR) and Negative Sample Reinforcement (NSR), as
+39th Conference on Neural Information Processing Systems (NeurIPS 2025).
+arXiv:2506.01347v2 [cs.CL] 25 Oct 2025
+x : Alice has 3 apples. She buys 2 more and gives 1 to her friend. How many apples does she have now?
+LLM
+⇡✓(y|x)
+y : 3 + 2 - 1 = 4. So Alice has 4 apples. 1
+y : Start 3, buy 2 (now 5), give 1 (now 4). 2
+y : 3 + 2 = 5. So the answer is 5 apples. 3
+y : We can’t tell how many she has now. 4
+Positive Sample Reinforcement (PSR)
+max
+✓
+⇡✓(y|x)
+Negative Sample Reinforcement (NSR)
+max
+✓ ⇡✓(y|x)
+Pass@1
+yi ⇠ ⇡✓(y|x)
+Pass@1
+Pass@32
+Pass@32
+Figure 1: Decomposing learning signals in RLVR into positive and negative reward components.
+Positive Sample Reinforcement (PSR) increases the likelihood of correct responses and improves
+Pass@1, but reduces output diversity and hurts Pass@k for large k. Negative Sample Reinforcement
+(NSR) discourages wrong responses and redistributes probability mass according to the model’s prior
+knowledge, improving the full Pass@k spectrum.
+illustrated in Figure 1. This decomposition prompts a natural question: What roles do PSR and NSR
+play in shaping model behavior and generalization?
+To empirically isolate the effects of PSR and NSR, we train two LMs, Qwen2.5-Math-7B and
+Qwen3-4B, either PSR or NSR exclusively, and evaluate their inference-time performance across a
+range of Pass@k metrics. We find that PSR-only training improves Pass@1 but hurts Pass@k at larger
+k values, indicating a loss of output diversity and exploration capacity. More strikingly, NSR-only
+training consistently improves performance over the base LM across the entire Pass@k spectrum and,
+in many cases, matches or even surpasses the performance of PPO [41] and GRPO [15, 43].
+To understand why NSR alone is so effective, we conduct a token-level gradient analysis and
+demonstrate that NSR works by suppressing incorrect reasoning steps and redistributing probability
+mass towards other plausible candidates already favored by the model’s prior. This effectively refines
+its existing knowledge without aggressively teaching new behaviors. PSR, in contrast, sharpens
+the output distribution around sampled correct paths [1, 16, 61], often at the cost of suppressing
+alternative valid solutions. This suggests that NSR plays a pivotal role in preserving diversity and
+promoting generalization, especially when the base model already encodes strong reasoning priors.
+Motivated by this insight, we propose Weighted-REINFORCE, a simple yet effective variant of
+the REINFORCE [58] objective that upweights its NSR contribution. We demonstrate that this
+adjustment consistently improves the Pass@k performance on MATH, AIME 2025, and AMC23,
+yielding an overall better result than strong baselines including PPO [41] and GRPO [15, 43].
+Our contributions in this work are as follows:
+• We decompose RLVR into two components, PSR and NSR, and investigate their distinct impacts
+on model behavior and generalization measured by a range of Pass@k metrics.
+• We empirically demonstrate the surprising effectiveness of NSR-only training and use gradient
+analysis to show that NSR refines the model’s prior by suppressing incorrect reasoning steps and
+preserving plausible alternatives.
+• We propose Weighted-REINFORCE, a simple modification to the RL objective that upweights
+NSR, yielding consistent gains across complex reasoning benchmarks including MATH, AIME
+2025, and AMC23.
+2 RLVR Objective and Decomposition
+2.1 Reinforcement Learning with Verifiable Rewards
+Reinforcement learning with verifiable rewards (RLVR) has recently emerged as a powerful paradigm
+for enabling LMs to self-improve on tasks with objectively verifiable outcomes. The reward is given
+by a deterministic verification function r which assesses whether the model’s response y to the
+prompt x is correct or not. All tokens {y1, y2, . . . , yT } in a response y receive the same reward (e.g.,
++1 for correct responses and −1 for incorrect ones).
+2
+Formally, given an LM with parameters θ, a set of prompts D from which x is sampled, and a
+verifiable reward function r, RLVR learns a policy πθ to minimize the following objective:1
+LRLVR(θ) = −Ex∼D,y∼πθ(·|x)
+[r(x, y)], r(x, y) ∈ {−1, +1}. (1)
+In common RL algorithms (e.g., PPO [41], GRPO [15, 43]), rewards are further normalized to
+stabilize training, enforcing a zero mean per batch B (i.e., Ex∼B,y∼πθ(·|x)
+[r(x, y)] = 0).
+2.2 Decomposing RLVR into Positive and Negative Sample Reinforcement
+While RLVR has demonstrated promising empirical results, its underlying learning dynamics remain
+underexplored. In particular, it is unclear how the model updates its behavior under this binary
+outcome reward setting. What the model learns when receiving both positive and negative rewards
+can be entangled and hard to interpret. To better understand these dynamics, we begin by decomposing
+the RLVR objective into two distinct learning paradigms: learning from correct responses and learning
+from incorrect responses. This decomposition allows us to investigate how positive and negative
+reward signals shape model behavior, which we will show in the next section.
+The RLVR objective optimizes the expected reward-weighted likelihood:
+LRLVR(θ) = −Ex∼D "X
+y
+r(x, y) · πθ(y|x)
+#
+, r(x, y) ∈ {−1, +1}
+= −Ex∼D
+
+
+X
+y:r(x,y)=1
+πθ(y|x)
+
+
+| {z }
+LPSR(θ)
+−Ex∼D
+
+
+X
+y:r(x,y)=−1
+−πθ(y|x)
+
+
+| {z }
+LNSR(θ)
+,
+(2)
+where we define two sub-objectives representing each learning paradigm:
+LPSR(θ) = −Ex∼D
+
+
+X
+y:r(x,y)=1
+πθ(y|x)
+
+ , (3)
+LNSR(θ) = −Ex∼D
+
+
+X
+y:r(x,y)=−1
+−πθ(y|x)
+
+ . (4)
+We refer to these two learning paradigms as positive sample reinforcement (PSR) and negative sample
+reinforcement (NSR). The positive reward case resembles supervised fine-tuning (SFT), where the
+model is updated to increase the likelihood of correct responses. In contrast, the negative reward case
+mirrors likelihood minimization that reduces the probability assigned to incorrect responses. Notably,
+PSR and NSR are on-policy—the responses are sampled from the model itself during training.
+Thus, the full RLVR objective decomposes into two sub-objectives LRLVR(θ) = LPSR(θ) + LNSR(θ).
+This decomposition reveals that RLVR jointly performs PSR on positively rewarded samples and
+NSR on negatively rewarded ones. To better understand the individual effects of these two learning
+paradigms on model behavior, we conduct experiments to train LLMs with each sub-objective
+independently, as well as the full RLVR objective for comparison.
+3 Positive and Negative Sample Reinforcement for LLM Reasoning
+3.1 Experimental Setup
+Models. To understand how different training objectives affect the model’s behavior, we train
+the model with PSR and NSR and evaluate their inference scaling performance on reasoning tasks.
+Specifically, we use Qwen2.5-Math-7B [65], Qwen3-4B [64] and Llama-3.1-8B-Instruct [11]
+1While regularization mechanisms such as KL penalties and clipping are commonly used in practice to
+stabilize training, the fundamental learning signal still stems from the verifiable reward. Therefore, to clearly
+understand how the model learns from success and failure, we base our analysis primarily on the reward learning
+loss. We discuss in Section 4.3 how our analysis applies to PPO and GRPO.
+3
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8
+k (number of samples)
+60
+70
+80
+90
+100
+Pass@
+k
+MATH
+Base Model
+PPO
+GRPO
+PSR
+NSR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8
+k (number of samples)
+0
+10
+20
+30
+40
+50
+60
+Pass@
+k
+AIME2025
+Base Model
+PPO
+GRPO
+PSR
+NSR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8
+k (number of samples)
+40
+50
+60
+70
+80
+90
+100
+Pass@
+k
+AMC23
+Base Model
+PPO
+GRPO
+PSR
+NSR
+Figure 2: Pass@k curves of Qwen2.5-Math-7B trained with PPO, GRPO, PSR, and NSR. NSR is
+comparable to other methods across different k values and outperforms them at k = 256.
+as the base models. Qwen3-4B has two modes (thinking and non-thinking), and we use the nonthinking mode for training and inference.
+Compared algorithms. We compare the performance of PSR and NSR with commonly used RL
+algorithms, including PPO [41] and GRPO [15, 43]. PSR and NSR are implemented by selectively
+updating the policy model using only correct or incorrect responses, respectively. As a result, PSR
+and NSR are trained on fewer samples per batch than standard RL algorithms (e.g., PPO and GRPO)
+that use both correct and incorrect responses. The training objectives of these algorithms can be
+found in Section D.1. We also report the performance of the base models for reference.
+Training setup. For the training set, we use MATH [17], which contains 7,500 problems. We train
+the models using the verl framework [44]. The prompt batch size is 1,024, with 8 rollouts generated
+per prompt. The sampling temperature during training is set to 1.0, and the maximum context length
+is set to 4,096, 4,096 and 32,768 tokens for Qwen2.5-Math-7B, Llama-3.1-8B-Instruct and
+Qwen3-4B, respectively. We update the model with a mini-batch size of 256 and a learning rate of
+1e-6. More hyperparameter settings can be found in Section D.1.
+Evaluation setup. We evaluate on three widely used math reasoning benchmarks, including the
+test sets of MATH, AIME 2025 and AMC23. During evaluation, we sample 256 responses per
+prompt for Qwen2.5-Math-7B and Llama-3.1-8B-Instruct with a temperature of 0.6 and a topp of 0.95, and 64 responses for Qwen3-4B with a temperature of 0.7, a top-p of 0.8 and a top-k
+of 20, prompt templates can be found in Appendix D.2. For evaluation metric, recent work [18]
+highlights that accuracy based on greedy decoding can be unreliable. For this reason, we adopt a full
+spectrum of Pass@k as our main evaluation metric, using k ∈ {1, 2, 4, 8, 16, 32, 64, 128, 256} for
+Qwen2.5-Math-7B and k ∈ {1, 2, 4, 8, 16, 32, 64} for Qwen3-4B. Pass@k is defined as the fraction
+of problems for which at least one correct response is produced in k independent trials. However,
+directly computing Pass@k using only k samples per example often suffers from high variance. We
+follow the unbiased estimator proposed by [5], which generates n samples per problem (n ≥ k),
+counts the number of correct responses c, and computes an unbiased estimate of Pass@k as:
+Pass@k = Ex∼D "
+1 −
+n−c
+k
+
+n
+k
+
+#
+. (5)
+Notably, varying k provides insights into different aspects of model behaviors. Pass@1 approximates
+greedy decoding accuracy, reflecting how confidently the model can produce a correct response
+in a single attempt, essentially reflecting exploitation. In contrast, Pass@k with large k evaluates
+the model’s ability to generate diverse correct responses across multiple attempts, capturing its
+exploration ability and reasoning boundary.
+3.2 Inference Scaling Trends Under Different Training Objectives
+NSR alone is surprisingly effective. As shown in Figures 2 and 3, NSR exhibits unexpectedly
+strong performance across the full range of k values. Despite being trained solely on negative samples,
+it consistently improves Pass@k compared to the base model. While PPO, GRPO, and PSR explicitly
+reinforce correct responses and naturally outperform the base model at Pass@1, it is surprising that
+NSR achieves a comparable Pass@1 without training on any correct responses. This suggests that
+4
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6
+k (number of samples)
+80
+85
+90
+95
+100
+Pass@
+k
+MATH
+Base Model
+PPO
+GRPO
+PSR
+NSR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6
+k (number of samples)
+20
+40
+60
+80
+Pass@
+k
+AIME2025
+Base Model
+PPO
+GRPO
+PSR
+NSR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6
+k (number of samples)
+70
+80
+90
+100
+Pass@
+k
+AMC23
+Base Model
+PPO
+GRPO
+PSR
+NSR
+Figure 3: Pass@k curves of Qwen3-4B (non-thinking mode) trained with PPO, GRPO, PSR, and
+NSR. NSR consistently performs competitively across varying k values, while PSR does not improve
+the base model.
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8
+k (number of samples)
+50
+60
+70
+80
+90
+Pass@
+k
+MATH
+Base Model
+PPO
+GRPO
+PSR
+NSR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8
+k (number of samples)
+0
+10
+20
+30
+40
+Pass@
+k
+AIME2025
+Base Model
+PPO
+GRPO
+PSR
+NSR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8
+k (number of samples)
+40
+60
+80
+100
+Pass@
+k
+AMC23
+Base Model
+PPO
+GRPO
+PSR
+NSR
+Figure 4: Pass@k curves of Llama-3.1-8B-Instruct trained with PPO, GRPO, PSR, and NSR.
+All the methods underperforms the base model, while NSR retains the most performances.
+NSR is able to reinforce correct responses indirectly by suppressing incorrect ones and redistributing
+probability mass toward plausible alternatives.
+NSR outperforms or stays comparable to the base model at a large k value. At larger decoding
+budgets (e.g., Pass@256), recent work [72] shows that RL-trained models often lose their advantage,
+and in some cases underperform the base model. This trend is generally observed in our experiments
+with PPO, GRPO, and PSR, especially in Figure 2. NSR, on the other hand, maintains a comparable or
+even better Pass@256 performance than the base model, generally outperforming the other algorithms.
+These results suggest that NSR promotes exploration and preserves the output diversity.
+PSR improves accuracy at the cost of diversity. In contrast, PSR, which only reinforces correct
+samples, displays a more polarized behavior. It improves Pass@1, particularly on AIME 2025 and
+AMC23 in Figure 2. However, this precision comes at a cost: as k increases, Pass@k improves
+more slowly than other methods and eventually falls below the base model for k > 8. As shown in
+Figure 5a, PSR improves greedy decoding accuracy rapidly during early training but plateaus quickly
+and is overtaken by other methods. This behavior indicates that PSR overly concentrates probability
+mass on early correct responses, leading to overconfidence and a collapsed output distribution and
+ultimately limiting the model’s ability to generate diverse correct responses when allowing for more
+test-time compute.
+PSR fails to unlock the model’s latent reasoning capabilities. Figure 3 demonstrates the performance of training Qwen3-4B under non-thinking mode to simulate a scenario where the model’s
+underlying knowledge is known to be strong (i.e., its learned thinking mode triggered by the ‘<think>’
+tag). While one may intuitively expect all algorithms to easily transfer the model’s reasoning ability
+across different prompt formats (i.e., from thinking to non-thinking mode), our results demonstrate
+significant performance differences across different algorithms. PSR fails to activate these latent
+capabilities and does not improve the performance, even degrading Pass@k on MATH and AMC23
+significantly. This highlights a fundamental limitation of PSR: it reinforces the currently dominant behavior in the output distribution, suppressing potentially stronger underlying capabilities. In contrast,
+NSR and GRPO significantly improve the performance of the base model across all Pass@k metrics,
+achieving thinking mode capabilities. Specifically, Qwen3-4B in thinking mode achieves a Pass@1
+of 94.5 and a Pass@64 of 97.8 on MATH test set. NSR and GRPO closely match this performance,
+with NSR reaching 94.0 (Pass@1) and 98.0 (Pass@64), and GRPO achieving 93.9 (Pass@1) and
+98.2 (Pass@64).
+5
+0 20 40 60 80 100 120
+64
+66
+68
+70
+72
+74
+76
+78
+Accuracy
+PPO
+GRPO
+PSR
+NSR
+(a)
+0 20 40 60 80 100 120
+0.00
+0.02
+0.04
+0.06
+0.08
+0.10
+0.12
+Entropy
+Base Model Entropy
+PPO
+GRPO
+PSR
+NSR
+(b)
+0 20 40 60 80 100 120
+0.5
+0.6
+0.7
+0.8
+0.9
+Correct Sample Ratio
+PPO
+GRPO
+PSR
+NSR
+(c)
+0 20 40 60 80 100 120
+0.0
+0.2
+0.4
+0.6
+0.8
+Fully Solved Ratio
+PPO
+GRPO
+PSR
+NSR
+(d)
+Figure 5: Training dynamics of Qwen2.5-Math-7B on MATH under PPO, GRPO, PSR and NSR
+across training steps, including (a) greedy decoding accuracy on the test set, (b) the model’s entropy
+on the test set, (c) the ratio of correct responses per batch on the training set, and (d) the proportion
+of fully-solved prompts per batch (i.e., all rollouts are correct) on the training set. NSR achieves
+competitive performance in greedy decoding accuracy while maintaining substantially higher entropy
+throughout training, suggesting greater exploration. NSR improves both the correct sample ratio and
+the fully-solved sample ratio, though less aggressively compared to other algorithms.
+RL training hurts Llama models’ inference scaling performance. As shown in Figure 4, applying different RL algorithms to Llama-3.1-8B-Instruct leads to degraded inference-scaling
+performance compared to the base model. Although Pass@1 improves on MATH and AMC23,
+Pass@256 drops substantially after RL training. This contrast between Qwen and Llama models
+highlights that backbone model itself often determines whether RL can bring benefits, consistent
+with recent works [72, 53, 68]. Among all methods, however, NSR causes the least degradation to
+the base model’s scaling behavior.
+4 Understanding the Effectiveness of Negative Sample Reinforcement
+To better understand the learning mechanisms of PSR and NSR, and to explain why NSR consistently
+demonstrates strong inference scaling performance, we analyze their training dynamics through both
+empirical observations and gradient analysis.
+4.1 Entropy as a Lens on Inference Scaling Performance
+Since diversity is crucial for strong Pass@k performance—especially at a large k—we quantify
+model diversity by tracking its entropy on a held-out test set throughout training, aiming to understand
+how entropy evolves under different training algorithms. In addition, we monitor two complementary
+metrics on the training set: the correct sample ratio, which measures the proportion of correct
+responses per batch, and the fully solved ratio, which measures the fraction of problems per batch
+where all rollouts are correct.
+Figure 5b shows that NSR maintains a high level of entropy on the held out test set throughout
+training, closely matching that of the base model, while PSR leads to a rapid and substantial drop in
+entropy. PPO and GRPO offer a middle ground: they gradually reduce entropy during training, with
+levels that fall between those of PSR and NSR. Nevertheless, their entropy still declines considerably,
+which likely limits output diversity and helps explain why their Pass@256 performance remains
+below that of the base model. Interestingly, PPO exhibits a slight rebound in entropy during the later
+6
+… so 2 apples and 3 oranges cost $2 x 2 + $1 x 3 = $7.
+Apples cost $2 each and oranges $1 each, so 2 apples and 3 oranges cost $7.
+Reward: +1
+Apples cost $2 each and oranges $1 each, so 2 apples and 3 oranges cost $6.
+Reward: -1
+Logit
+“6”
+··· “7” “2” “9” Vocabulary
+“6” “7”
+“9”
+“2”
+···
+Exploration: Redistribute logits in proportion
+to alternative tokens’ current probability
+“an” “it” “go”
+ ⇡ 0
+···
+···
+Negative Sample Reinforcement (NSR)
+Logit
+“7”
+··· “2” “6” “9” Vocabulary
+“9”
+“2”
+···
+Exploitation: Sharpen the correct
+token’s probability, suppress others
+“an” “it” “go”
+ ⇡ 0
+···
+···
+Positive Sample Reinforcement (PSR)
+“7”
+“6”
+… so 2 apples and 3 oranges cost $2 x 2 + $1 x 3 = $7.
+suppress correct alternatives promote correct alternatives
+v :=
+@LPSR
+@Logitv
+v :=
+@LNSR
+@Logitv
+Figure 6: Gradient dynamics of PSR and NSR under a math word problem example. Bars indicate
+token logits before the update, and arrows indicate gradient direction and magnitude. Left (PSR):
+The model generates the correct response (“7”) and receives a +1 reward. Gradients increase the
+logit of the sampled token while suppressing all others, including potentially correct alternatives
+like “2”, resulting in a sharpened, overconfident distribution. Right (NSR): The model generates an
+incorrect response (“6”) and receives a −1 reward. Gradients demote the sampled incorrect token and
+proportionally reallocate logits to other tokens (e.g., “7”, “2”) based on their current probabilities,
+thereby promoting exploration on alternative correct paths and preserving diversity.
+stages of training—a trend not seen in GRPO. This divergence may stem from PPO’s use of a critic
+model, which can provide potentially more fine-grained and exploratory advantage estimates.
+As shown in Figures 5c and 5d, NSR consistently improves the correct sample ratio but maintains a
+lower proportion of correct samples and fully solved problems throughout training. This indicates
+that the model avoids becoming overconfident in the observed correct responses. By preserving
+uncertainty, NSR enables stronger scaling performance in Pass@k, as demonstrated in Figure 2. In
+contrast, PSR rapidly increases the number of correct samples in each batch and achieves a higher
+fully solved ratio compared to other methods, suggesting a tendency to overfit to the observed correct
+responses. While this leads to better Pass@1 performance, it significantly reduces output diversity
+and results in weaker Pass@k performance as k increases.
+These trends underscore the importance of preserving output entropy during RL and highlight a key
+insight: reinforcing negative samples alone can improve accuracy without compromising the base
+model’s generation diversity.
+4.2 Token-Level Gradient Dynamics of PSR and NSR
+To gain a deeper understanding of the training dynamics of PSR and NSR, we conduct a token-level
+gradient analysis. The loss for both PSR and NSR on a training instance (x, y) takes the form:
+L(θ) = −R ·
+1
+T
+X
+T
+t=1
+πθ(yt|x, y<t) = −R ·
+1
+T
+X
+T
+t=1
+exp(zyt
+)
+P
+v
+′∈V exp(zv
+′ )
+, (6)
+where R = r(x, y) ∈ {−1, +1} denotes the reward assigned to the sampled trajectory, and zv
+denotes the logit corresponding to token v in the vocabulary V.
+To analyze the effect of these objectives on the model’s token distribution, we compute the gradient of
+the loss with respect to token-level logits at each step. Let πv = πθ(v|x, y<t) denote the probability
+of token v at time step t, the gradient descent directions of PSR and NSR are shown in Equations (7)
+and (8) (the full derivation is provided in Section A), which are illustrated in Figure 6.
+−
+∂LPSR
+∂zv
+∝
+
+πv · (1 − πv) if v = yt (sampled token)
+−πyt
+· πv if v ̸= yt (unsampled token) (7)
+This formulation clearly shows how PSR increases the logits of tokens appearing in correct responses
+while decreasing the logits of all other tokens. As training progresses, it repeatedly amplifies the
+probability of observed correct sequences—pushing their likelihoods toward 1, while suppressing
+alternative generations. This continual sharpening of the output distribution can lead to reduced
+entropy and overfitting as shown in Figure 5b, especially in on-policy settings where the same
+7
+examples may be encountered frequently. Over time, the model’s behavior may collapse onto a
+narrow set of responses, limiting its ability to explore or generalize beyond what has been reinforced.
+−
+∂LNSR
+∂zv
+∝
+(
+−πv · (1 − πv) if v = yt (sampled token)
+πyt
+· πv if v ̸= yt (unsampled token)
+(8)
+In contrast, NSR works by penalizing the logits of tokens in incorrect responses and softly redistributing probability mass to other candidate tokens. Importantly, NSR increases other tokens’ logits in
+proportion to their current likelihoods. This objective has several desirable properties:
+Key Insights into NSR via Gradient Analysis
+1. Preserving high-confidence priors: When the model assigns high probability to certain
+tokens (i.e., πyt → 1) that appear in incorrect outputs (e.g., common grammatical or
+linguistic constructions), the negative gradient from NSR is scaled by (1 − πyt
+), resulting
+in small updates. This allows NSR to penalize mistakes without erasing fundamental
+knowledge learned during pretraining.
+2. Prior-guided probability redistribution: NSR performs a soft reranking of the output
+distribution by boosting unsampled tokens’ logits zv in proportion to their current probabilities πv. This allows the model to effectively explore and search for better candidates
+according to their prior beliefs.
+3. Implicit regularization against overfitting: NSR updates only when the model generates
+incorrect responses. Once the model consistently avoids these mistakes, NSR naturally
+halts further updates on those samples. This stopping criterion prevents the model from
+overfitting or collapsing diversity in examples it has already mastered.
+These analyses highlight an important strength of NSR: it preserves the model’s prior knowledge
+over plausible tokens and stops updating once errors are corrected, effectively locking in successful
+experiences. This is a unique advantage of NSR, as we demonstrate in Appendix B via gradient
+analysis that simply applying an entropy bonus in the policy loss, despite promoting diversity, cannot
+preserve model’s prior. We also include a comparison with the widely used unlikelihood training
+objective, a previous approach designed to suppress undesirable or incorrect generations [57, 26].
+4.3 Extending Gradient Analysis to PPO and GRPO
+Our earlier analysis was based on a simple REINFORCE-like objective [58]. We now analyze how it
+extends to PPO and GRPO. The losses for GRPO and PPO are as follows:
+LPPO(θ) = −
+1
+T
+XT
+t=1
+min 
+πθ(yt|x, y<t)
+πold(yt|x, y<t)
+At, clip 
+πθ(yt|x, y<t)
+πold(yt|x, y<t)
+, 1 − ϵ, 1 + ϵ
+
+At
+
+,
+LGRPO(θ) = −
+1
+G
+XG
+i=1
+1
+T
+XT
+t=1
+min 
+πθ(yi,t|x, yi,<t)
+πold(yi,t|x, yi,<t)
+Ai,t, clip 
+πθ(yi,t|x, yi,<t)
+πold(yi,t|x, yi,<t)
+, 1 − ϵ, 1 + ϵ
+
+Ai,t
+− βKL(πθ∥πref)
+!
+,
+where A denotes the advantage. Comparing the PPO and GRPO objectives to Equation (6), there
+are three key differences: (1) policy loss clipping, (2) KL regularization (reward penalty in PPO,
+loss in GRPO), and (3) advantages instead of raw rewards. We analyze their impact on the gradient
+dynamics below:
+1. Clipping constrains update magnitude when the new policy diverges significantly from the old
+one, but preserves the gradient update direction, thus leaving our analysis qualitatively unchanged.
+2. KL regularization discourages deviation from the reference policy. While it may dampen positive
+and negative updates, its practical impact is often negligible: for reasoning tasks, the KL coefficient is either very small or completely removed, leading to better performance, as demonstrated
+in recent works [6, 62, 69].
+3. The advantage of GRPO Ai =
+ri−mean(r)
+std(r)
+acts as a rescaling of the gradient and retains the
+raw reward’s sign. In PPO, the advantage is computed relative to a value function: tokens that
+8
+Table 1: Pass@k results on MATH, AIME 2025 and AMC23 with Qwen2.5-Math-7B. Bold and
+underlined numbers denote the best and second-best results for each k.
+Method Pass@k
+k 1 2 4 8 16 32 64 128 256
+MATH
+Base Model 63.2 76.0 83.7 88.4 91.6 93.7 95.2 96.2 96.9
+PPO 76.6 82.6 86.7 89.6 91.7 93.4 94.7 95.6 96.3
+GRPO 76.3 81.7 85.6 88.4 90.6 92.3 93.6 94.7 95.5
+REINFORCE 74.8 79.1 82.4 84.9 86.9 88.5 89.9 91.1 92.0
+PSR 74.1 78.3 81.6 84.1 86.2 87.9 89.3 90.4 91.2
+NSR 75.7 82.4 86.9 90.1 92.4 94.1 95.3 96.2 96.9
+W-REINFORCE 76.6 82.8 87.1 90.2 92.4 94.1 95.3 96.1 96.7
+AIME 2025
+Base Model 6.1 9.7 13.8 17.9 22.2 26.5 30.8 36.6 46.7
+PPO 8.5 13.2 18.0 22.5 26.6 30.3 33.8 37.9 43.3
+GRPO 10.3 14.7 19.4 24.0 28.4 32.8 37.3 42.5 50.0
+REINFORCE 9.2 12.5 16.3 21.0 26.4 32.3 38.6 44.7 50.0
+PSR 11.6 14.1 16.2 18.6 21.7 25.7 30.9 36.9 43.3
+NSR 10.0 14.6 19.2 24.1 29.3 34.6 40.2 46.0 53.3
+W-REINFORCE 10.6 15.3 20.0 24.7 29.7 34.6 40.5 47.8 56.7
+AMC23
+Base Model 41.0 56.2 69.2 78.9 85.1 89.1 92.9 97.2 100.0
+PPO 62.0 70.0 76.1 80.9 85.3 89.5 93.1 96.0 97.5
+GRPO 61.7 68.7 74.6 80.0 85.1 89.7 93.4 95.9 97.5
+REINFORCE 61.8 68.5 73.4 77.0 80.8 85.1 89.3 91.9 92.5
+PSR 62.6 69.9 74.5 77.5 80.3 83.5 87.2 90.6 92.5
+NSR 60.9 70.0 77.4 83.2 87.6 91.1 94.5 97.9 100.0
+W-REINFORCE 62.0 70.0 77.0 83.1 87.8 91.8 95.2 97.1 97.5
+outperform the baseline are reinforced, while other tokens are penalized. This yields finer-grained
+credit assignment but does not alter the overall gradient dynamics—positive reinforcement still
+reduces diversity, and negative reinforcement promotes alternatives under the model prior.
+Therefore, while PPO and GRPO introduce modifications that stabilize learning, the core gradient
+behaviors identified in our previous analysis still hold. We further discuss the differences between
+RLVR and RL with reward models in Section C.
+5 Balancing Positive and Negative Reinforcement
+Our previous analyses reveal a trade-off in reinforcement learning objectives: PSR improves Pass@1
+quickly but sacrifices performance on Pass@k for larger k, whereas NSR preserves Pass@k, but
+may underperform when k is small. To strike a better balance between accuracy and diversity, we
+propose a simple weighted combination of PSR and NSR: we scale down the reward magnitude for
+PSR by a factor of λ and combine it with NSR, allowing the model to learn from both correct and
+incorrect samples. When λ = 1, it is exactly the same as REINFORCE. We refer to this method as
+Weighted-REINFORCE (W-REINFORCE):
+LW-REINFORCE(θ) = −Ex∼D
+
+
+X
+y:r(x,y)=1
+λ · πθ(y|x)
+
+
+| {z }
+λ·LPSR(θ)
+−Ex∼D
+
+
+X
+y:r(x,y)=−1
+−πθ(y|x)
+
+
+| {z }
+LNSR(θ)
+.
+(9)
+We apply λ = 0.1 in our experiments. As shown in Table 1, W-REINFORCE consistently delivers
+a favorable trade-off across a range of k values on MATH, AIME 2025 and AMC23. On MATH,
+W-REINFORCE matches the best Pass@1 score 76.6 with PPO and has the highest performance
+for all k ≤ 64, while still preserves competitive performance at k = 256. On AIME 2025, WREINFORCE performs even more strongly—achieving the best result across all k values except
+k = 1. These results confirm that W-REINFORCE, a simple weighted extension of the classic
+REINFORCE algorithm, strikes an effective balance between the strengths of PSR and NSR. By
+9
+merely scaling down the weight of positive rewards, it achieves strong performance while preserving
+diversity. Despite its simplicity, W-REINFORCE consistently outperforms strong RL algorithms
+such as PPO and GRPO across most Pass@k, while the vanilla REINFORCE underperforms. These
+findings suggest that this simple variant of REINFORCE can serve as a competitive alternative to
+more complex RL algorithms when the model prior is strong (e.g., Qwen models). We provide an
+ablation study on the choice of λ in Section E.
+6 Related Work
+Reinforcement learning with verifiable rewards. Reinforcement learning has shown great
+promise in improving large language models, as demonstrated by the success of reinforcement
+learning from human feedback (RLHF) and from AI feedback (RLAIF), which align model responses
+with human preferences [25, 32, 36, 39]. More recently, reinforcement learning with verifiable
+rewards [8, 14, 16, 23, 31, 43, 48, 52, 63, 69, 70, 71, 76, 54] has attracted growing attention for its effectiveness in incentivizing reasoning in LLMs with rule-based rewards [12, 15, 22, 47, 74, 10, 24, 34].
+Notably, DeepSeek-R1 [15] and Kimi K1.5 [47] demonstrate that RLVR can elicit emergent reasoning behaviors such as long chain of thought and self-reflection, and achieve strong performance
+across diverse reasoning tasks such as math and coding problems. Yeo et al. [68] further explore the
+emergence of long CoT across different RLVR setups.
+Despite these advances, many prior works mainly focus on evaluating the model’s Pass@1 or greedy
+decoding performance, which might overlook the underlying change in model behavior (e.g., inference
+scaling performance). More importantly, the mechanisms behind RLVR for driving reasoning and
+generalization remain underexplored. In this work, we take a step further by decomposing the RLVR
+objective into two distinct learning paradigms—learning from correct responses and learning from
+incorrect responses. We analyze the learning signal at the token level through gradient analysis and
+evaluate the models extensively using Pass@k with a wide spectrum of k. Our findings highlight the
+critical yet previously underappreciated role of negative rewards in RLVR.
+Inference-time scaling behaviors. Inference-time scaling has emerged as a promising direction
+for enhancing model performance [2, 3, 4, 29, 35, 38, 42, 46, 49, 50, 51, 56, 59, 80, 67, 73, 78, 55]—
+particularly in reasoning tasks where generating multiple candidate solutions [7, 80] or longer
+reasoning traces [35, 68, 75] can help hit the correct answer. Through the lens of inference-time
+scaling, recent studies have raised questions about whether RL-trained models are better than the
+base models [72, 18]. A recent work by [72] suggests that RLVR primarily adjusts the model’s output
+distribution toward high-reward responses,rather than eliciting new reasoning abilities beyond the base
+model. By adopting Pass@k as metric, they find that RL-trained models have inferior inference-time
+scaling performance than the base models. These findings align with our findings that reinforcing
+correct samples hurts Pass@k at larger k. Another concurrent work by [9] studies supervised
+fine-tuning (SFT), and finds that diversity collapse during SFT adversely affects inference-time
+scaling performance. They show that SFT reduces generation diversity, leading to degraded Pass@k
+performance, and that interpolating weights from early, potentially less overconfident checkpoints
+and later ones can effectively restore diversity and improve both Pass@1 and Pass@k.
+In this work, we highlight the underestimated role of negative reinforcement in preserving and
+improving inference-time scaling performance, and that the accuracy and diversity trade-off in RLVR
+can be effectively balanced by adjusting positive and negative reward weights.
+7 Conclusion
+In this work, we investigate the mechanism underlying RLVR for LM reasoning. By decomposing
+RLVR into positive and negative sample reinforcement, we reveal a surprising finding: solely
+penalizing incorrect samples can effectively enhance LM reasoning capabilities while preserving
+generation diversity. Experimental results show that NSR consistently improves performance across a
+wide Pass@k spectrum and in many cases matches or outperforms strong RL algorithms such as PPO
+and GRPO. Our gradient analysis demonstrates that NSR works by suppressing incorrect responses
+and redistributing probability mass toward plausible alternatives based on the model prior. Building
+on these findings, we proposed a simple variant of REINFORCE, Weighted-REINFORCE, that
+upweights the negative sample reinforcement. Empirical results show that it achieves a good balance
+between PSR and NSR, and yields consistent Pass@k improvements across multiple reasoning
+benchmarks. We discuss limitations and future work directions in Section F.
+10
+Acknowledgments
+We would like to thank the members of the Princeton NLP Group for their valuable feedback and
+discussions. We also thank the anonymous reviewers and the area chair for their time, effort, and
+constructive suggestions, which have greatly improved the quality of this paper. This research is
+partially funded by the National Science Foundation (IIS-2211779), the NVIDIA Academic Grant,
+the Lambda Research Grant, and the OpenAI Superalignment Fast Grant. MX is supported by the
+Apple Scholars in AI/ML PhD Fellowship.
