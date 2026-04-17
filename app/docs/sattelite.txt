@@ -1,0 +1,652 @@
+Few-Shot Vision-Language Reasoning for Satellite Imagery via Verifiable
+Rewards
+Aybora Köksal A. Aydın Alatan
+Dept. of Electrical and Electronics Engineering, Center for Image Analysis (OGAM)
+Middle East Technical University (METU), Ankara, Turkey
+aybora@metu.edu.tr alatan@metu.edu.tr
+Abstract
+Recent advances in large language and vision-language
+models have enabled strong reasoning capabilities, yet they
+remain impractical for specialized domains like remote
+sensing, where annotated data is scarce and expensive. We
+present the first few-shot reinforcement learning with verifiable reward (RLVR) framework for satellite imagery that
+eliminates the need for caption supervision–relying solely
+on lightweight, rule-based binary or IoU-based rewards.
+Adapting the “1-shot RLVR” paradigm from language models to vision-language models, we employ policy-gradient
+optimization with as few as one curated example to align
+model outputs for satellite reasoning tasks. Comprehensive
+experiments across multiple remote sensing benchmarks–
+including classification, visual question answering, and
+grounding–show that even a single example yields substantial improvements over the base model. Scaling to 128 examples matches or exceeds models trained on thousands of
+annotated samples. While the extreme one-shot setting can
+induce mild, task-specific overfitting, our approach consistently demonstrates robust generalization and efficiency
+across diverse tasks. Further, we find that prompt design
+and loss weighting significantly influence training stability and final accuracy. Our method enables cost-effective
+and data-efficient development of domain-specialist visionlanguage reasoning models, offering a pragmatic recipe
+for data-scarce fields: start from a compact VLM, curate
+a handful of reward-checkable cases, and train via RLVR.
+Our model, training code and dataset will be at https:
+//github.com/aybora/FewShotReasoning.
+1. Introduction
+In last couple of years, advancements in Large Language
+Models (LLMs) [1, 3, 7, 33, 39, 41] have unlocked the capabilities of natural language, while the introduction of Vision Language Models (VLMs) [9, 18, 23, 29, 43] have
+Base
+1V
+1G
+8VC
+32VCG
+128VCG
+VHM-RL
+20
+30
+40
+50
+60
+70
+80
+48.8
+58.8
+76.8
+56.3
+61.6 63.8
+70.5
+RS Classification
+Base
+1V
+1G
+8VC
+32VCG
+128VCG
+VHM-RL
+20
+30
+40
+50
+60
+70
+80
+33.1
+57.6 58.2
+65.8 65.0 63.9
+70.6
+RSVQA
+Base
+1V
+1G
+8VC
+32VCG
+128VCG
+VHM-RL
+0
+10
+20
+30
+40
+50
+60
+9.5
+18.4
+8.5
+31.4
+39.2
+51.7
+61.8
+RSVG-DIOR
+Base
+1V
+1G
+8VC
+32VCG
+128VCG
+VHM-RL
+40
+45
+50
+55
+60
+52.6 52.0
+49.3
+57.2
+58.7
+60.0
+55.8
+LHRS Bench
+Figure 1. We show that few-shot RLVR achieves strong generalization across remote sensing tasks. With as few as 1–128 rewardcheckable examples, our method outperforms or rivals baselines
+with thousands of examples across RS Classification, RSVQA,
+RSVG-DIOR, and LHRS Bench, without requiring dense annotations.
+started a new era in the combination of visual and textual understanding. Recently, Reinforcement Learning with
+Verifiable Reward (RLVR) methods have been introduced
+[14, 30, 31, 40] to use reinforcement learning methods
+to language models with rule based rewards which check
+whether the final answer is correct or not, or the answer
+follows a specific format, etc. Yet these models remain
+general-purpose and computationally heavy, and not that
+great for specialized domains, such as remote sensing (RS).
+As a result, RS-specific VLMs have emerged [5, 16, 20,
+21, 26, 32, 46]. These developments show the increasing
+influence of these models in improving both semantic and
+spatial comprehension for satellite imagery tasks, such as
+visual question answering, object detection, and grounding in RS scenarios. However, they also introduce a new
+arXiv:2507.21745v2 [cs.CV] 7 Aug 2025
+challenge: requiring hundreds of thousands [21, 22] or even
+million [20, 32, 46] annotated data to get a proper performance increase without overfitting. Moreover, unlike natural images, satellite scenes demand expert-level annotation:
+average humans struggle to produce accurate captions for
+subtle spectral differences or geographic patterns, so they
+use LLM-generated “pseudo-captions” [26, 32], which often lack the precision needed for fine-tuning. Manual collection of paired imagery and detailed captions is thus both
+time-consuming and costly, constraining the size and diversity of available datasets.
+A promising alternative emerges from few-shot RLVR:
+in the context of mathematical reasoning with text-only
+LLMs, “1-shot RLVR” has demonstrated that training on a
+single, carefully selected example can achieve performance
+comparable to training on thousands, by leveraging policygradient updates guided by a binary reward signal [44]. To
+our knowledge, this approach has not yet been explored
+for vision-language models. In the remote sensing domain,
+RLVR – let alone few-shot RLVR – remains largely underexplored, with only a few very recent preprints. [27] and
+[20] employ GRPO [36] for alignment following supervised
+fine-tuning on millions of examples. [19] attempts to apply RLVR directly without any pretraining as an ablation
+study; however, it is evaluated only on a small, task-specific
+dataset, leaving the general-purpose performance on remote
+sensing tasks still unknown.
+Building on recent claims that base language models already possess reasoning capabilities [13, 14, 24, 35, 45],
+we ask: Can robust, domain-specific reasoning over satellite imagery be elicited using only a handful of examples
+and verifiable rewards, rather than full captions? Following the approach of [44], we use RLVR to train remote sensing reasoning models with training sets as small as a single
+example. Our main contributions and observations are as
+follows:
+• A caption-free few-shot RLVR framework for satellite imagery. We introduce the first vision-language
+reasoning model for remote sensing trained solely via
+reinforcement learning with verifiable (binary or IoUbased) rewards–no human- or AI-generated captions
+required–demonstrating that base VLMs can be aligned
+for domain-specific reasoning with minimal supervision.
+• Unlocking reasoning with as little as one example. We
+show that a single curated training example yields doubledigit gains over the untouched base model across classification, VQA, and grounding benchmarks, and that performance scales smoothly–matching a 2000-image fully
+supervised baseline by 128 shots.
+• Characterizing and containing overfitting in the 1-
+shot setting. Unlike prior text-only RLVR work [44],
+our 1-shot models exhibit mild, task-confined overfitting
+(limited to the exact dataset split of the training example)
+while retaining robust generalization on all other remotesensing tasks.
+Table 1. A comparative study of our approach with prior work.
+Vision: Vision-language model, RS Adapted: Adapted to remote sensing problems with domain specific data, RL Reasoning:
+Trained as reasoning model with an RL based method, Few Shot:
+Trained with a few examples.
+Method Year Vision RS Adapted Reasoning Few Shot
+RSGPT [5] 2023 ✓ ✓ × ×
+GPT-4o [18] 2024 ✓ × × ×
+Qwen2-VL [43] 2024 ✓ × × ×
+EarthGPT [46] 2024 ✓ ✓ × ×
+GeoChat [21] 2024 ✓ ✓ × ×
+LHRSBot [26] 2024 ✓ ✓ × ×
+o1-o4 [30] 2025 ✓ × ✓ ×
+TinyRS [20] 2025 ✓ ✓ ✓ ×
+Wang et. al. [44] 2025 × × ✓ ✓
+Ours ✓ ✓ ✓ ✓
+2. Related Work
+A comparative summary of how our study differs from the
+related work can be found in Table 1.
+Language Models. The introduction of the Transformer architecture [42] ignited a revolution in large language models, first through BERT [11] and GPT [33], then culminating
+in milestone models like GPT-3 [7]. The arrival of LLaMA
+[41] flipped expectations by demonstrating that smaller
+models could actually surpass their heavyweight predecessors, fueling a surge of open-source LLMs such as Qwen
+[3], InternLM [39], and Gemma [38]. In parallel, CLIP
+[34] set off the era of multimodal models, paving the way
+for vision-language giants like GPT-4V [29], Qwen-VL [4],
+and PaliGemma [6]. As this landscape matured, it gave
+rise to compact, highly capable sub-7B multimodal SLMs–
+most notably, PaliGemma 2 [37] and Qwen2-VL-2B [43].
+All of these language models have been a breakthrough, either because of they set a new benchmark, or because of
+their efficiency in size. However, none of them are originally designed for being a reasoning model. On the other
+hand, several works show that they are naturally designed
+for being a task-specific reasoning model [13, 24, 35, 45].
+Also it is known that with thoughtful adaptation, smaller
+and more specialized models are now outperforming their
+larger, generic ancestors in both speed and task-specific accuracy [8, 28].
+Reinforcement Learning with Verifiable Rewards. The
+popularity of RLVR on the Large Language Models has
+started with the introduction of OpenAI’s o-series models [30, 31]. DeepSeek-R1 from DeepSeek [14] broke
+new ground in reasoning by sidestepping traditional supervised fine-tuning. Its sibling, DeepSeek-R1-Zero, leverages
+massive-scale reinforcement learning to self-improve reasoning abilities, but struggles with language mixing. To
+address this, DeepSeek-R1 introduces a clever blend of
+cold-start data and multi-stage training, enabling it to rival OpenAI-o1-1217 in performance. By adopting Group
+Relative Policy Optimization (GRPO) [36], DeepSeek-R1
+delivers strong mathematical reasoning with impressive efficiency. Knowledge distillation further extends its impact,
+shrinking its powerful reasoning into smaller models (spanning 1.5B to 70B parameters) that outperform prior generations.
+Still, while these advanced models leap ahead of vanilla
+language models in reasoning, they remain broad generalists and miss the benefits of task-tailored fine-tuning. Unlike OpenAI’s proprietary o-series, which supports multimodal tasks, DeepSeek-R1’s focus is unimodal. Yet GRPO
+opens the door for the open-source community: it provides
+a blueprint for transforming any LLM or VLM into a focused reasoning model [2, 17, 25], paving the way for small,
+efficient, task-specific, and even multimodal open-source
+reasoning systems.
+Few Shot RLVR. Wang et al. [44] show that reinforcement
+learning with verifiable reward (RLVR) can dramatically
+improve large language model reasoning with as little as
+one training example (“1-shot RLVR”). Training Qwen2.5-
+Math-1.5B on a single example raises its MATH500 accuracy from 36% to 73.6%, matching results from much
+larger datasets. The study finds that this improvement
+holds across models and tasks, and uncovers effects like
+post-saturation generalization, cross-domain gains, and increased self-reflection. The work suggests that strong reasoning capabilities already exist in base LLMs and can be
+efficiently unlocked with minimal, carefully chosen data
+and RL-based fine-tuning. However, as this study is limited to single-modality language models, it remains unclear
+whether few-shot RL training of vision-language models
+(VLMs) on task-specific examples–such as those in remote
+sensing–would yield similar improvements.
+Remote Sensing VLMs. Recent advances in vision language models (VLMs) have been extended to remote sensing applications. Efforts such as RSGPT [16] and GeoChat
+[21] have introduced new benchmarks (RSICap, RSIEval)
+and large instruction datasets, using LoRA-based finetuning [15] for tasks like captioning, visual question answering, and spatial interaction. EarthGPT [46] integrated
+different input types–including optical, SAR, and infrared
+imagery–into a single framework, while RS-LLaVA [5] improved multi-task performance through LoRA. LHRS-Bot
+[26] and LHRS-Bot-Nova [22] focused on geographic reasoning using datasets such as LHRS1-Align and LHRSInstruct. The VHM model [32] introduced a large remote
+sensing pretraining set with more than 1 million images and
+178,000 instructions. Despite these developments, none of
+these models have applied reinforcement learning (RL) for
+reasoning in remote sensing tasks. Recently, we found that
+a couple of preprints tries to do that.
+Muhtar et. al. [27] introduce the 7B ScoreRS model
+for answer quality analysis, employing Qwen2-VL-RS
+and Qwen2-VL-RS-R1 with GRPO-based rewards. Similarly, Koksal et. al. [20] claims that higher gains are
+achieved than Qwen2-VL-RS-R1 even though they are using a smaller model. However, both of these approaches
+have multi-stage training approaches including supervised
+fine tuning stages using generated captions from LLMs for
+millions of images. On the other hand, MilChat [19] applies RL to military base classification with strong results,
+while their final work focuses on multi-stage training, they
+have also completed a study with only RL training. However, their results are very limited to a single task and their
+generalist performance cannot be observed. Therefore, the
+performance of generalist language models with only RLVF
+training, yet alone a few shot case, remains unknown.
+3. Method
+3.1. Model
+Our approach builds on Qwen2-VL-2B [43], adopting both
+its model architecture and pretrained weights:
+Visual Encoder: Like Qwen2-VL-2B, our method employs
+a Vision Transformer (ViT) [12] with 675 million parameters as the visual encoder. This component supports naive
+dynamic resolution handling [10] throughout training and
+inference, enabling flexible input by mapping images of different sizes into variable-length visual token sequences.
+Language Model: At its core, our method uses the same
+language backbone as Qwen2-VL-2B, initializing from the
+pretrained Qwen-1.5B model weights.
+Position-Aware Vision-Language Adapter: For efficient
+multimodal processing, we integrate a vision-language
+adapter modeled after Qwen2-VL-2B. This adapter leverages a single-layer cross-attention mechanism to condense
+the sequence of visual features down to a fixed size of 256,
+while retaining positional context via 2D absolute positional
+encodings. The resulting compressed features are passed to
+the language model for downstream tasks.
+Since [44] have already demonstrated the robustness of
+RLVR across various LLM architectures, we believe our
+approach is equally adaptable to vision language models.
+Their findings indicate that the effectiveness of RLVR does
+not depend on a specific model, supporting the generalizability of the method.
+3.2. RL with Verifiable Rewards
+In this work, we leverage Group Relative Policy Optimization (GRPO) [36] to refine our policy using relative reward
+signals calculated over sets of candidate responses. Drawing inspiration from DeepSeek-R1 [14], we introduce two
+complementary reward types:
+Table 2. Few-Shot RLVR performance (%) for different domains in Remote Sensing. Here for RS Classification, we consider AID
+(AID), METER-ML (MML), NWPU (NW), SIRI-WHU (SIRI), WHU-RS19 (RS19) and RS Classification Average (Avg.). For RSVQA,
+we consider HR Comparison (HC), HR Presence (HP), LR Comparison (LC), LR Presence (LP), LR Rural-Urban (LRU) and RSVQA
+Average (Avg.). For Visual Grounding, we report precision scores for IoU≥0.5 on RSVG-DIOR (DIOR). For General Remote Sensing
+Knowledge, we present LHRS-Bench (LHRS) scores. Size refers to the number of distinct training examples used, and Step indicates the
+frozen iteration number that yielded the best result.
+Dataset Size Step RS Classification RSVQA Grounding Knw.
+AID MML NW SIRI RS19 Avg. HC HP LC LP LRU Avg. DIOR LHRS
+Base 0 0 53.0 42.8 43.6 42.4 62.1 48.8 32.4 44.6 30.4 42.1 16.0 33.1 9.5 52.6
+VHM-RL 2000 1300 70.6 59.1 72.4 61.8 88.4 70.5 72.4 49.9 82.1 75.6 73.0 70.6 61.8 55.8
+π1V 1 1300 58.8 45.8 52.7 51.3 85.6 58.8 69.6 63.6 65.3 25.7 64.0 57.6 18.4 52.0
+π1C 1 100 55.1 21.1 49.7 54.3 67.6 49.6 48.4 70.4 45.4 40.0 44.0 49.6 29.2 54.3
+π1G 1 700 77.9 69.6 69.1 69.5 98.1 76.8 63.6 60.2 62.2 48.9 56.0 58.2 8.5 49.3
+π2V C 2 100 60.2 20.7 52.5 59.0 86.4 55.8 69.6 63.9 65.3 26.3 71.0 59.2 15.6 48.4
+π2G 2 100 57.3 48.5 55.5 64.7 80.1 61.2 50.5 57.4 63.7 56.3 64.0 58.4 35.4 54.6
+π4V C 4 100 58.0 17.5 50.2 54.8 77.6 51.6 68.9 69.8 65.3 33.8 64.0 60.4 20.6 53.6
+π4V CG 4 200 55.9 29.2 50.2 49.3 72.3 51.4 70.0 67.6 65.1 30.0 63.0 59.1 23.3 54.5
+π8V C 8 200 58.2 39.3 50.2 57.4 76.4 56.3 70.6 58.2 67.5 63.7 69.0 65.8 31.4 57.2
+π8V CG 8 100 60.3 28.5 51.1 56.2 80.7 55.3 68.0 41.6 63.1 74.8 62.0 61.9 29.9 56.7
+π16V C 16 800 58.4 39.1 49.5 58.2 81.8 57.4 68.2 64.0 69.6 50.1 69.0 64.2 31.8 58.1
+π32V CG 32 400 62.9 42.3 54.9 59.3 88.5 61.6 69.6 54.9 65.2 74.4 61.0 65.0 39.2 58.7
+π64V CG 64 1900 62.9 45.5 55.9 59.4 82.4 61.2 70.6 53.3 67.8 73.2 64.0 65.8 47.3 57.5
+π128V CG 128 1600 67.3 48.7 60.9 56.9 85.4 63.8 71.1 60.7 69.9 73.6 44.0 63.9 51.7 60.0
+Format compliance reward: a binary signal granted
+whenever the model’s output strictly follows the prescribed structure: <reasoning>...</reasoning> <answer>...</answer>, irrespective of the content within those
+tags.
+Task-specific accuracy reward: Based on the idea from
+[20], we have defined two different accuracy rewards:
+• Closed-ended tasks (e.g. VQA, classification, multiplechoice): a binary signal (1 if the answer is correct, 0 otherwise).
+• Visual grounding: the Intersection over Union (IoU) between the predicted and true bounding boxes serves as
+the base reward value. We build on the ablation study
+presented in [20], which demonstrates that their proposed
+quantized IoU-based reward yields more stable and balanced performance across diverse benchmarks. Motivated by these findings, we adopt the same quantized reward function in this work. Specifically, a reward of 1 is
+assigned for IoU/score values ≥ 0.7, an exact base reward
+is given for values between 0.4 and 0.7, and a reward of 0
+is assigned for values < 0.4. This scheme is consistently
+applied to both types of tasks.
+3.3. Loss
+To train with GRPO, we introduce two different types of
+loss function in this work:
+The Policy Gradient Loss: This loss encourages the model
+to favor responses that yield higher rewards by weighting
+them according to group-normalized advantages. It reinforces solutions that surpass the group average while suppressing those that underperform. In our case, we group
+two distinct reward functions – based on [14] and [20] – as
+detailed in Section 3.2.
+The KL Divergence Loss: It is used to preserve overall language quality by comparing the model’s current outputs to
+those of a reference model, penalizing deviations between
+them.
+Please note that, unlike [44], we did not use entropy loss
+during training, as they also mention that it is not required,
+and the DeepSeek paper does not introduce it either.
+3.4. Dataset
+For this work, firstly random 2000 images are sampled from
+existing VHM-Instruct dataset [32] to generate the reference VHM-RL subset. These images are selected from the
+following tasks:
+• VQA: Visual Question Answering (520 images)
+• CLS: Scene Classification (637 images)
+• VG: Visual Grounding (843 images)
+To focus on the task-specific accuracy reward described in
+Section 3.2, we sample our few-shot training sets (ranging
+from 1 to 128 examples) directly from the reference dataset.
+In contrast to [44], which explored historical variance-based
+selection, our sampling is entirely random. Although their
+paper proposes a data selection strategy based on historical variance, the authors acknowledge that this method is
+not universally optimal and that randomly selected examples can sometimes yield up to 30% better performance.
+Therefore, we align with their ultimate conclusion that the
+observed few-shot RLVR phenomenon is largely independent of the data selection method, and we opt for random
+sampling in our experiments.
+The number of examples from each dataset used in our
+final models is defined as follows:
+• π1V : 1 VQA
+• π1C : 1 CLS
+• π1G: 1 VG
+• π2V C : 1 VQA and 1 CLS
+• π2G: 2 VG
+• π4V C : 2 VQA, 2 CLS
+• π4V CG: 2 VQA, 1 CLS, 1 VG
+• π8V C : 4 VQA, 4 CLS
+• π8V CG: 3 VQA, 3 CLS, 2 VG
+• π16V C : 8 VQA, 8 CLS
+• π32V CG: 10 VQA, 12 CLS, 10 VG
+• π64V CG: 20 VQA, 22 CLS, 22 VG
+• π128V CG: 42 VQA, 42 CLS, 44 VG
+For each dataset, the images are equally duplicated as
+needed so that each case contains 128 examples, matching
+the batch size of 128 used during training.
+3.5. Prompt
+Since we do not “cold start” our model with fine-tuning on
+generated reasoning captions, prompting becomes the only
+means to elicit reasoning from the base model. As a result,
+the design of the system prompt is especially critical. However, we found that overly task-specific prompts can actually harm performance, as we will discuss in a later ablation
+study. For this reason, our system prompt remains straightforward and is aligned with the approach used in DeepSeek:
+A conversation between User and Assistant. The
+user asks a question, and the Assistant solves it.
+The assistant first thinks about the reasoning process in the mind and then provides the user with
+the answer. The reasoning process and answer are
+enclosed within <reasoning> </reasoning> and <answer> </answer> tags, respectively, i.e., <reasoning> reasoning process here </reasoning><answer>
+answer here </answer>
+In addition to adjusting the system prompts, the question
+formats also need to be modified. The original VQA and
+CLS formats typically end with ... Answer the
+question using a single word or phrase.,
+which often leads the base model to ignore prior instructions and simply provide a one-word answer. To address
+this, we update the questions to ... Make your
+chain of thought reasoning and then
+answer the question using a single word
+or phrase. Similarly, for the VG tasks, the original prompt Output the bounding box of the
+following object in the image... is revised
+to Make your chain of thought reasoning
+and then output the bounding box of the
+following object in the image. With these
+changes, we observe that–even if only rarely–the base
+model now sometimes begins with reasoning before giving
+the final answer.
+4. Experiments
+4.1. Experimental Setup
+During the reinforcement learning stage, GRPO is applied within the TRL (Transformer Reinforcement Learning) framework using batched processing. The base code
+from [25] was forked from GitHub, and both the dataset
+and reward functions were adapted to fit our setup. Training was conducted on HPC clusters equipped with NVIDIA
+H100 GPUs, with the number of GPUs ranging from 16 to
+128 depending on availability. Temperature is set to 0.9.
+Gradient accumulation steps were tuned between 1 and 8 to
+maintain a consistent overall batch size of 128. The Adam
+optimizer was used, with an initial learning rate of 1×10−6
+.
+Due to memory constraints–even on H100 GPUs–we sampled 4 responses per image instead of the default 8. Following [44] and our own ablation studies, we found that
+setting β to 0.001 (rather than the default 0.04) yielded better results, so we adopted this value. Both the maximum
+prompt length and maximum completion length were set
+to 8192 tokens. The GRPO training phase was conducted
+for at least 1000 steps in each experiment, corresponding to
+1000 epochs with training sets of 128 examples. If the performance continued to improve after 1000 steps, training
+was extended up to 2000 steps; otherwise, it was stopped.
+4.2. Evaluation Setup
+We present our results on four popular remote sensing (RS)
+evaluation metrics: Remote Sensing Visual Question Answering (RSVQA), RS Classification, Visual Grounding,
+and General Knowledge (LHRS-Bench) [26, 32]. For all
+evaluations, the temperature is set to 1. We evaluate all
+checkpoints of the trained models and report the ones that
+achieve the best results.
+4.3. Results
+The results of all trainings using the datasets mentioned
+from Section 3.4 is presented in Table 2. Here are the key
+observations from the results:
+• Switching from the untouched base model to any of the
+1-shot variants (π1V , π1C , π1G) already delivers clear,
+double-digit boosts on most RS-Classification splits and
+Question: What scene does the image depict?
+A. Industrial area; B. Farmland;
+C. Residential area; D. Commercial area.
+Thinking… The image depicts a large open
+area with sports fields, which is
+characteristic of a residential area. The
+presence of sports fields and greenery
+suggests a community space for recreation
+and physical activities.
+General Knowledge Answer: C
+Question: Output the bounding box of
+the following object in the image: a
+stadium in the middle
+Thinking: The image shows a stadium
+with the words \"VISIT FLORIDA\"
+on its roof, indicating that it is a
+sports facility in Florida.
+Visual Grounding Answer: [199.0, 155.0, 492.0, 566.0]
+Question: Classify the image within one of the given
+classes: railway station, beach, industrial, center, storage
+tanks, meadow, mountain, airport, resort, school, port,
+farmland, medium residential, pond, river, sparse
+residential, forest, playground, church, parking, viaduct,
+stadium, square, bridge, desert, dense residential,
+commercial, park, bare land, baseball field.
+Thinking… The image shows a large open
+area with a playground, which is a typical
+feature of a park. The presence of a
+playground and the overall layout of the area
+suggest that this is a park.
+Scene Classification Answer: park
+Question: Is there a vineyard?
+Thinking… There is no indication of a
+vineyard in the image. The image shows a
+cityscape with buildings and a river, but
+there is no visible sign of a vineyard.
+Visual Question Answering Answer: No
+Figure 2. Qualitative outputs of our proposed method, trained with π128V CG dataset.
+sizeable gains on RSVQA and grounding. This validates
+our central hunch that verifiable-reward RL alone can unlock much of the latent reasoning ability without caption
+data.
+• Training with a single example introduces issues related
+to the type of metric used for that specific case. For
+instance, using just one classification example for training negatively impacts the model’s classification performance, especially on METER-ML–the dataset from
+which the example is drawn. This suggests that training
+with only one example leads to some degree of overfitting, but this effect appears to be confined to evaluation
+examples of the same type; the model still generalizes
+well to other tasks.
+• The 2-shot, 4-shot, and 8-shot cases do not achieve the
+best performance in any setting, but they consistently follow the baseline closely. They remain robust in most
+cases, and the “limited overfitting” observed in the 1-shot
+setting does not appear at all.
+• Adding more examples pushes performance up across the
+board, yet the slope flattens after roughly 32–64 shots.
+By 128 shots the model is tracking the 2k image VHMRL baseline in most categories, confirming diminishing
+returns and suggesting a pragmatic sweet spot around a
+few dozen curated cases.
+• Estimating the pixel locations of a bounding box makes
+visual grounding by far the most challenging metric in our
+evaluation. It is therefore unsurprising that training with
+the full dataset outperforms the few-shot cases. Nonetheless, training with just 128 examples still yields promising results, suggesting that a few-shot approach focused
+specifically on VG data could further improve grounding
+performance to levels much closer to those achieved with
+full-data training.
+• In all datasets, the training set lacks question-answer pairs
+similar to those in the LHRS-Bench evaluation set. As a
+result, the LHRS-Bench score serves as a measure of the
+model’s high level generalization ability. We observe that
+all models trained with 8-shot or more examples outperform VHM-RL on the LHRS-Bench metric. This demonstrates that few-shot training enables generalization, even
+when the training and evaluation sets are not similar.
+Some qualitative results from the model trained on the
+π128V CG dataset are presented in Figure 2. These examples
+suggest that a brief reasoning process is sufficient for the
+model to answer this type of question effectively. Since the
+model was not specifically trained on reasoning data, it does
+not attempt to mimic human thinking patterns or use phrases
+like “oh wait, let me think” and similar expressions. Thus,
+we can conclude that a concise chain-of-thought process is
+adequate for vision-language models to arrive at correct answers in these cases.
+4.4. Comparison with Other RS VLMs
+Although the primary aim of this paper is to analyze the effectiveness of few-shot training rather than introduce a new
+remote sensing language model, we include a comparison
+with existing algorithms trained on millions of examples.
+As shown in Table 3, our models–trained on just 128 and
+2000 images–achieve results that are competitive with these
+large-scale methods. Moreover, the existing models, except
+TinyRS [20], are all 7B models, while our models have only
+2B parameters. This highlights the remarkable potential of
+RLVR-based reasoning and training, even with a dramatically reduced amount of data.
+Table 3. Performance comparison of our method with existing RS
+VLMs.
+Method CLS VQA VG Know.
+GeoChat [21] 67.3 83.5 19.7 36.2
+VHM [32] 85.6 83.0 55.9 33.0
+TinyRS-R1 [20] 85.6 76.0 74.9 56.8
+Qwen2-VL-RS-R1 [27] 79.3 74.5 64.6 69.2
+VHM-RL-2000 (Ours) 70.5 70.6 61.8 55.8
+VHM-RL-128 (Ours) 63.8 63.9 51.7 60.0
+5. Ablation Study
+5.1. Effect of β
+In our main experiments, we follow [44] and set the β value
+for KL-divergence in the GRPO training algorithm to 0.001.
+For ablation purposes, we also experiment with the original
+default value of 0.04. In this study, we compare the training and evaluation results of models trained on the π16V C
+dataset under both β settings.
+Table 4. Effect of β on RLVR for the model trained on the π16V C
+dataset
+Method CLS VQA VG Know.
+β=0.001 56.3 65.8 31.4 57.2
+β=0.04 53.9 63.6 30.7 57.8
+According to the results in Table 4, the model trained
+with β = 0.001 outperforms the one trained with β = 0.04,
+though the improvement is incremental. Moreover, setting
+β = 0.04 introduces instability during training, which negatively impacts performance. As shown in Figure 3, the completion length for β = 0.04 increases abruptly for approximately 200 steps, causing the training process to become
+extremely slow before abruptly returning to normal. During this period, the model generates long, often nonsensical
+responses that do not contribute to learning. In contrast,
+training with β = 0.001 results in much more stable completion lengths and steadily improving response quality, as
+expected in a GRPO training.
+0 250 500 750 1000 1250 1500 1750
+Steps
+0
+50
+100
+150
+200
+250
+300
+Length
+Completion Length
+beta=0.001
+beta=0.04
+Figure 3. Change of completion length during training for the
+model trained on the π16V C dataset
+5.2. Effect of Prompting
+In this study, we examine the impact of both basic and detailed prompting. Intuitively, one might expect that, since
+the model has not been trained on any chain-of-thought
+data, providing a highly detailed prompt would be more effective. To test this hypothesis, we designed an alternative
+system prompt with extensive detail covering a wide range
+of possible scenarios, and retrained the model on the π16V C
+dataset using this prompt. The same detailed prompt was
+also used during evaluation:
+You are an expert to analyze the image and provide useful information for users. Imitate a chain
+of thought reasoning process like a human brain
+with as detail as possible. Use expressions like
+oh wait, let me think etc. Then reach to the conclusion and provide an answer. If question starts
+with VQA with brackets, final answer needs be one
+word only as yes or no, rural or urban etc. If
+question stars with CLS, you need to answer with
+one of the given classes, nothing else. If question
+starts with VG then mentions an object, you need
+to locate the object on the image and give the output [[x_min, y_min, x_max, y_max]], nothing else.
+Keep the values between 0 and 1000. If none of
+the abbreviations with brackets are given at the beginning, you will answer the question with one or
+two sentences. The reasoning process and answer
+are enclosed within <reasoning> </reasoning> and
+<answer> </answer> tags, respectively, i.e., <reasoning>...your reasoning here...</reasoning> <answer>...your answer here...</answer>
+Table 5. Effect of prompting on RLVR for the model trained on
+the π16V C dataset
+Method CLS VQA VG Know.
+Basic 56.3 65.8 31.4 57.2
+Detailed 38.2 64.3 17.9 52.4
+According to the results in Table 5, performance actually
+declined with detailed prompting rather than improving. A
+likely explanation is that Qwen2-VL was initially pretrained
+with short system prompts and shorter token lengths. As a
+result, providing longer prompts during RLVR–without an
+accompanying pretraining phase–may not be effective, as
+the model is not conditioned to handle such input lengths.
+5.3. Effect of Model Size
+As previously discussed in Section 3.1, the robustness of
+few-shot RLVR is independent of the underlying LLM architecture [44]. However, it remains important to analyze
+the effect of model size within the same architecture. In
+this study, we compare the zero-shot Qwen2-VL-2B and
+Qwen2-VL-7B models with their few-shot RLVR-trained
+counterparts using the π16V C dataset.
+Table 6. Effect of model size on RLVR for the model trained on
+the π16V C dataset
+Size Train CLS VQA VG Know.
+2B × 48.8 33.1 9.5 52.6
+2B ✓ 56.3+7.5 65.8+34.7 31.4+21.9 57.2+4.6
+7B × 63.0 61.2 14.3 57.0
+7B ✓ 62.0−1.0 68.7+7.5 40.2+25.9 67.2+10.2
+According to the results in Table 6, RLVR remains effective when applied to a larger-scale LLM with the same
+architecture, although the performance gains are somewhat limited. This is primarily because the 7B-parameter
+Qwen2-VL model is already substantially more capable on
+remote sensing tasks in zero-shot setting than its 2B counterpart. Nevertheless, the overall performance still improves
+significantly with only 16 training examples, demonstrating
+the robustness of RLVR across different-sized versions of
+the model.
+6. Conclusion
+We present the first few-shot RLVR framework for vision–language reasoning in remote sensing, eliminating the
+need for costly caption supervision by relying solely on
+lightweight, rule-based rewards. Across four standard evaluation suites, even a single curated example attains doubledigit gains over the base Qwen2-VL-2B, while scaling to
+128 examples closes the gap to a 2000-image VHM-RL system and, on LHRS-Bench, surpasses it, affirming that minimal data combined with verifiable rewards can unlock the
+latent reasoning ability already present in compact VLMs.
+Our analysis reveals three key insights. First, the wellpublicised “1-shot RLVR” phenomenon generalises to multimodal satellite imagery, but the extreme setting can introduce localized overfitting–most evident when the lone example shares its metric with the test split–whereas 8–32
+shots deliver stable, broadly transferable gains. Second,
+design choices matter: a concise system prompt and a
+small KL-weight (β = 0.001) yield smoother optimisation
+and higher final accuracy than verbose prompting or the
+GRPO default β = 0.04. Third, visual grounding remains
+the hardest sub-task; nonetheless, few-shot RLVR still lifts
+IoU@0.5 precision markedly, hinting that a groundingfocused shot allocation could shrink the remaining gap.
+These findings suggest a pragmatic recipe for data-scarce
+domains: begin with an off-the-shelf small VLM, craft a
+handful of reward-checkable examples, and fine-tune with
+GRPO. The resulting model inherits the efficiency of its
+backbone while achieving specialist competence without
+large-scale annotation.
+Limitations & future work. A key limitation of our
+study is the mild, task-specific overfitting observed in the
+extreme one-shot scenario, suggesting that careful example
+selection remains crucial despite the general effectiveness
+of our approach. Additionally, although our random sampling method is effective, exploring more strategic selection methods, such as variance-based sampling, could further improve model performance and robustness. Future
+work will also investigate extending the few-shot RLVR
+approach to larger vision-language models and other specialized remote sensing tasks, such as temporal analysis or
+multi-sensor fusion, where expert annotation is even more
+costly. Moreover, refining the prompt engineering strategy to better align with the pretrained model characteristics
+could further enhance training stability and generalization.
+Acknowledgements
+The numerical calculations reported in this paper were
+partially performed using the MareNostrum 5 pre-exascale
+supercomputing system and TÜB˙ITAK ULAKB˙IM,
+High Performance and Grid Computing Center (TRUBA
+resources). We gratefully acknowledge the Barcelona Supercomputing Center (BSC) and the Scientific and Technological Research Council of Turkey (TÜB˙ITAK) for providing access to these resources and supporting this research.

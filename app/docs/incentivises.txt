@@ -1,0 +1,990 @@
+REINFORCEMENT LEARNING WITH VERIFIABLE REWARDS IMPLICITLY INCENTIVIZES CORRECT REASONING IN BASE LLMS
+Xumeng Wen∗1
+, Zihan Liu∗ † 2
+, Shun Zheng∗ ‡ 1
+, Shengyu Ye† 1
+, Zhirong Wu1
+, Yang Wang1
+,
+Zhijian Xu† 3
+, Xiao Liang† 4
+, Junjie Li1
+, Ziming Miao1
+, Jiang Bian1
+, Mao Yang1
+1Microsoft Research Asia 2Peking University
+3The Chinese University of Hong Kong 4University of California, Los Angeles
+ABSTRACT
+Recent advancements in long chain-of-thought (CoT) reasoning, particularly
+through the Group Relative Policy Optimization algorithm used by DeepSeekR1, have led to significant interest in the potential of Reinforcement Learning
+with Verifiable Rewards (RLVR) for Large Language Models (LLMs). While
+RLVR promises to improve reasoning by allowing models to learn from free exploration, there remains debate over whether it truly enhances reasoning abilities
+or simply boosts sampling efficiency. This paper systematically investigates the
+impact of RLVR on LLM reasoning. We revisit Pass@K experiments and demonstrate that RLVR can extend the reasoning boundary for both mathematical and
+coding tasks. This is supported by our introduction of a novel evaluation metric,
+CoT-Pass@K, which captures reasoning success by accounting for both the final
+answer and intermediate reasoning steps. Furthermore, we present a theoretical
+framework explaining RLVR’s incentive mechanism, demonstrating how it can
+encourage correct reasoning even when rewards are based solely on answer correctness. Our analysis of RLVR’s training dynamics reveals that it incentivizes
+correct reasoning early in the process, with substantial improvements in reasoning
+quality confirmed through extensive evaluations. These findings provide strong
+evidence of RLVR’s potential to enhance LLM reasoning, offering valuable insights into its mechanisms and performance improvements.
+1 INTRODUCTION
+The successful replication of long chain-of-thought (CoT) reasoning, similar to that in OpenAI’s
+o1 (OpenAI, 2024), by DeepSeek-R1 (Guo et al., 2025) using the Group Relative Policy Optimization (GRPO) algorithm (Shao et al., 2024), has sparked a surge of interest within the open research
+community. This interest is focused on understanding, reproducing, and extending DeepSeek’s approach, as evidenced by a multitude of recent studies (Liu et al., 2025b; Hu et al., 2025; Zeng et al.,
+2025; Yu et al., 2025; He et al., 2025; Wen et al., 2025; Chen et al., 2025b). Fundamentally, this
+emerging paradigm is a form of Reinforcement Learning with Verifiable Rewards (RLVR) (Lambert
+et al., 2024; Guo et al., 2025; Yue et al., 2025), where a Large Language Model (LLM) acts as a policy, generating a CoT as a sequence of actions and receiving feedback on answer correctness from
+deterministic verifiers. This paradigm holds the promise of endowing LLMs with the ability to learn
+from experience through free exploration, potentially leading to unlimited intelligence (OpenAI,
+2024; Guo et al., 2025; Silver & Sutton, 2025).
+However, emerging concerns question the true effectiveness of RLVR. These concerns are motivated
+by the observation that some post-RLVR models improve the Pass@1 metric but fail to enhance the
+Pass@K metric compared to the base (pre-RLVR) model. This phenomenon was first noted by Shao
+et al. (2024) during the development of GRPO. Subsequently, a systematic study by Yue et al. (2025)
+∗These authors contributed equally: Xumeng Wen, Zihan Liu, Shun Zheng.
+†Work done during the internship at Microsoft Research Asia.
+‡Correspondence to shun.zheng@microsoft.com.
+1
+arXiv:2506.14245v2 [cs.AI] 2 Oct 2025
+Preprint.
+Question
+Chain of
+Thought
+(CoT)
+Answer
+Base LLM
+A Hypothesis Explaining Pass@1 and Pass@K
+ All reasoning paths are present in the base model.
+• RLVR improves sampling efficiency.
+• RLVR reduces reasoning capacity.
+Our Perspective:
+ RLVR Implicitly Incentivizes Correct Reasoning
+• RLVR promotes correct reasoning paths.
+• RLVR mitigates spurious guesses.
+Reinforcement Learning with
+Verifiable Rewards (RLVR)
+Figure 1: An illustration of our perspective: RLVR implicitly incentivizes correct reasoning in
+base LLMs. We visualize how different explanation frameworks lead to varying reasoning paths
+being activated, with our perspective shown in the lower left and a recent popular hypothesis explaining Pass@K observations (Yue et al., 2025) summarized in the upper left. In this diagram,
+the line width represents the sampling probability of a reasoning path, while the color distinguishes
+correct paths (green) from incorrect ones (red). If all reasoning paths after applying RLVR are already present in the base model, the reasoning model merely adjusts the sampling probabilities of
+these existing paths (visualized in dashed lines). This hypothesis effectively accounts for the key
+observation shown in the upper-right part, where, for a moderately large K, a base LLM can catch
+up to the reasoning model after RLVR using the Pass@K metric. In this study, we unveil the extended reasoning capability boundary in math tasks using a refined metric, CoT-Pass@K, which
+emphasizes both the correctness of answers and the validity of reasoning CoTs.
+on more open-weight RLVR models discovered that the Pass@K metric of the base model increases
+at a much faster rate than its RLVR-tuned counterpart. Consequently, for a moderately large K, the
+base model eventually matches and surpasses the reasoning model. This led to their adventurous
+hypothesis: all correct reasoning paths are already present in the base model, and RLVR merely
+improves sampling efficiency at the cost of reducing overall reasoning capacity.
+While this hypothesis has gained significant support (Zhu et al., 2025; Zhang et al., 2025; Wang et al.,
+2025a; Chen et al., 2025a), conflicting observations have also been reported. For instance, Liu et al.
+(2025a) detected the emergence of new reasoning patterns after RLVR, while they also acknowledged a loss in reasoning capacity as measured by Pass@K. Chen et al. (2025b) reported persistent
+improvements in Pass@K for competitive coding tasks but did not show improved Pass@K for
+math tasks. Shojaee et al. (2025) observed similar Pass@K observations on math datasets but found
+different patterns on puzzles with high complexity. To the best of our knowledge, no systematic
+explanation exists to reconcile these contradictory findings, leaving a critical question unanswered:
+“should we accept the hypothesis as a fundamental limitation of RLVR or should we trust new empirical findings that challenge the hypothesis?”
+In this work, we address this debate systematically and demonstrate that RLVR can fundamentally
+enhance the reasoning abilities of LLMs. First, we revisit Pass@K experiments and unveil the
+existence of extended reasoning capability boundaries after RLVR for both math and code tasks. In
+addition to reproducing the extended reasoning boundary in competitive coding, as reported by Chen
+et al. (2025b), we find that the Pass@K performance of base LLMs on math reasoning can be
+unreliable, as base LLMs are capable of producing incorrect CoTs yet coincidentally arriving at the
+ground truth, especially for hard mathematical questions where answers are simple and can be easily
+guessed after multiple attempts. To address this, we introduce a new metric, CoT-Pass@K, which
+evaluates success only when both the final answer and the intermediate reasoning CoT are correct. In
+practice, we verify the correctness of mathematical CoTs by instructing DeepSeek-R1-0528-Qwen3-
+8B (DeepSeek, 2025) and confirm their reliability. Using this new metric, we successfully identify
+the extended reasoning boundary of a post-RLVR model for math tasks. Figure 1 summarizes our
+key perspectives.
+2
+Preprint.
+Moreover, we develop a theoretical framework to explain why RLVR works, even when base LLMs
+may guess the ground truth and only answer correctness is provided as a reward, and how RLVR
+incentivizes correct reasoning. Our central insight is that once LLMs have been pre-trained to establish strong knowledge and logic priors that distinguish correct from incorrect CoTs, the GRPO
+gradient will increase the probability of generating more correct CoTs.
+Additionally, we investigate the training dynamics of RLVR to understand when this improved reasoning emerges. By reproducing GRPO-style training using the open-source DAPO recipe (Yu
+et al., 2025) and performing extensive verifications, we find that RLVR begins to incentivize correct reasoning from the early stages of training, and this capability generalizes well to unseen test
+questions. The results of our training analysis align with our theorem, which highlights the implicit
+incentivization of correct reasoning CoTs.
+Finally, we evaluate the quality of generated CoTs from a learning perspective: if supervised learning on some CoT data results in better generalization performance on test sets, we regard them as
+high quality. This allows us to evaluate the quality of CoTs generated by model checkpoints at
+different RLVR stages. Our results show that after RLVR, the quality of reasoning CoTs has been
+fundamentally improved.
+In summary, our contributions include:
+• A systematic evaluation revealing the extended reasoning capability boundary after RLVR
+for both code and math tasks.
+• A theoretical understanding of why RLVR works with only answer correctness as a reward
+and how RLVR incentivizes correct reasoning.
+• An analysis of RLVR’s training dynamics, delving deeper into optimization effects, generalization behaviors, and current limitations.
+• Confirmation of the quality improvements in reasoning CoTs from a learning perspective,
+replicating the generalization abilities of post-RLVR models trained with enormous costs
+simply via supervised fine-tuning.
+2 RELATED WORK
+RLVR Since the release of DeepSeek-R1 (Guo et al., 2025), there has been a surge of research
+interest in the RLVR paradigm (Luo et al., 2025b; Liu et al., 2025b; Hu et al., 2025; Cui et al.,
+2025; Xie et al., 2025; Zeng et al., 2025; Yu et al., 2025; Luo et al., 2025a; Chen et al., 2025a;
+He et al., 2025; Wen et al., 2025; Cao et al., 2025; Liu et al., 2025a; Chen et al., 2025b). Due
+to the high computational cost of RLVR, most studies have focused on small- to medium-sized
+models (up to 32B parameters). These studies span a wide range of aspects, including training
+data curation, objective design, hyperparameter tuning, base model selection, and various insightful
+observations. However, only a few studies have addressed the theoretical foundations of RLVR. In
+this work, we argue that RLVR for LLMs should be understood from a different perspective—one
+that emphasizes the correctness of reasoning paths. We hope our empirical findings and theoretical
+perspective could inspire the community to develop more efficient and effective RLVR approaches,
+unlocking its broader potential across diverse applications.
+Debates on Whether RLVR Really Incentivizes Since Yue et al. (2025) raised the insightful
+question of whether RLVR truly incentivizes improvements beyond the base LLMs, and conducted
+extensive empirical experiments to demonstrate the wide applicability of their key hypothesis—that
+RLVR does not improve P ass@K for the base LLM because all reasoning paths are already present
+in the base model—there have been varying perspectives on this hypothesis. Some studies agree
+with this viewpoint (Wang et al., 2025b; Zhu et al., 2025; Zhang et al., 2025; Wang et al., 2025a;
+Chen et al., 2025a), while others report contradictory findings (Liu et al., 2025a; Chen et al., 2025b;
+Shojaee et al., 2025), as discussed in the introduction. There is currently no fundamental understanding to resolve these debates. Liu et al. (2025a) speculated that previous RLVR experiments
+may have been conducted within a single domain (e.g., math) and were optimized for limited gradient steps before true exploration could occur. Shojaee et al. (2025) suggested that the complexity
+of puzzles might be the key factor. Chen et al. (2025b) presented statistically significant empirical
+results to justify that their model indeed improves P ass@K, particularly highlighting a persistent
+3
+Preprint.
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Pass@k
+AIME 2025
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+AIME 2024
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7
+Sampling Number (K)
+0.7
+0.8
+0.9
+Math-500
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.4
+0.6
+0.8
+1.0
+AMC23
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7
+Sampling Number (K)
+0.4
+0.5
+0.6
+0.7
+Minerva
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+CoT-Pass@k
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7
+Sampling Number (K)
+0.5
+0.6
+0.7
+0.8
+0.9
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.4
+0.6
+0.8
+1.0
+Base LLM
+After RLVR
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7
+Sampling Number (K)
+0.3
+0.4
+0.5
+0.6
+Base LLM
+After RLVR
+Figure 2: Comparisons of Pass@K (the top row) and CoT-Pass@K (the bottom row) on five math
+benchmarks (different columns) to show how RLVR could improve base LLMs. Here the base LLM
+is Qwen2.5-32B, and the post-RLVR model is DAPO-Qwen-32B. For CoT-Pass@K, we perform
+multiple verifications for each CoT using DeepSeek-R1-0528-Qwen3-8B, and display the results
+determined by any-correct, all-correct, and majority-correct strategies, which constitute the shaded
+area in lower subplots.
+gap on the LiveCodeBench v6 (Jain et al., 2025). In this work, we extend the Pass@K experiments
+of Chen et al. (2025b) to more LiveCodeBench versions and include another similar open-source
+study (He et al., 2025) starting RLVR from distilled LLMs as a comparison. All these results clearly
+disclose the extended reasoning boundary of distilled LLMs on competitive coding after RLVR.
+The Importance of Correct CoTs Recent studies have also highlighted the importance of verifying the correctness of CoTs (Arcuschin et al., 2025; McGinness & Baumgartner, 2025; Shojaee
+et al., 2025). However, their approaches focus on defining synthetic reasoning tasks where the correctness of reasoning CoTs can be verified easily. While this is an interesting and effective approach
+for fully examining reasoning correctness, it is difficult to apply to unstructured reasoning scenarios,
+such as in math and code. In this work, we argue that the LLM-as-a-CoT-Judge paradigm could play
+a crucial role in more general reasoning tasks, and emphasize the pressing need for the design of
+evaluation benchmarks to assess the reliability of emerging LLM verifiers.
+3 EXTENDED REASONING CAPABILITY BOUNDARY AFTER RLVR
+In this section, we present concrete benchmark evaluations that demonstrate how RLVR can fundamentally enhance the reasoning abilities of LLMs. This enhancement goes beyond mere improvements in sampling efficiency; it also expands the reasoning capability boundary. However,
+to effectively observe this enhancement, it is crucial to adopt an appropriate RLVR training recipe,
+select challenging benchmarks that are free from data contamination, and utilize reliable evaluation
+metrics. Without these measures, one might only observe improvements in sampling efficiency, with
+no actual change in reasoning capacity. Below, we discuss two representative cases from both the
+math and code domains, showcasing genuinely extended reasoning boundaries.
+3.1 MATH REASONING
+We begin by revisiting the Pass@K experiments conducted on the open-source model, DAPOQwen-32B (Yu et al., 2025), which successfully reproduced R1-Zero (Guo et al., 2025) using the
+base LLM, Qwen2.5-32B (Qwen, 2024), and a curated set of 17k mathematical problems. A key
+contribution of our work is the introduction of a novel evaluation metric, CoT-Pass@K, which emphasizes the importance of evaluating the correctness of detailed reasoning steps for mathematical
+questions, rather than relying solely on answer correctness.
+However, precisely measuring the correctness of CoTs at scale is inherently challenging due to the
+unstructured, lengthy, and complex nature of math CoTs. Fortunately, we can leverage specialized open-source LLMs, such as DeepSeek-R1-0528-Qwen3-8B (DeepSeek, 2025), as a powerful
+yet lightweight verifier, employing an LLM-as-a-CoT-Judge paradigm. In this study, we use this
+4
+Preprint.
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.4
+0.5
+0.6
+0.7
+Pass@K
+LiveCodeBench-v6
+DeepSeek-R1-Distill-7B
+AceReason-Nemotron-7B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.4
+0.5
+0.6
+0.7
+0.8
+LiveCodeBench-v5
+DeepSeek-R1-Distill-7B
+AceReason-Nemotron-7B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.4
+0.5
+0.6
+0.7
+LiveCodeBench-v4
+DeepSeek-R1-Distill-7B
+AceReason-Nemotron-7B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.6
+0.7
+0.8
+0.9
+LiveCodeBench-v3
+DeepSeek-R1-Distill-7B
+AceReason-Nemotron-7B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.6
+0.7
+0.8
+0.9
+LiveCodeBench-v2
+DeepSeek-R1-Distill-7B
+AceReason-Nemotron-7B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.6
+0.7
+0.8
+0.9
+LiveCodeBench-v1
+DeepSeek-R1-Distill-7B
+AceReason-Nemotron-7B
+Figure 3: Comparisons of Pass@K across six LiveCodeBench versions to show how much RLVR
+could enhance distilled LLMs. Here the distilled LLM is DeepSeek-R1-Distill-Qwen-7B, and the
+post-RLVR model is AceReason-Nemotron-7B.
+verifier multiple times for each reasoning CoT generated by DAPO-Qwen-32B and Qwen2.5-32B,
+employing three distinct strategies to assess CoT correctness: any-correct (at least one verification
+returns correct), all-correct (all verifications must return correct), and majority-correct (the majority
+vote determines the outcome). To further ensure the reliability of these verifications, we manually
+inspect cases where the Pass@K metric yields a small positive value, but the CoT-Pass@K metric
+returns zero. The details of our LLM-as-a-CoT-Judge approach can be found in Appendix A.3.
+Figure 2 presents a comprehensive comparison using both Pass@K and CoT-Pass@K metrics across
+prominent math-reasoning benchmarks. As shown in the top row, the Pass@K results align with the
+observations in (Yue et al., 2025): the performance of the base LLM quickly catches up with and
+even surpasses the post-RLVR model as K increases. However, in stark contrast, the CoT-Pass@K
+results on AIME 2024 and AIME 2025 reveal a consistent and significant performance gap between
+the models across all values of K (up to 1024). This gap is particularly pronounced on AIME
+2025, possibly due to its complete absence of unintentional data contamination, as it was released
+after the base model’s training cutoff. We perform manual inspections to ensure the distinct gaps
+observed using the CoT-Pass@K metric are reliable (see examples in Appendix A.8.1 and A.8.2).
+Our LLM verifier effectively identifies critical errors, which we agree should be rejected. These
+results demonstrate the extended reasoning boundary of DAPO-Qwen-32B over Qwen2.5-32B.
+Additionally, we observe that on other benchmarks such as MATH-500 and AMC23, the effects of
+RLVR seem less pronounced, as the base LLM is already capable of solving these problems correctly
+with sufficient attempts. This may be due to 1) the problems being simple enough for the base LLM
+to solve using its existing knowledge, or 2) the problems being part of its pre-training data, allowing
+the base LLM to recall the correct solution after multiple trials. Distinguishing between these possibilities is challenging without knowing the exact training data used for Qwen2.5-32B. Furthermore,
+on the Minerva benchmark, the post-RLVR model shows no improvement, likely due to a train-test
+domain mismatch. Minerva contains numerous physics problems and free-form answers, while the
+DAPO training data was restricted to math problems with integer answers. These results do not
+undermine the effectiveness of RLVR; rather, they highlight the importance of selecting appropriate
+benchmarks for evaluating RLVR progress.
+3.2 CODE REASONING
+Unlike RLVR for mathematical problems, where the correctness of extracted answer tokens is used
+as a proxy for passing, code reasoning relies on the actual execution of generated code snippets to
+verify correctness, significantly reducing the likelihood of guessing. Therefore, Pass@K serves as a
+reliable evaluation metric for code reasoning tasks.
+In this section, we reproduce the Pass@K experiments across different versions of LiveCodeBench (Jain et al., 2025) to compare the performance of AceReason-Nemotron-7B (Chen et al.,
+2025b) with its pre-RLVR counterpart, DeepSeek-R1-Distill-Qwen-7B (Guo et al., 2025). As shown
+in Figure 3, we observe that AceReason-Nemotron-7B exhibits clear Pass@K improvements over
+DeepSeek-R1-Distill-Qwen-7B on most benchmark versions, even though the latter is a distillation
+model already demonstrating remarkable reasoning capabilities. These results suggest that even
+for distillation models, a high-quality RLVR training recipe can significantly extend the reasoning
+capability boundary, particularly for competitive coding tasks.
+To further confirm the success of RLVR in extending reasoning boundaries for coding tasks, we
+evaluate another post-RLVR model, Skywork-OR1 (He et al., 2025), which has a fully reproducible
+5
+Preprint.
+training recipe publicly available. Detailed results on LiveCodeBench-v6 can be found in Appendix A.4, where we observe a consistent Pass@K gap between Skywork-OR1 and DeepSeekR1-Distill-Qwen-7B. Specifically, we find that only medium and hard problems in LiveCodeBenchv6 contribute to the differentiation between these two models for large K values, underscoring the
+importance of selecting challenging benchmarks.
+4 A THEORETICAL UNDERSTANDING OF RLVR FOR LLMS
+In addition to empirical evidences, we provide a theoretical understanding of how RLVR, as implemented in the GRPO algorithm (Shao et al., 2024), fundamentally incentivizes correct reasoning for
+pre-trained language models. We note a key distinction between RLVR for LLMs and traditional
+RL for randomly initialized models. Pre-trained LLMs, owing to their powerful likelihood estimation capabilities obtained during pre-training, can generate various CoTs and then produce possible
+answers. Some of them could coincidentally arrive at the ground truth, especially when the ground
+truth is in a simple format and can be easily guessed. In contrast, traditional RL simply optimizes
+for action trajectories that yield high rewards, without necessarily verifying the intrinsic correctness
+of each action along the path. For instance, in the Go game (Silver et al., 2017), every action is
+valid once the simulation environment is setup correctly. In the following, we start our theoretical
+analysis from a formal problem setup distinguishing CoT and answer tokens in LLM responses.
+Problem Setup Given a question prompt q , we sample G responses Y = {y1, y2, . . . , yG} from
+policy πθ, where πθ is a LLM model parameterized by θ. Let ci be the CoT in response yi
+, and ai
+the final answer. We define the following correctness indicators:
+ICoT(ci) = 
+1 if ci
+is correct
+0 otherwise , IAns(ai) = 
+1 if ai
+is correct
+0 otherwise . (1)
+In this study, we define the CoT correctness ICoT(ci) as the intermediate tokens of a response (ci)
+expressing necessary and accurate logics that lead to the ground truth. We use p
+θ
+c = Pπθ
+(ICoT(c) =
+1) to denote the probability of generating a correct CoT. In practice, it is rather challenging to
+verify the CoT correctness because it is inherently unstructured, knowledge-intensive, and full of
+details. In contrast, the answer correctness IAns(ai) is assumed to be verified programmatically.
+So we have a verifiable reward R(yi) that is binary and determined solely by answer correctness:
+R(yi) = IAns(ai). We calculate the standard GRPO advantage Aˆ(yi) as:
+Aˆ(yi) = R(yi) − µY
+σY
+, µY =
+1
+G
+X
+G
+j=1
+R(yj ), σY =
+vuut
+1
+G
+X
+G
+j=1
+(R(yj ) − µY)
+2. (2)
+Without loss of generality, we consider a policy gradient (Sutton et al., 1999) update:
+∇θJ(θ) ≈
+1
+G
+X
+G
+i=1
+Aˆ(yi)∇θ log πθ(yi
+| q). (3)
+Assumptions Given the problem setup decoupling CoT and answer correctness, we introduce a
+critical Logic Prior assumption: compared with incorrect CoTs, correct CoTs have higher probabilities to induce correct answers. Thus we have
+P(IAns(ai) = 1 | ICoT(ci) = 1) = α > P(IAns(ai) = 1 | ICoT(ci) = 0) = β. (4)
+This assumption is based on the belief that pre-trained LLMs have established strong knowledge and
+logic priors. Besides, we also assume a learnable group (σY > 0) and a sufficiently large sampling
+number G to ensure stable gradient updates. Then, we establish the following theorem.
+Theorem 1 (GRPO Implicitly Incentivizes Correct Reasoning) For any prompt q satisfying our
+assumptions, the expected GRPO advantage E[Aˆ(yi)] satisfies:
+E
+h
+Aˆ(yi) | ICoT(ci) = 1i
+> 0, E
+h
+Aˆ(yi) | ICoT(ci) = 0i
+< 0, (5)
+where Aˆ(yi) is defined in equation 2. The GRPO policy gradient, as defined in equation 3, increase
+the probability of generating correct CoTs (p
+θ
+c
+) in the next round, so p
+θ
+c
+increases monotonically.
+6
+Preprint.
+0 0~20 80~100 180~200 280~300 380~400
+Training Steps
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Probability
+P(CA)
+(q) P(CC|CA)
+(q)
+Figure 4: The evolution of P(CA)
+(q)
+(the fraction of correct answers for prompt q) and
+P(CC|CA)
+(q)
+(the fraction of correct CoTs within the correct answers for prompt q) for fully
+optimized training questions over the course of DAPO training.
+Below we briefly illustrate our key perspectives on why GRPO works and when it may fail. Moreover, we include a complete proof for Theorem 1 and more discussions in Appendix A.5.
+Discussions on the effectiveness of GRPO Theorem 1 indicates that even though a base LLM
+may guess the ground truth with imperfect CoTs at the beginning (low initial p
+θ
+c
+), GRPO could still
+work as long as the knowledge and logic priors have been established. The driving factor is the
+gap α − β > 0, which amplifies the advantage difference between correct and incorrect CoTs. As
+training progresses and α increases (due to more sound reasoning across various question prompts)
+while β decreases (reducing spurious correlations, model biases, incorrect knowledge or calculation,
+etc.), causing the gap to widen and further accelerating coherent reasoning. As pc → 1, (α − β)
+may approach 1 in a faster pace because generating a few answer tokens is typically much easier
+than producing long correct CoTs, then E[Aˆ(yi) | correct CoT] → 0, ensuring convergence.
+Discussions on failure modes in GRPO We note that the Logic Prior assumption may not always hold, potentially leading to the reinforcement of incorrect CoTs, since base LLMs may retain
+inherent biases and possibly fatal knowledge errors from pre-training. These harmful information
+might exist in some CoTs that finally yield the correct answer. In such cases, improper model biases could be unintentionally reinforced. We suspect that these unexpectedly reinforced CoTs are
+the root cause of the challenges faced by the R1-Zero approach (Guo et al., 2025), including poor
+readability and multi-lingual behaviors.
+5 TRAINING DYNAMICS OF RLVR
+To further demystify RLVR, we reproduce and analyze the training recipe of DAPO (Yu et al., 2025),
+which has been demonstrated to present extended reasoning capability boundaries in Section 3. Our
+experiments show that its training dynamics align pretty well with Theorem 1.
+Key Indicators We first introduce key indicators that we have recorded during the reproduction.
+For each prompt q sampled with G responses, we define the number of answer passes and the
+number of both CoT and answer passes as C =
+PG
+i=1 IAns(ai) and D =
+PG
+i=1 ICoT(ci) · IAns(ai),
+respectively. We follow Chen et al. (2021)’s approach to calculate the Pass@K metric. Accordingly,
+we have per-prompt metrics: Pass@K(q) = 1 −
+(
+G−C
+K )
+(
+G
+K)
+and CoT-Pass@K(q) = 1 −
+(
+G−D
+K )
+(
+G
+K)
+. Besides,
+we estimate the probability of producing correct answers for prompt q as P(CA)
+(q) =
+C
+G
+and the
+probability of producing correct CoTs when generating correct answers as P(CC|CA)
+(q) =
+D
+C
+. For
+a dataset of multiple prompts, we take an average of per-prompt metrics as the dataset-level score.
+Optimization Effects In our reproduced DAPO training, we observe that most training questions
+have been fully optimized. As shown in Figure 4, the probability of generating correct answers for
+these questions almost reach 1. In the meanwhile, we also observe the improvement in producing
+7
+Preprint.
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Pass@k
+AIME 2024
+After RLVR
+RLVR Step-210
+RLVR Step-60
+RLVR Step-30
+Base LLM
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+AIME 2025
+After RLVR
+RLVR Step-210
+RLVR Step-60
+RLVR Step-30
+Base LLM
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+CoT-Pass@k
+AIME 2024
+After RLVR
+RLVR Step-210
+RLVR Step-60
+RLVR Step-30
+Base LLM
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+9 2
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+AIME 2025
+After RLVR
+RLVR Step-210
+RLVR Step-60
+RLVR Step-30
+Base LLM
+Figure 5: The evolution of Pass@K (the top row) and CoT-Pass@K (the bottom row) performance
+on AIME 2024 and 2025 for different model checkpoints during the DAPO training.
+more correct reasoning CoTs, as indicated by the improvements in P(CC|CA)
+(q)
+. These observations validate the key perspective in Theorem 1: RLVR not only optimizes the final verifiable reward
+but also implicitly incentivizes correct reasoning.
+Generalization Behaviors In the meanwhile, Figure 5 discloses that the optimization of RLVR
+leads to the generalization improvements of both Pass@K and CoT-Pass@K from the very beginning. And using the CoT-Pass@K metric, we can clearly tell that the reasoning capability boundary
+has also been enhanced since the beginning. Another interpretation for this empirical observation
+is that the model has learned to produce more and more reasoning CoTs that DeepSeek-R1-0528-
+Qwen-8B cannot identify any error. This ability is learned implicitly since we have no formal
+supervision for the CoT correctness.
+Limitations of DAPO Figure 4 also unveils the limitations of DAPO, the R1-zero approach applied to a 32B base LLM. As P(CA)
+(q)
+approaches 1.0 for most fully optimized training questions
+after 400 steps, which means these questions are no longer learnable because we cannot calculate
+a valid GRPO advantage for a all-correct group, we can still observe a non-negligible portion of
+imperfect CoTs (the median of P(CC|CA)
+(q)
+is around 0.7). These signals indicate that there are
+certain unexpected reasoning behaviors learned in DAPO and we may not have a chance to mitigate
+them purely based on answer correctness as the reward.
+6 THE QUALITY OF REASONING COTS ENHANCED BY RLVR
+In addition to the LLM-as-a-CoT-Judge approach for strictly identifying critical errors in reasoning CoTs, we further leverage supervised fine-tuning (SFT) to assess the quality of reasoning CoTs
+enhanced by RLVR. Given the training questions in DAPO, we conduct multiple SFT procedures,
+starting from the same base LLM and learning from CoTs generated by different models. If the CoT
+data is of high quality, we expect the post-SFT model to exhibit improved generalization performance. Figure 6 presents an overall quality evaluation of various CoT data.
+Specifically, Figure 6(a) illustrates the evolution of CoT quality during RLVR. As training progresses, the generalization performance of post-SFT LLMs, measured in Pass@1, improves steadily.
+Ultimately, SFT on DAPO CoT data matches the Pass@1 performance of DAPO-Qwen-32B. This
+result indicates that, given sufficient training questions and CoT data from a post-RLVR model, we
+can replicate a new model with nearly the same Pass@1 performance simply through SFT. Moreover,
+an interesting observation is that, regardless of whether the CoT data contains identifiable errors, as
+8
+Preprint.
+Base CoTs Steps(0-20) Steps(180-200) DAPO CoTs
+SFT Training Data
+0.1
+0.2
+0.3
+0.4
+0.5
+Pass@1 (Avg.@32)
+Qwen2.5-32B-Base
+DAPO-Qwen-32B
+AIME 2024
+SFT on correct CoTs
+SFT on incorrect CoTs
+SFT on all CoTs
+Base CoTs Steps(0-20) Steps(180-200) DAPO CoTs
+SFT Training Data
+0.1
+0.2
+0.3
+Pass@1 (Avg.@32)
+Qwen2.5-32B-Base
+DAPO-Qwen-32B
+AIME 2025
+SFT on correct CoTs
+SFT on incorrect CoTs
+SFT on all CoTs
+(a) The CoT quality at different RLVR stages, using
+Pass@1 on test sets as the proxy metric.
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.2
+0.4
+0.6
+0.8
+Pass@k
+AIME 2024
+Qwen2.5-32B-Base
+SFT[Base CoTs]
+SFT[DAPO CoTs]
+DAPO-Qwen-32B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.2
+0.4
+0.6
+0.8
+CoT-Pass@k
+AIME 2024
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+Pass@k
+AIME 2025
+Qwen2.5-32B-Base
+SFT[Base CoTs]
+SFT[DAPO CoTs]
+DAPO-Qwen-32B
+2
+0 2
+1 2
+2 2
+3 2
+4 2
+5 2
+6 2
+7 2
+8 2
+92
+10
+Sampling Number (K)
+0.0
+0.2
+0.4
+0.6
+0.8
+CoT-Pass@k
+AIME 2025 (b) The CoT quality before and after RLVR, using
+(CoT-)Pass@K on test sets as the proxy metric.
+Figure 6: We show the generalization performance of post-SFT LLMs optimized on different CoT
+data. All these SFT processes start from the same base LLM, Qwen2.5-32B, with the only variable
+being the different CoT data on DAPO training questions. We use the performance on test sets
+(AIME 2024, 2025) as a proxy for the quality of the corresponding CoT data.
+RLVR progresses, the CoT quality, measured in Pass@1, generally improves. This suggests that
+although some erroneous steps may be present, the overall quality of these ”incorrect” CoTs in the
+later stages of RLVR improves significantly.
+Figure 6(b) compares the CoT quality before and after RLVR, using both Pass@K and CoT-Pass@K
+as proxy metrics. Comparing DAPO-Qwen-32B with the post-SFT model trained on its CoT data,
+we observe that this simple SFT approach nearly replicates the performance of a post-RLVR model,
+which would otherwise require significant computational cost. When comparing Qwen2.5-32B with
+the post-SFT model trained on its CoT data, we find that the post-SFT model begins to mitigate
+guessing. This aligns with our expectations, as we only feed CoT data with correct answers from
+Qwen2.5-32B into the SFT procedure. We can therefore regard this process as a round of off-policy
+RLVR optimization. These observations indicate that the incentivized CoT data through RLVR is
+crucial, as such CoTs cannot be directly sampled from base LLMs. RLVR optimizes the model’s
+reasoning abilities, ensuring that the generated CoTs are more accurate, coherent, and reliable, which
+is essential for handling complex tasks.
+Limitations A key limitation of our study lies in the use of a LLM as the verifier for the correctness
+of reasoning CoTs, due to the prohibitive cost of manually checking a large volume of generated reasoning paths. Moreover, our theorem only explains the optimization process of RLVR but provides
+no guarantee for its generalization. We merely observe the generalization empirically. Due to space
+limitations, further discussions on the implications of our findings are deferred to Appendix A.7.
+7 CONCLUSION
+In this work, we address the fundamental problem of whether RLVR genuinely incentivizes novel
+reasoning in base LLMs. Through empirical evaluations and theoretical analysis, we justify a new
+perspective: RLVR implicitly incentivizes correct reasoning. Moreover, our analyses on training
+dynamics and CoT quality further confirm that the reasoning CoTs after RLVR are fundamentally
+different and can even help to replicate similar capabilities simply via supervised learning.
+We hope these findings can not only resolve conflicting conclusions in prior work but also illuminate
+the untapped potential of RLVR in aligning LLMs with human reasoning systems. We envision a

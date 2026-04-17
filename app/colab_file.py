@@ -282,9 +282,34 @@ list_experiments()
 
 
 python app/scripts/train.py \
+  --resume-from /home/cse/Desktop/sumaiya223/chartrl/app/outputs/grpo_hcpc/run_20260219_191830/trl_output/checkpoint-850 \
   --experiment grpo_hcpc \
   --subset-size 1000 \
   --num-epochs 2 \
   --no-wandb \
   --batch-size 2 \
   --num-generations 4
+
+
+kaggle kernels output sumsumaiya/notebookf34fc1b85a -f chartrl/app/outputs/grpo_hcpc/run_20260228_170909config.json  -p C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\grpo_hcpc\run_20260228_170909
+
+
+KGAT_1ce222018d040d359e379c5a8ae94067
+
+
+export KAGGLE_API_TOKEN=KGAT_1ce222018d040d359e379c5a8ae94067
+
+
+python app/scripts/eval_run.py \
+  --dataset chartqa \
+  --subset 500 \
+  --num-samples 4 \
+  --checkpoint app/outputs/grpo_hcpc/run_20260228_170909/trl_output/checkpoint-400
+
+
+python app/scripts/eval_run.py --resume outputs/eval_results/<run_name>
+
+
+C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\eval_results\main_base_chartqa_20260218_210622\summary.json
+C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\eval_results\grpo_hcpc_updated_checkpoint-2000_chartqa_20260301_170306\summary.json
+C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\eval_results\grpo_baseline_checkpoint-2000_chartqa_20260219_073124\summary.json
