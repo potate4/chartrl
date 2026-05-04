@@ -1,0 +1,78 @@
+\contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Task Definition}{2}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Background}{2}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}Reinforcement Learning and Rollouts}{2}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Policy Update Strategies}{3}{subsection.1.2.2}%
+\contentsline {section}{\numberline {1.3}Research Objectives}{3}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Research Challenges}{4}{section.1.4}%
+\contentsline {section}{\numberline {1.5}Research Questions}{5}{section.1.5}%
+\contentsline {section}{\numberline {1.6}Contributions}{5}{section.1.6}%
+\contentsline {section}{\numberline {1.7}Organization}{6}{section.1.7}%
+\contentsline {section}{\numberline {1.8}Why Charts Are a Distinct Visual Reasoning Problem}{6}{section.1.8}%
+\contentsline {section}{\numberline {1.9}Motivation for Verifiable Rewards}{7}{section.1.9}%
+\contentsline {section}{\numberline {1.10}Scope of the Present Work}{7}{section.1.10}%
+\contentsline {chapter}{\numberline {2}Related Works}{9}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Benchmarks and Evaluation}{9}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Instruction Tuning and Supervised Fine-Tuning}{10}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Agentic and Tool-Use Approaches}{10}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Reinforcement Learning for Reasoning}{11}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Training-Time RLVR}{11}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Negative Sample Reward and RLVR-Decomposed}{12}{subsection.2.4.2}%
+\contentsline {subsection}{\numberline {2.4.3}Correctness of Reasoning, Not Just Answers}{12}{subsection.2.4.3}%
+\contentsline {subsection}{\numberline {2.4.4}Test-Time Reinforcement Learning}{12}{subsection.2.4.4}%
+\contentsline {subsection}{\numberline {2.4.5}Structured Reasoning and Domain Transfer}{13}{subsection.2.4.5}%
+\contentsline {section}{\numberline {2.5}Summary}{13}{section.2.5}%
+\contentsline {section}{\numberline {2.6}Positioning of This Thesis}{13}{section.2.6}%
+\contentsline {section}{\numberline {2.7}Comparison of Method Families}{14}{section.2.7}%
+\contentsline {section}{\numberline {2.8}Open Problems Identified from Prior Work}{15}{section.2.8}%
+\contentsline {chapter}{\numberline {3}Proposed Methodology}{17}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Overview}{17}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Base Model and Parameter-Efficient Fine-Tuning}{18}{section.3.2}%
+\contentsline {section}{\numberline {3.3}Structured Output Format and Rollout Generation}{19}{section.3.3}%
+\contentsline {section}{\numberline {3.4}Rollout Count: Intended Design and Current Constraint}{20}{section.3.4}%
+\contentsline {section}{\numberline {3.5}Parsing and Filtering}{21}{section.3.5}%
+\contentsline {subsection}{\numberline {3.5.1}Answer Normalization}{21}{subsection.3.5.1}%
+\contentsline {subsection}{\numberline {3.5.2}Table Representation}{21}{subsection.3.5.2}%
+\contentsline {subsection}{\numberline {3.5.3}Reasoning Step Extraction}{22}{subsection.3.5.3}%
+\contentsline {section}{\numberline {3.6}Reward Components}{22}{section.3.6}%
+\contentsline {subsection}{\numberline {3.6.1}Chart-RVR Base Rewards}{22}{subsection.3.6.1}%
+\contentsline {subsection}{\numberline {3.6.2}Hierarchical Correct-Path Consistency (HCPC)}{23}{subsection.3.6.2}%
+\contentsline {subsection}{\numberline {3.6.3}Why HCPC Is Hierarchical}{24}{subsection.3.6.3}%
+\contentsline {subsection}{\numberline {3.6.4}Correct-Path Filtering}{24}{subsection.3.6.4}%
+\contentsline {subsection}{\numberline {3.6.5}Coherence as an Evaluation Signal}{24}{subsection.3.6.5}%
+\contentsline {section}{\numberline {3.7}Policy Update Strategies}{25}{section.3.7}%
+\contentsline {subsection}{\numberline {3.7.1}GRPO}{25}{subsection.3.7.1}%
+\contentsline {subsection}{\numberline {3.7.2}NSR}{25}{subsection.3.7.2}%
+\contentsline {section}{\numberline {3.8}Training Configuration}{26}{section.3.8}%
+\contentsline {chapter}{\numberline {4}Results and Discussion}{27}{chapter.4}%
+\contentsline {section}{\numberline {4.1}Experimental Setup}{27}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Hardware and Software Environment}{27}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Training Dataset}{27}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Evaluation Benchmark and Protocol}{28}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}Main Results}{30}{section.4.2}%
+\contentsline {section}{\numberline {4.3}Analysis}{30}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}RLVR Provides Consistent Improvement Over the Baseline}{30}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}HCPC Improves Rollout-Level Reliability}{31}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}NSR Transfers Successfully to Vision-Language Models}{31}{subsection.4.3.3}%
+\contentsline {subsection}{\numberline {4.3.4}HCPC vs.\ NSR: Explicit vs.\ Implicit Diversity Promotion}{31}{subsection.4.3.4}%
+\contentsline {subsection}{\numberline {4.3.5}Per-Chart-Type Analysis}{32}{subsection.4.3.5}%
+\contentsline {subsection}{\numberline {4.3.6}Reasoning Diversity}{32}{subsection.4.3.6}%
+\contentsline {subsection}{\numberline {4.3.7}All-Four-Rollouts-Correct Rate}{32}{subsection.4.3.7}%
+\contentsline {subsection}{\numberline {4.3.8}Format Compliance}{33}{subsection.4.3.8}%
+\contentsline {subsection}{\numberline {4.3.9}Accuracy Distribution}{33}{subsection.4.3.9}%
+\contentsline {section}{\numberline {4.4}Out-of-Distribution Evaluation on ChartFC}{34}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Sample Difficulty Analysis}{35}{section.4.5}%
+\contentsline {section}{\numberline {4.6}Hard Problem Types}{35}{section.4.6}%
+\contentsline {section}{\numberline {4.7}Why Diversity Did Not Improve Strongly}{37}{section.4.7}%
+\contentsline {section}{\numberline {4.8}Limitations}{37}{section.4.8}%
+\contentsline {section}{\numberline {4.9}Threats to Validity}{38}{section.4.9}%
+\contentsline {subsection}{\numberline {4.9.1}Internal Validity}{38}{subsection.4.9.1}%
+\contentsline {subsection}{\numberline {4.9.2}External Validity}{38}{subsection.4.9.2}%
+\contentsline {subsection}{\numberline {4.9.3}Construct Validity}{38}{subsection.4.9.3}%
+\contentsline {subsection}{\numberline {4.9.4}Statistical Conclusion Validity}{39}{subsection.4.9.4}%
+\contentsline {chapter}{\numberline {5}Conclusion}{40}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Summary of What We Did}{40}{section.5.1}%
+\contentsline {section}{\numberline {5.2}Summary of Results}{41}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Limitations}{41}{section.5.3}%
+\contentsline {section}{\numberline {5.4}Future Work}{41}{section.5.4}%
+\contentsline {section}{\numberline {5.5}Concluding Remarks}{42}{section.5.5}%

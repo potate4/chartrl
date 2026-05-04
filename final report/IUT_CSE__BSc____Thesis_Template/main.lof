@@ -1,0 +1,7 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {3.1}{\ignorespaces Overview of the HCPC-RLVR training pipeline. A chart image and question enter the system; the proposed model generates $K=8$ rollouts; each rollout is parsed into chart type, table, reasoning, and answer; the fully-correct subset feeds HCPC; and the aggregated reward drives the policy update. Current experiments use $K=4$ rollouts because of compute constraints.}}{18}{figure.caption.6}%
+\contentsline {figure}{\numberline {3.2}{\ignorespaces Comparison of full-parameter and LoRA fine-tuning. In LoRA, the adapter matrices are much smaller than the frozen base weights, which keeps the effective parameter count low.}}{19}{figure.caption.7}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

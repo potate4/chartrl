@@ -1,0 +1,16 @@
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Positioning of HCPC-RLVR relative to major method families in chart reasoning and RLVR}}{15}{table.caption.5}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Training configuration shared across all HCPC-RLVR variants}}{26}{table.caption.8}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Chart type distribution in the 1,000-sample training subset}}{28}{table.caption.9}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Comparison between the full Chart-RVR training set and the first 1,000-sample subset used in this thesis}}{28}{table.caption.10}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Chart type distribution in the 500-sample ChartQA evaluation set}}{29}{table.caption.11}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Evaluation metrics and their definitions}}{29}{table.caption.12}%
+\contentsline {table}{\numberline {4.5}{\ignorespaces Performance evaluation on ChartQA (in-distribution, 500 samples). Bold indicates the best value per column among all methods.}}{30}{table.caption.13}%
+\contentsline {table}{\numberline {4.6}{\ignorespaces Out-of-distribution evaluation on ChartFC (500 samples). The comparison is diagnostic because OOD evaluation was completed for GRPO and GRPO+HCPC only.}}{34}{table.caption.14}%
+\contentsline {table}{\numberline {4.7}{\ignorespaces ChartQA sample difficulty categories from the predefense analysis}}{35}{table.caption.15}%
+\contentsline {table}{\numberline {4.8}{\ignorespaces Common hard problem types observed in low-scoring samples}}{36}{table.caption.16}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Summary of key findings}}{41}{table.caption.17}%

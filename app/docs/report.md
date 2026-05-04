@@ -403,8 +403,30 @@ The report will need to be updated once EvoChart results and NSR experiments are
 | GRPO baseline | `app/outputs/eval_results/grpo_baseline_checkpoint-2000_chartqa_20260219_073124/summary.json` |
 | GRPO baseline (verified 4-rollout) | `app/outputs/eval_results/grpo_baseline_checkpoint-2000_chartqa_20260219_073124/per_sample.jsonl` |
 | GRPO-HCPC | `app/outputs/eval_results/grpo_hcpc_updated_checkpoint-2000_chartqa_20260301_170306/summary.json` |
-
+NSR-chart qa `app\outputs\rakhi_outputs_full (1)\kaggle\working\chartrl\app\outputs\eval_results\checkpoint-2000_chartqa_20260301_084802\summary.json`
+out of distribution data: 
+grpo: chartfc: `app\outputs\chartfc_grpo_outputs_full (1)\kaggle\working\chartrl\app\outputs\eval_results\checkpoint-2000_chartfc_20260310_114351\summary.json`
+grpo hcpc chartfc: `app\outputs\chartfc_hcpc_outputs_full2\kaggle\working\chartrl\app\outputs\eval_results\checkpoint-400_chartfc_20260310_181501\summary.json`
 ---
 
 *Report generated: 2026-03-03*
 *All metrics computed on ChartQA test, 500-sample subset, 4 rollouts, temperature=0.8, top-p=0.95.*
+
+
+ok so in this repository, i am doing my thesis, our main goal was to apply RLVR (reinforceent learning with verifiable rewards) paradigm to improve chart question     
+  answering, we have read some papers, @app/docs/incentivises.txt , @app/docs/oneshot.txt , @app/docs/sattelite.txt , @app/docs/chart-rvr-paper.txt ,
+  @app/docs/nsr-paper.txt , from these we wanted to find out their disadvantages and use their advantages, and build a novel training method/ reward system that will          improve chart reasoning, we have designed hcpc reward, and tried to incorporate nsr in it, you will find extensive experiment logs here, | Base |
+  `app/outputs/eval_results/main_base_chartqa_20260218_210622/summary.json` |                                                                                                  | GRPO baseline | `app/outputs/eval_results/grpo_baseline_checkpoint-2000_chartqa_20260219_073124/summary.json` |
+  | GRPO baseline (verified 4-rollout) | `app/outputs/eval_results/grpo_baseline_checkpoint-2000_chartqa_20260219_073124/per_sample.jsonl` |
+  | GRPO-HCPC | `app/outputs/eval_results/grpo_hcpc_updated_checkpoint-2000_chartqa_20260301_170306/summary.json` |
+  NSR-chart qa `app\outputs\rakhi_outputs_full (1)\kaggle\working\chartrl\app\outputs\eval_results\checkpoint-2000_chartqa_20260301_084802\summary.json`
+  out of distribution data:
+  grpo: chartfc: `"C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\chartfc_grpo_outputs_full\kaggle\working\chartrl\app\outputs\eval_results\checkpoint-2000_chartfc_20260310_114351\summary.json"`        
+  grpo hcpc chartfc: `"C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\chartfc_grpo_hcpc_outputs_fullhcpc\kaggle\working\chartrl\app\outputs\eval_results\checkpoint-2000_chartfc_20260311_064248\summary.json"`        
+  ---, look through the folders of these evals, you will understand the format, and if you need to run a throughough analysis, you may write scripts and run analysis,   
+  write results into a document if needed, you can find our methodology draft here @"methodology_drafts/HCPC-RLVR Hierarchical Correct-Path Consistency fo                   
+  2f27074cacc380448385d9d9d046c926.md" , tho clc is not implemented yet because of lack of a concrete mechanism to calculate coherence. based on these results i need to     
+   draft a paper, we will start with the experimental setup, dataset (we're uusing chart rvr's subset of dataset btw), as it has CoT data, \                                 
+  Now you need to run a full analysis of the codebase, and results files/folders, and explain the reasoning of the results, we ran training on 1k subset of a 30k            
+  samples, and eval is done on 500 subsets, all experiments were done on the same 3B model, chart rvr was our base setup, while writing the report you may reference any     
+   of the papers i mentioned as txt files, if you need first devise a plan on how you want to proceed   

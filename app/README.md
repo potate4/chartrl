@@ -263,3 +263,11 @@ python scripts/run_experiments.py
 
 
 
+  paths = {                                                                                                                                                                                                   
+       'Base ChartQA':   'app/outputs/eval_results/main_base_chartqa_20260218_210622/summary.json',
+       'GRPO ChartQA':   'app/outputs/eval_results/grpo_baseline_checkpoint-2000_chartqa_20260219_073124/summary.json',
+       'HCPC ChartQA':   'app/outputs/eval_results/grpo_hcpc_updated_checkpoint-2000_chartqa_20260301_170306/summary.json',
+       'NSR ChartQA':    'app/outputs/rakhi_outputs_full (1)/kaggle/working/chartrl/app/outputs/eval_results/checkpoint-2000_chartqa_20260301_084802/summary.json',
+       'GRPO ChartFC':   'app/outputs/chartfc_grpo_outputs_full (1)/kaggle/working/chartrl/app/outputs/eval_results/checkpoint-2000_chartfc_20260310_114351/summary.json',
+       'HCPC ChartFC':   'app/outputs/chartfc_grpo_hcpc_outputs_fullhcpc/kaggle/working/chartrl/app/outputs/eval_results/checkpoint-2000_chartfc_20260311_064248/summary.json',
+   }

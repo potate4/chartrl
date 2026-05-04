@@ -9,7 +9,10 @@
       "Bash(python -c:*)",
       "Bash(python:*)",
       "Bash(dir /S /B /A:D \"C:\\\\Users\\\\sumai\\\\DATA\\\\RESEARCH\\\\THESIS\\\\chartrl\\\\grpo-start-ckpts\")",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(xargs -I {} sh -c 'echo \"\"File: {}\"\" && head -20 {}')",
+      "Bash(head:*)",
+      "Bash(pip install *)"
     ]
   }
 }

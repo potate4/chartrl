@@ -1,0 +1,67 @@
+[1] Ali, A., Baheti, A., Chang, J., Chi, T.-C., Cui, B., Drozdov, A., Frankle, J., Gupta, A., Koppol, P., Kulinski, S., Li, J., Misra, D., Opsahl-Ong, K., Ortiz, J. J. G., Zaharia, M., & Zhang, Y. (2025). A state-of-the-art SQL reasoning model using RLVR. arXiv. https://arxiv.org/abs/2509.21459
+
+[2] Ke, Z., Jiao, F., Ming, Y., Nguyen, X.-P., Xu, A., Long, D. X., Li, M., Qin, C., Wang, P., Savarese, S., Xiong, C., & Joty, S. (2025). A survey of frontiers in LLM reasoning: Inference scaling, learning to reason, and agentic systems. Transactions on Machine Learning Research. https://arxiv.org/abs/2504.09037
+
+[3] Masry, A., Puri, A., Hashemi, M., Rodriguez, J. A., Thakkar, M., Mahajan, K., Yadav, V., Madhusudhan, S. T., Piché, A., Bahdanau, D., Pal, C., Vazquez, D., Hoque, E., Taslakian, P., Rajeswar, S., & Gella, S. (2025). BIGCHARTS-R1: Enhanced chart reasoning with visual reinforcement finetuning. COLM. https://arxiv.org/abs/2508.09804
+
+[4] Odena, A., Lawson, D., & Olah, C. (2017). Changing model behavior at test-time using reinforcement learning. ICLR Workshop. https://arxiv.org/abs/1702.07780
+
+[5] Sinha, S., Frunza, O., Rasul, K., Nevmyvaka, Y., & Zhang, A. (2025). Chart-RVR: Reinforcement learning with verifiable rewards for explainable chart reasoning. arXiv. https://arxiv.org/abs/2510.10973
+
+[6] Chen, L., Zhao, X., Zeng, Z., Huang, J., Zhong, Y., & Ma, L. (2025). Chart-R1: Chain-of-thought supervision and reinforcement for advanced chart reasoner. arXiv. https://arxiv.org/abs/2507.15509
+
+[7] Carbune, V., Mansoor, H., Liu, F., Aralikatte, R., Baechler, G., Chen, J., & Sharma, A. (2024). Chart-based reasoning: Transferring capabilities from LLMs to VLMs. NAACL Findings. https://aclanthology.org/2024.findings-naacl.62/
+
+[8] Kaur, R., Srishankar, N., Zeng, Z., Ganesh, S., & Veloso, M. (2025). ChartAgent: A multimodal agent for visually grounded reasoning in complex chart question answering. arXiv. https://arxiv.org/abs/2510.04514
+
+[9] Goswami, K., Mathur, P., Rossi, R., & Dernoncourt, F. (2025). ChartCitor: Answer citations for ChartQA via multi-agent LLM retrieval. ACM Web Conference. https://doi.org/10.1145/3701716.3716886
+
+[10] Masry, A., Thakkar, M., Bajaj, A., Kartha, A., Hoque, E., & Joty, S. (2025). ChartGemma: Visual instruction-tuning for chart reasoning in the wild. COLING Industry Track. https://arxiv.org/abs/2407.04172
+
+[11] Masry, A., Shahmohammadi, M., Parvez, M. R., Hoque, E., & Joty, S. (2024). ChartInstruct: Instruction tuning for chart comprehension and reasoning. ACL Findings. https://aclanthology.org/2024.findings-acl.619/
+
+[12] Xu, Z., Du, S., Qi, Y., Lu, S., Xu, C., Yuan, C., & Guo, J. (2025). ChartPoint: Guiding MLLMs with grounding reflection for chart reasoning. ICCV. https://arxiv.org/abs/2512.00305
+
+[13] Hegde, S., Fazli, P., & Seifi, H. (2026). ChartQA-X: Generating explanations for visual chart reasoning. WACV. https://arxiv.org/abs/2504.13275
+
+[14] Masry, A., Long, D. X., Tan, J. Q., Joty, S., & Hoque, E. (2022). ChartQA: A benchmark for question answering about charts with visual and logical reasoning. ACL Findings. https://aclanthology.org/2022.findings-acl.177/
+
+[15] Xia, R., Zhang, B., Ye, H., Yan, X., Liu, Q., Zhou, H., Chen, Z., Dou, M., Shi, B., Yan, J., & Qiao, Y. (2024). ChartX and ChartVLM: A versatile benchmark and foundation model for complicated chart reasoning. IEEE Transactions on Image Processing. https://arxiv.org/abs/2402.12185
+
+[16] Su, Y., Yu, D., Song, L., Li, J., Mi, H., Tu, Z., Zhang, M., & Yu, D. (2025). Crossing the reward bridge: Expanding RL with verifiable rewards across diverse domains. arXiv. https://arxiv.org/abs/2503.23829
+
+[17] Zhang, Y., Yang, J., Yuan, Y., & Yao, A. C.-C. (2024). Cumulative reasoning with large language models. TMLR. https://arxiv.org/abs/2308.04371
+
+[18] He, W., Xi, Z., Zhao, W., Fan, X., Ding, Y., Shan, Z., Gui, T., Zhang, Q., & Huang, X. (2025). Distill visual chart reasoning ability from LLMs to MLLMs. EMNLP Findings. https://aclanthology.org/2025.findings-emnlp.172/
+
+[19] Liu, J., He, C., Lin, Y., Yang, M., Shen, F., Liu, S., & Gao, T. (2025). ETTRL: Balancing exploration and exploitation in LLM test-time RL via entropy mechanism. arXiv. https://arxiv.org/abs/2508.11356
+
+[20] Su, Y., et al. (2025). Expanding RL with verifiable rewards across diverse domains. arXiv. https://arxiv.org/abs/2503.23829
+
+[21] Köksal, A., & Alatan, A. A. (2025). Few-shot vision-language reasoning for satellite imagery via verifiable rewards. ICCV. https://arxiv.org/abs/2507.21745
+
+[22] Teney, D., Liu, L., & van den Hengel, A. (2017). Graph-structured representations for visual question answering. CVPR. https://arxiv.org/abs/1609.05600
+
+[23] Duan, W., Lu, J., & Xuan, J. (2024). Group-aware coordination graph for multi-agent reinforcement learning. IJCAI. https://doi.org/10.24963/ijcai.2024/434
+
+[24] Zhang, R., et al. (2025). Improve vision-language model chain-of-thought reasoning. ACL. https://aclanthology.org/2025.acl-long.82/
+
+[25] Lu, P., Gong, R., Jiang, S., Qiu, L., Huang, S., Liang, X., & Zhu, S.-C. (2021). Inter-GPS: Interpretable geometry problem solving with formal language and symbolic reasoning. ACL-IJCNLP. https://aclanthology.org/2021.acl-long.528/
+
+[26] Wen, X., et al. (2025). Reinforcement learning with verifiable rewards implicitly incentivizes correct reasoning in base LLMs. arXiv. https://arxiv.org/abs/2506.14245
+
+[27] Zhang, Z., et al. (2025). RLVMR: Reinforcement learning with verifiable meta-reasoning rewards. arXiv. https://arxiv.org/abs/2507.22844
+
+[28] Akhtar, M., Cocarascu, O., & Simperl, E. (2023). Reading and reasoning over chart images for evidence-based fact-checking. EACL Findings. https://aclanthology.org/2023.findings-eacl.30/
+
+[29] Zhang, T., et al. (2023). TEMPERA: Test-time prompt editing via reinforcement learning. ICLR. https://arxiv.org/abs/2211.11890
+
+[30] Zuo, Y., et al. (2025). TTRL: Test-time reinforcement learning. arXiv. https://arxiv.org/abs/2504.16084
+
+[31] Du, Y., et al. (2025). Test-time reinforcement learning for GUI grounding via region consistency. arXiv. https://arxiv.org/abs/2508.05615
+
+[32] Zhu, X., et al. (2025). The surprising effectiveness of negative reinforcement in LLM reasoning. NeurIPS. https://arxiv.org/abs/2506.01347
+
+[33] Huang, M., et al. (2025). VProChart: Answering chart question through visual perception alignment agent and programmatic reasoning. AAAI. https://doi.org/10.1609/aaai.v39i4.32384
+
+[34] Yu, X., et al. (2025). Visual document understanding and reasoning: A multi-agent collaboration framework with adaptive test-time scaling. arXiv. https://arxiv.org/abs/2508.03404
