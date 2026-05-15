@@ -23,12 +23,14 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
 # and use_hcpc differ between experiments. This ensures fair comparison.
 _SHARED = dict(
     seed=2026,
-    learning_rate=1e-5,
-    gradient_accumulation_steps=2,
+    learning_rate=1e-6,
+    gradient_accumulation_steps=4,
+    num_epochs=2,
+    batch_size=1,
     warmup_ratio=None,
     weight_decay=None,
     kl_coef=None,
-    temperature=1.0,
+    temperature=0.8,
     top_p=1.0,
     remove_unused_columns=False,
     apply_advantages_in_reward_fn=False,

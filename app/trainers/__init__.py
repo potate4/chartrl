@@ -2,16 +2,16 @@
 
 from .base_trainer import BaseTrainer
 from .grpo_trainer import GRPOTrainer
-from .nsr_trainer import NSRTrainer
-from .w_reinforce_trainer import WREINFORCETrainer
+from .nsr_masked_trainer import NSRMaskedTrainer
 from .nsr_hcpc_trainer import NSRHCPCTrainer
+from .w_reinforce_trainer import WREINFORCETrainer
 
 __all__ = [
     "BaseTrainer",
     "GRPOTrainer",
-    "NSRTrainer",
-    "WREINFORCETrainer",
+    "NSRMaskedTrainer",
     "NSRHCPCTrainer",
+    "WREINFORCETrainer",
 ]
 
 
@@ -21,18 +21,17 @@ def get_trainer(policy_method: str, use_hcpc: bool = False):
 
     Args:
         policy_method: One of 'grpo', 'nsr', 'w_reinforce'
-        use_hcpc: Whether to use HCPC variant (for NSR)
+        use_hcpc: Whether to use HCPC reward (routes NSR to NSRHCPCTrainer)
 
     Returns:
         Trainer class
     """
-    # Special case: NSR with HCPC uses penalty-based trainer
     if policy_method == "nsr" and use_hcpc:
         return NSRHCPCTrainer
 
     trainers = {
         "grpo": GRPOTrainer,
-        "nsr": NSRTrainer,
+        "nsr": NSRMaskedTrainer,      # real NSR via loss masking
         "w_reinforce": WREINFORCETrainer,
     }
 

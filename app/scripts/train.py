@@ -298,8 +298,8 @@ def main():
         train_dataset = [train_dataset[i] for i in range(len(train_dataset))]
     logger.info(f"Loaded {len(train_dataset)} training samples")
 
-    # Get trainer class
-    trainer_cls = get_trainer(config.policy_method)
+    # Get trainer class — pass use_hcpc so nsr+hcpc routes to NSRHCPCTrainer
+    trainer_cls = get_trainer(config.policy_method, use_hcpc=config.rewards.use_hcpc)
     logger.info(f"Using trainer: {trainer_cls.__name__}")
 
     # Create trainer

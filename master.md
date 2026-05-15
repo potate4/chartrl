@@ -248,6 +248,43 @@ Re-parsed `raw_outputs[]` for every rollout in every run (4 rollouts × 500 samp
 
 **E. The current `table_reward` scores too generously on numerical mismatches.** From the training log of `grpo_hcpc/run_20260219_191830`: a rollout with predicted cells `["Germany","49%"]` vs GT `["Germany","50"]` got `base_table=1.083` (87% of max). Column headers and string cells matched, numeric values didn't, but no explicit numeric-cell penalty exists in [base_rewards.py:185-222](app/rewards/base_rewards.py#L185). **This is the highest-leverage place to improve the reward stack.**
 
+### 7.4b Per-method failure breakdown (training rollouts)
+
+Mined from `train.log` files. Numeric-content-correct = recall ≥ 0.8 against GT-table cells; numeric-content-wrong = recall < 0.5. Answer correctness uses the live training reward function. Source: [app/analysis/failure_breakdown_per_method.py](app/analysis/failure_breakdown_per_method.py).
+
+**GRPO baseline** (8000 rollouts from `run_20260218_125045/train.log`):
+
+| Cell | % | n | mean(table_reward) | mean(accuracy_reward) |
+|---|---|---|---|---|
+| RC+RA (right content + right answer) | 30.7% | 2456 | 1.84 | 0.95 |
+| RC+WA (right content + wrong answer) | 27.8% | 2222 | 1.85 | 0.27 |
+| WC+RA (wrong content + right answer = LUCKY) | **11.3%** | 904 | 0.66 | 0.95 |
+| WC+WA (wrong content + wrong answer) | 17.1% | 1366 | 0.63 | 0.24 |
+| MID (recall 0.5–0.8) | 12.2% | 972 | 1.41 | 0.53 |
+
+**GRPO+HCPC** (8080 rollouts from `run_20260219_191830/train.log`):
+
+| Cell | % | n | mean(table_reward) | mean(accuracy_reward) |
+|---|---|---|---|---|
+| RC+RA | 36.9% | 2985 | 1.86 | 0.97 |
+| RC+WA | 24.4% | 1969 | 1.91 | 0.33 |
+| WC+RA (LUCKY) | **13.4%** | 1086 | 0.58 | 0.96 |
+| WC+WA | 13.1% | 1056 | 0.58 | 0.30 |
+| MID | 11.2% | 904 | 1.45 | 0.60 |
+
+**What's striking and method-attributed:**
+
+1. **HCPC reduces the WC+WA cell** (17.1% → 13.1%) — fewer wholly-broken rollouts. Good.
+2. **HCPC slightly INCREASES the LUCKY cell** (11.3% → 13.4%). Possibly because HCPC's reward bonus to "correct" rollouts disproportionately reinforces lucky-correct ones, since HCPC's correctness check is the same `accuracy_reward` that doesn't see the bad table content.
+3. **HCPC increases RC+RA by ~6 points** (30.7% → 36.9%). This is HCPC's positive effect, but note it's measured at training temperature 1.0, not eval temperature 0.8.
+4. The mean `table_reward` *inside the LUCKY cell* is 0.58–0.66 out of max ~1.25. So the current `table_reward` does discount lucky-correct rollouts somewhat — but they still receive the full `accuracy_reward` (0.95–0.96). The accuracy reward is the unmodified positive signal that drives the lucky-correct gradient.
+
+**Methodological caveats:**
+- Only GRPO and GRPO+HCPC training logs were available locally. NSR training logs are on Kaggle.
+- Training rollouts are sampled at training temperature (1.0) and reward stack, NOT at eval temperature (0.8).
+- The "accuracy_reward = 0.95" inside LUCKY cells is intuitive — they ARE answer-correct under relaxed-accuracy. The point is the reward function has no other channel to discount them.
+- Eval-time numbers (§7.2) showed structurally-defined lucky rate of 1.6–2.0% on RL ChartQA. The content-defined lucky rate here (11–13%) is ~6× higher. The discrepancy is because structural parseability is a much weaker check than numeric-content correctness.
+
 ### 7.5 Reward-variant simulation (counterfactual scoring on existing rollouts)
 
 For each variant, I scored every rollout's `accuracy_signal` and tracked how often the variant changes the **within-group argmax** (the rollout that drives GRPO's positive gradient). If the variant doesn't change argmax, it doesn't change gradient direction.
