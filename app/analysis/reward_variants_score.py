@@ -1,4 +1,4 @@
-"""Score reward variants on existing eval rollouts.
+﻿"""Score reward variants on existing eval rollouts.
 
 Variants compared:
 1. ADDITIVE  (current): base_total = format + acc + table + ...
@@ -25,7 +25,7 @@ import statistics
 from pathlib import Path
 from typing import Dict, List, Optional
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 RUNS = {
     "grpo_chartqa":  ROOT / "grpo_chartqa"  / "per_sample.jsonl",

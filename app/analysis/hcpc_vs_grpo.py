@@ -1,4 +1,4 @@
-"""HCPC vs GRPO head-to-head, every metric we can pull from per_sample.jsonl.
+﻿"""HCPC vs GRPO head-to-head, every metric we can pull from per_sample.jsonl.
 
 We want to be honest about where HCPC ACTUALLY differs from GRPO.
 """
@@ -8,7 +8,7 @@ import random
 from pathlib import Path
 
 random.seed(2026)
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 PAIRS = [
     ("chartqa", ROOT / "grpo_chartqa" / "per_sample.jsonl",

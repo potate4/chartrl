@@ -1,4 +1,4 @@
-"""Paired comparisons across runs (same idx -> same sample).
+﻿"""Paired comparisons across runs (same idx -> same sample).
 
 We compute:
 - per-(idx) first_correct vector for each run
@@ -11,7 +11,7 @@ import math
 from pathlib import Path
 from itertools import combinations
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 GROUPS = {
     "chartqa": {

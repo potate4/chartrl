@@ -1,4 +1,4 @@
-"""Are the runs comparing the same 500 samples? If not, headline accuracy
+﻿"""Are the runs comparing the same 500 samples? If not, headline accuracy
 comparisons are bogus.
 
 We use (question, label) tuples as a sample fingerprint.
@@ -6,7 +6,7 @@ We use (question, label) tuples as a sample fingerprint.
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 GROUPS = {
     "chartqa": {
@@ -52,7 +52,7 @@ for group, runs in GROUPS.items():
         only = s - common
         print(f"    {name}: total={len(s)}, only-here={len(only)}")
 
-    # also check ordering — are idx 0..499 the same questions?
+    # also check ordering â€” are idx 0..499 the same questions?
     idx_maps = {name: by_idx(p) for name, p in runs.items()}
     if len(idx_maps) > 1:
         names = list(idx_maps)

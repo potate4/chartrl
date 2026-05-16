@@ -1,4 +1,4 @@
-"""Confidence intervals.
+﻿"""Confidence intervals.
 
 - Wilson 95% CI for each method's pass@1 / pass@k.
 - Paired bootstrap 95% CI on accuracy gaps between methods.
@@ -9,7 +9,7 @@ import random
 from pathlib import Path
 from itertools import combinations
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 random.seed(2026)
 
 GROUPS = {

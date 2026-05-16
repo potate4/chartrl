@@ -1,4 +1,4 @@
-"""Stage-by-stage failure analysis across all eval runs.
+﻿"""Stage-by-stage failure analysis across all eval runs.
 
 Inputs: per_sample.jsonl files in app/final_outputs/. We trust ONLY the
 raw_outputs[] and correct[] arrays per sample. Everything stage-related
@@ -22,7 +22,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 RUNS = {
     "base_chartqa":  ROOT / "base_chartqa"  / "per_sample.jsonl",

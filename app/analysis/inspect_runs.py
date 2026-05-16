@@ -1,4 +1,4 @@
-"""Sanity-check the structure and recompute headline numbers across all 7 runs.
+﻿"""Sanity-check the structure and recompute headline numbers across all 7 runs.
 
 We trust ONLY per_sample.jsonl. summary.json is treated as suspect.
 """
@@ -9,7 +9,7 @@ import statistics
 from collections import Counter, defaultdict
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 RUNS = {
     "base_chartqa":  ROOT / "base_chartqa"  / "per_sample.jsonl",
@@ -128,7 +128,7 @@ def analyze(name, rows):
         if t is not None:
             times.append(t)
 
-    # overall pass@1 (mean of first_correct), pass@k (any) — k varies
+    # overall pass@1 (mean of first_correct), pass@k (any) â€” k varies
     pass1 = mean(relaxed_first)
     passk = mean(relaxed_any)
 

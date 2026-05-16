@@ -1,4 +1,4 @@
-"""Where are the gains coming from?
+﻿"""Where are the gains coming from?
 
 For each method, find:
 - samples it gets right that the others don't (its 'unique wins')
@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 from collections import Counter
 
-ROOT = Path(__file__).resolve().parents[1] / "final_outputs"
+ROOT = Path(__file__).resolve().parents[0] / "final_outputs"
 
 GROUPS = {
     "chartqa": {
