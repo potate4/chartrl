@@ -28,11 +28,11 @@ SYSTEM_PROMPT = r"""
         3. Do NOT output HTML, Markdown, or commentary. Any deviation gets zero reward.
         </table>
         Provide your reasoning here in steps:
-        <step-1>: Provide a description of reasoning
-        <step-2>: Gather ALL the appropriate data from the chart
-        <step-3>: Break down the query into smaller parts and verify each part with the data
+        <step-1>: From my extracted table above, identify the exact values needed to answer the query, citing each as "name = value" (e.g. "sales_2020 = 14.2")
+        <step-2>: Using ONLY those cited table values, perform the required calculation or comparison step by step (show all arithmetic)
+        <step-3>: Verify the result is consistent with the extracted table values
         ...
-        <step-n>: Do the final calculation or reasoning to derive the answer
+        <step-n>: Therefore, the answer is [value]
         </think>
         <answer>
         Final answer on a single line

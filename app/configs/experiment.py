@@ -8,13 +8,16 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
     """Create reward config with HCPC settings."""
     return RewardConfig(
         use_hcpc=use_hcpc,
-        use_clc=False,  # CLC disabled for now
-        use_process_reward=not use_hcpc,
-        # Keep other defaults
+        use_clc=False,          # original self-coherence CLC disabled
+        use_process_reward=False,  # replaced by GT-CLC below
+        use_gt_clc=True,        # GT-anchored CLC — compatible with HCPC
         w_type=1.0,
         w_table=2.0,
         w_reason=1.5,
         w_clc=1.0,
+        w_gt_clc=1.0,
+        value_weight=1.0,
+        answer_weight=2.0,
         table_sim_threshold=0.6,
     )
 

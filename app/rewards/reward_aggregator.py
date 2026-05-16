@@ -9,7 +9,7 @@ from dataclasses import dataclass
 
 from .base_rewards import compute_base_rewards
 from .hcpc_reward import HCPCComputer, HCPCResult
-from .clc_reward import CLCComputer, CLCResult
+from .clc_reward import CLCComputer, CLCResult, GTCLCComputer, GTCLCResult
 
 
 @dataclass
@@ -19,6 +19,7 @@ class AggregatedReward:
     base: float
     hcpc: float
     clc: float
+    gt_clc: float
     breakdown: Dict[str, float]
 
 
@@ -36,14 +37,19 @@ class RewardAggregator:
     def __init__(
         self,
         use_hcpc: bool = True,
-        use_clc: bool = True,
+        use_clc: bool = False,
+        use_gt_clc: bool = True,
         # HCPC weights
         w_type: float = 1.0,
         w_table: float = 2.0,
         w_reason: float = 1.5,
-        table_sim_threshold: float = 0.8,
-        # CLC weight
+        table_sim_threshold: float = 0.6,
+        # Original CLC weight
         w_clc: float = 1.0,
+        # GT-CLC weights
+        w_gt_clc: float = 1.0,
+        value_weight: float = 1.0,
+        answer_weight: float = 2.0,
         # Base reward flags
         use_format_reward: bool = True,
         use_accuracy_reward: bool = True,
@@ -51,24 +57,28 @@ class RewardAggregator:
         use_token_count_reward: bool = True,
         use_chart_type_reward: bool = True,
         use_table_reward: bool = True,
-        use_process_reward: bool = True,
+        use_process_reward: bool = False,
     ):
         """
         Initialize reward aggregator.
 
         Args:
             use_hcpc: Whether to use HCPC reward
-            use_clc: Whether to use CLC reward
+            use_clc: Whether to use original self-coherence CLC reward
+            use_gt_clc: Whether to use GT-anchored CLC (replaces process_reward)
             w_type: HCPC weight for type consistency
             w_table: HCPC weight for table consistency
             w_reason: HCPC weight for reasoning diversity
-            table_sim_threshold: HCPC threshold for table matching
-            w_clc: CLC reward weight
-            use_process_reward: Whether to use process reward (GT reasoning similarity)
-                                Set to False when using HCPC (promotes diversity instead)
+            table_sim_threshold: HCPC threshold for table matching (must match HCPCComputer)
+            w_clc: Original CLC reward weight
+            w_gt_clc: GT-CLC reward weight
+            value_weight: Per intermediate data-value match weight in GT-CLC
+            answer_weight: GT answer value match weight in GT-CLC (higher priority)
+            use_process_reward: Legacy — disabled; GT-CLC replaces this
         """
         self.use_hcpc = use_hcpc
         self.use_clc = use_clc
+        self.use_gt_clc = use_gt_clc
 
         # Base reward flags
         self.use_format_reward = use_format_reward
@@ -87,6 +97,11 @@ class RewardAggregator:
             table_sim_threshold=table_sim_threshold,
         )
         self.clc_computer = CLCComputer(w_clc=w_clc)
+        self.gt_clc_computer = GTCLCComputer(
+            w_gt_clc=w_gt_clc,
+            value_weight=value_weight,
+            answer_weight=answer_weight,
+        )
 
     def compute(
         self,
@@ -128,24 +143,40 @@ class RewardAggregator:
             hcpc_result = self.hcpc_computer.compute(rollouts, ground_truth)
             hcpc_per_rollout = hcpc_result.per_rollout_rewards
 
-        # Compute CLC for each rollout
+        # Compute original CLC for each rollout (self-coherence, usually disabled)
         clc_results = []
         if self.use_clc:
             clc_results = self.clc_computer.compute_batch(rollouts)
         else:
-            # Create dummy results with 0 reward
             clc_results = [CLCResult(0, 0, set(), set(), set(), {}) for _ in rollouts]
 
-        # Aggregate
-        for i, (base, clc) in enumerate(zip(base_rewards, clc_results)):
+        # Compute GT-anchored CLC for each rollout
+        gt_clc_results = []
+        if self.use_gt_clc:
+            gt_clc_results = self.gt_clc_computer.compute_batch(
+                rollouts,
+                gt_reasoning=ground_truth.get("reasoning", ""),
+                gt_table=ground_truth.get("table", {}),
+                gt_label=ground_truth.get("label", ""),
+            )
+        else:
+            gt_clc_results = [
+                GTCLCResult(0.0, 0.0, 0, 0.0, 0.0, {"reason": "disabled"})
+                for _ in rollouts
+            ]
+
+        # Aggregate all components per rollout
+        for i, (base, clc, gt_clc) in enumerate(zip(base_rewards, clc_results, gt_clc_results)):
             hcpc_i = hcpc_per_rollout[i]
-            total = base["total"] + hcpc_i + clc.reward
+            total = base["total"] + hcpc_i + clc.reward + gt_clc.reward
 
             breakdown = {
                 **{f"base_{k}": v for k, v in base.items()},
                 "hcpc": hcpc_i,
                 "clc": clc.reward,
                 "clc_coherence": clc.coherence,
+                "gt_clc": gt_clc.reward,
+                "gt_clc_recall": gt_clc.recall,
             }
 
             if hcpc_result:
@@ -163,6 +194,7 @@ class RewardAggregator:
                 base=base["total"],
                 hcpc=hcpc_i,
                 clc=clc.reward,
+                gt_clc=gt_clc.reward,
                 breakdown=breakdown,
             ))
 
@@ -199,22 +231,18 @@ class RewardAggregator:
         Returns:
             RewardAggregator
         """
-        # When using HCPC, disable process_reward by default
-        # (HCPC promotes diversity, process_reward promotes GT similarity - contradictory)
-        use_process = config.rewards.use_process_reward
-        if config.rewards.use_hcpc and use_process:
-            # Auto-disable if HCPC is on (unless explicitly set)
-            # Check if it was explicitly set in config or just default
-            use_process = False
-
         return cls(
             use_hcpc=config.rewards.use_hcpc,
             use_clc=config.rewards.use_clc,
+            use_gt_clc=config.rewards.use_gt_clc,
             w_type=config.rewards.w_type,
             w_table=config.rewards.w_table,
             w_reason=config.rewards.w_reason,
             table_sim_threshold=config.rewards.table_sim_threshold,
             w_clc=config.rewards.w_clc,
+            w_gt_clc=config.rewards.w_gt_clc,
+            value_weight=config.rewards.value_weight,
+            answer_weight=config.rewards.answer_weight,
             # Base reward flags
             use_format_reward=config.rewards.use_format_reward,
             use_accuracy_reward=config.rewards.use_accuracy_reward,
@@ -222,7 +250,7 @@ class RewardAggregator:
             use_token_count_reward=config.rewards.use_token_count_reward,
             use_chart_type_reward=config.rewards.use_chart_type_reward,
             use_table_reward=config.rewards.use_table_reward,
-            use_process_reward=use_process,
+            use_process_reward=config.rewards.use_process_reward,
         )
 
 

@@ -1,0 +1,370 @@
+================================================================================
+FIXES AND IMPLEMENTATION PLAN
+================================================================================
+
+
+────────────────────────────────────────────────────────────────────────────────
+SECTION 1: HCPC FIXES  (file: app/rewards/hcpc_reward.py)
+────────────────────────────────────────────────────────────────────────────────
+
+FIX 1 — Format gate in _filter_correct  [being handled by friend]
+──────────────────────────────────────────────────────────────────
+PROBLEM:
+  ChartFC has gt_table={}, so the `if gt_table:` block in _filter_correct
+  skips entirely. A bare "Yes" with no <think>/<table>/<answer> structure
+  can match the answer check and enter the correct pool, getting HCPC bonus.
+  Over training, the model learns bare format is acceptable → format collapse.
+  Evidence: HCPC ChartFC has 37.9% wrong answers with bad format vs 1.6% for GRPO.
+
+FIX:
+  Add a format check BEFORE the answer check in _filter_correct.
+  Use parse_response() which already sets parse_success=False when
+  <type> or <answer> tags are missing.
+
+  for i, rollout in enumerate(parsed_rollouts):
+      # Gate 1: format must be compliant
+      if not rollout.get("parse_success", False):
+          continue
+      # Also require table was parseable (not just present)
+      if not rollout.get("table_parse_success_strict", False):
+          continue
+      # Gate 2: table similarity (only if gt_table exists)
+      ...existing table check...
+      # Gate 3: answer match
+      ...existing answer check...
+
+
+FIX 2 — Per-rollout differentiated d_reason  [CORE FIX — must implement]
+──────────────────────────────────────────────────────────────────────────
+PROBLEM:
+  All correct rollouts receive the SAME HCPC group score as their reward.
+  The diversity gradient is +0.17 (negligible) — the model cannot learn
+  to differentiate reasoning styles. Max d_reason across 500 ChartQA eval
+  samples is 0.172. The d_reason term is completely dead.
+
+  Current (broken):
+    per_rollout_rewards = [score if i in correct_set else 0.0 for i in range(n)]
+    # ALL correct rollouts → same value → zero diversity gradient
+
+FIX:
+  Compute each correct rollout's "uniqueness" relative to its peers,
+  then give it an individual bonus. Rollout A gets more reward if its
+  reasoning differs more from rollout B's reasoning.
+
+  # After computing c_type, c_table, d_reason as group metrics:
+
+  # 1. Base group score (consistency part only)
+  base_group = correct_rate * (self.w_type * c_type + self.w_table * c_table)
+
+  # 2. Per-rollout uniqueness bonus
+  reasonings = [correct_rollouts[k].get("reasoning", "") for k in range(num_correct)]
+  uniqueness_scores = []
+  for k, r_k in enumerate(reasonings):
+      others = [r for j, r in enumerate(reasonings) if j != k]
+      if others:
+          sims = [compute_similarity(r_k, o) for o in others]
+          uniqueness = 1.0 - (sum(sims) / len(sims))
+      else:
+          uniqueness = 0.5
+      uniqueness_scores.append(uniqueness)
+
+  # 3. Assign differentiated per-rollout rewards
+  per_rollout_rewards = [0.0] * n_rollouts
+  for k, idx in enumerate(correct_indices):
+      per_rollout_rewards[idx] = base_group + self.w_reason * uniqueness_scores[k]
+
+  WHY THIS WORKS:
+    Rollout A (unique reasoning)  → high uniqueness → high reward
+    Rollout B (clone reasoning)   → low uniqueness  → low reward
+    Model learns: produce different reasoning paths to get more reward.
+    Actual gradient now exists instead of uniform assignment.
+
+
+FIX 3 — Threshold consistency
+──────────────────────────────
+PROBLEM:
+  HCPCComputer.__init__ defaults table_sim_threshold=0.6
+  RewardAggregator.__init__ defaults table_sim_threshold=0.8 and passes it through.
+  So HCPC actually runs at 0.8 during training, not 0.6.
+  At 0.8, many slightly-different-but-correct table extractions get excluded.
+
+FIX:
+  In reward_aggregator.py line 44, change default:
+    table_sim_threshold: float = 0.6   (was 0.8)
+  This makes HCPCComputer default and RewardAggregator default consistent.
+  0.6 is more permissive → more rollouts enter the correct pool → HCPC fires
+  on more samples → more training signal.
+
+
+FIX 4 — Decouple d_reason from correct_rate scaling
+─────────────────────────────────────────────────────
+PROBLEM:
+  Current formula: reward = correct_rate × (w_type×C_type + w_table×C_table + w_reason×D_reason)
+  When correct_rate is low (hard samples, few correct rollouts), the d_reason
+  signal shrinks even more. HCPC gives least signal exactly where diversity
+  matters most.
+
+FIX (optional, do after Fix 2 is working):
+  Separate d_reason from the correct_rate scaling:
+    base_score = correct_rate × (w_type × c_type + w_table × c_table)
+    # d_reason handled per-rollout via uniqueness (Fix 2 above)
+  This means the consistency terms scale with correct_rate (appropriate —
+  you need many correct rollouts to measure consistency), but diversity
+  is rewarded per-rollout independently.
+
+
+================================================================================
+SECTION 2: WEIGHTED GT-CLC REWARD  (replaces process_reward)
+================================================================================
+
+WHAT process_reward WAS DOING:
+  Semantic similarity (cosine) of model reasoning steps to GT reasoning steps.
+  Range: 0-1.0. Rewards reasoning that "feels like" the GT.
+  CONFLICT: pushes reasoning toward GT pattern → directly kills d_reason.
+  That's why it was auto-disabled with HCPC. But disabling it removed
+  a working signal with no working replacement.
+
+CORE IDEA (user's design):
+  1. Prompt the model to EXPLICITLY CITE values it uses from the table in each step
+  2. Prompt it to explicitly state the final answer inside the reasoning chain
+  3. Give a WEIGHTED reward for each GT value found in the model's reasoning:
+       - Each intermediate data value cited correctly: weight 1.0
+       - The final answer value cited in reasoning:    weight 2.0 (more important)
+  4. Score = sum(earned weights) / sum(all target weights)  → range [0, 1]
+
+WHY THIS WORKS AND DOESN'T CONFLICT WITH d_reason:
+  Two correct rollouts can say the SAME values in completely DIFFERENT ways:
+    Rollout A: "From the table, value_2020 = 14.2 and value_2021 = 8.7, so 14.2 - 8.7 = 5.5"
+    Rollout B: "The 2021 reading (8.7) is lower than 2020 (14.2), a drop of 5.5"
+  Both cite {14.2, 8.7} from the table and 5.5 as the answer → same GT-CLC score.
+  But their phrasing structure is different → high d_reason.
+  GT-CLC and d_reason are COMPATIBLE.
+
+THE INTERMEDIATE VALUE PROBLEM:
+  GT reasoning: "14.2 - 8.7 = 5.5"  → extract_numbers gives {14.2, 8.7, 5.5}
+  Model computes: "14.2 - 8.73 = 5.47" (slight rounding in intermediate)
+  Problem: 5.5 and 5.47 don't match → penalize model unfairly.
+
+  SOLUTION — anchor GT values to the GT TABLE:
+    GT_key_values = extract_numbers(gt_reasoning) ∩ extract_table_values(gt_table)
+
+  GT table has the RAW CHART DATA (14.2, 8.7). Intermediate results (5.5)
+  do NOT appear in the GT table. So only {14.2, 8.7} become targets.
+  The answer value (5.5) is handled separately via gt_label with weight 2.0.
+  Intermediate computations that vary between rollouts → never penalized.
+
+
+PROMPT CHANGE (part 1 of 2-part approach):
+  Explicitly instruct the model to cite values and conclude answer in reasoning.
+
+  CURRENT step instructions:
+    <step-1>: Provide a description of reasoning
+    <step-2>: Gather ALL the appropriate data from the chart
+    <step-3>: Break down the query into smaller parts and verify each part with the data
+    ...
+    <step-n>: Do the final calculation or reasoning to derive the answer
+
+  PROPOSED step instructions:
+    <step-1>: From my extracted table above, identify the exact values I need:
+              list each as "name = value" (e.g., "sales_2020 = 14.2")
+    <step-2>: Using ONLY those cited table values, show the calculation step by step
+    <step-3>: Verify the result is consistent with the table
+    ...
+    <step-n>: Therefore, the answer is [value]
+
+  WHY:
+    - Forces explicit value citation → GT-CLC has clear targets to match against
+    - Forces table-anchored reasoning → fixes scale/unit errors (23% of wrong answers)
+    - "Therefore, the answer is [X]" in the last step → reward can check answer
+      derivation was explicit, not just guessed
+    - Cleaner reasoning chains → higher d_reason (diverse structure with same values)
+
+
+IMPLEMENTATION (part 2 of 2-part approach):
+  File: app/rewards/clc_reward.py  (new class GTCLCComputer alongside CLCComputer)
+
+  def _values_match(v1, v2, tolerance=0.05):
+      if v2 != 0:
+          return abs(v1 - v2) / abs(v2) <= tolerance
+      return abs(v1 - v2) <= tolerance
+
+  class GTCLCComputer:
+
+      def __init__(self, value_weight=1.0, answer_weight=2.0, tolerance=0.05):
+          self.value_weight = value_weight
+          self.answer_weight = answer_weight
+          self.tolerance = tolerance
+
+      def compute(self, completion, gt_reasoning, gt_table, gt_label):
+
+          # --- Build weighted target set ---
+
+          # 1. GT table values = ground truth raw data points from chart
+          gt_table_values = extract_table_values(gt_table)
+
+          # 2. GT reasoning values filtered to table-anchored only
+          #    (excludes intermediate computations that vary across rollouts)
+          gt_reasoning_all = extract_numbers(gt_reasoning)
+          gt_key_values = set()
+          if gt_table_values:
+              for gv in gt_reasoning_all:
+                  if any(_values_match(gv, tv, self.tolerance) for tv in gt_table_values):
+                      gt_key_values.add(gv)
+
+          # 3. Build targets dict: value -> weight
+          targets = {kv: self.value_weight for kv in gt_key_values}
+
+          # 4. The GT answer gets answer_weight (highest priority target)
+          gt_answer_num = try_parse_numeric(gt_label)
+          if gt_answer_num is not None:
+              # Check if answer already in targets (upgrade its weight)
+              upgraded = False
+              for kv in list(targets.keys()):
+                  if _values_match(kv, gt_answer_num, self.tolerance):
+                      targets[kv] = self.answer_weight  # upgrade
+                      upgraded = True
+                      break
+              if not upgraded:
+                  targets[gt_answer_num] = self.answer_weight  # add separately
+
+          # Edge cases: no targets (categorical question, no GT table, etc.)
+          if not targets:
+              return GTCLCResult(reward=0.5, recall=0.5, targets={}, matched=set(),
+                                 details={"reason": "no_numeric_targets"})
+
+          total_weight = sum(targets.values())
+
+          # --- Extract model reasoning values ---
+          parsed = parse_response(completion)
+          model_reasoning = parsed.get("reasoning", "")
+          model_values = extract_numbers(model_reasoning)
+
+          if not model_values:
+              return GTCLCResult(reward=0.0, recall=0.0, targets=targets, matched=set(),
+                                 details={"reason": "no_values_in_model_reasoning"})
+
+          # --- Compute weighted recall ---
+          earned_weight = 0.0
+          matched_values = set()
+          for target_val, weight in targets.items():
+              for mv in model_values:
+                  if _values_match(mv, target_val, self.tolerance):
+                      earned_weight += weight
+                      matched_values.add(target_val)
+                      break
+
+          recall = earned_weight / total_weight
+
+          return GTCLCResult(
+              reward=recall,          # final score in [0, 1]
+              recall=recall,
+              targets=targets,
+              matched=matched_values,
+              details={
+                  "num_targets": len(targets),
+                  "total_weight": total_weight,
+                  "earned_weight": earned_weight,
+                  "answer_in_targets": gt_answer_num is not None,
+              }
+          )
+
+REWARD WEIGHT IN AGGREGATOR:
+  w_gt_clc = 1.0  (same scale as original process_reward)
+  GT-CLC score (0-1.0) × 1.0 → same contribution as process_reward had.
+
+EDGE CASES:
+  - ChartFC (binary yes/no, no table): gt_table_values empty → gt_key_values={}
+    Only gt_label (e.g. "Yes") goes through try_parse_numeric → returns None
+    → targets={} → returns 0.5 (neutral). No false signal on categorical answers.
+  - gt_reasoning empty string: gt_reasoning_all={} → gt_key_values={}
+    Only gt_label matters. If gt_label is numeric → reward based on answer alone.
+  - Model produces correct answer without citing values: gets 0.0 on GT-CLC
+    but full accuracy_reward. Signal is "cite your work" not "get the answer".
+
+INTEGRATION IN reward_aggregator.py:
+  - Remove the auto-disable logic (lines 204-208) — no longer needed
+  - Add GTCLCComputer alongside HCPCComputer in __init__
+  - Pass ground_truth["reasoning"], ground_truth["table"], ground_truth["label"]
+  - Add "gt_clc", "gt_clc_recall" to breakdown logging
+  - Total: R = R_base + R_HCPC_per_rollout + R_gt_clc
+
+
+================================================================================
+SECTION 3: PROMPT CHANGE  (file: app/data/prompts.py)
+================================================================================
+
+PROBLEM:
+  Current step instructions say "Gather ALL the appropriate data from the chart."
+  The model has ALREADY extracted a table. But this instruction causes the model
+  to re-read the chart visually in the reasoning steps, which is where scale
+  errors happen (reads 0.03 as 3 directly from axis). The table has the right
+  value but the model ignores it in reasoning.
+
+  Evidence: 23.1% of wrong HCPC ChartQA rollouts are way off numerically (>50%)
+  — these are scale/unit mismatches from visual re-reading.
+
+FIX:
+  Change the step template to force table-anchored reasoning.
+
+  CURRENT:
+    <step-1>: Provide a description of reasoning
+    <step-2>: Gather ALL the appropriate data from the chart
+    <step-3>: Break down the query into smaller parts and verify each part with the data
+    ...
+    <step-n>: Do the final calculation or reasoning to derive the answer
+
+  PROPOSED:
+    <step-1>: From my extracted table above, identify the specific values needed to answer the query
+    <step-2>: Using ONLY those table values, perform the required calculation or comparison (show work)
+    <step-3>: Verify: confirm the computed answer is consistent with the table values
+    ...
+    <step-n>: State the final answer clearly
+
+  WHY:
+    - Forces model to use structured table values, not visual re-reading
+    - Reduces scale/unit errors (table has 0.03, model must cite 0.03)
+    - Improves GT-CLC recall (model explicitly cites table values in reasoning)
+    - Self-verification step catches arithmetic errors before the answer tag
+    - Free win: no training cost, just prompt change
+
+
+================================================================================
+SECTION 4: REWARD AGGREGATOR CHANGE  (file: app/rewards/reward_aggregator.py)
+================================================================================
+
+REMOVE the auto-disable of process_reward:
+  Lines 204-208 in from_config():
+    # DELETE these lines:
+    if config.rewards.use_hcpc and use_process:
+        use_process = False
+
+  Replace with: GT-CLC is now the process signal. It doesn't conflict,
+  so the auto-disable is no longer needed.
+
+ADD GT-CLC to compute():
+  Pass ground_truth["reasoning"] and ground_truth["table"] to GT-CLC computer.
+  Add gt_clc score to total and to breakdown dict for logging.
+
+
+================================================================================
+SUMMARY OF CHANGES
+================================================================================
+
+Priority  | File                          | Change
+──────────────────────────────────────────────────────────────────────────
+P0        | hcpc_reward.py               | Fix 1: format gate in _filter_correct
+P0        | hcpc_reward.py               | Fix 2: per-rollout differentiated d_reason
+P1        | clc_reward.py                | New GT-anchored CLC (GTCLCComputer class)
+P1        | reward_aggregator.py         | Wire GT-CLC, remove process_reward auto-disable
+P1        | reward_aggregator.py         | Fix 3: threshold 0.8 → 0.6
+P2        | data/prompts.py              | Table-anchored step instructions
+P3        | hcpc_reward.py               | Fix 4: decouple d_reason from correct_rate
+
+Expected impact:
+  - Fix 1 stops ChartFC format collapse (the 37.9% bad format problem)
+  - Fix 2 gives actual diversity gradient (d_reason goes from dead to meaningful)
+  - GT-CLC replaces process_reward without conflicting with d_reason
+  - Prompt change reduces scale/unit errors in ChartQA (free win)
+
+
+# concerns - one format reward is already given in the base reward 

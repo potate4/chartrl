@@ -43,11 +43,17 @@ class RewardConfig:
     w_type: float = 1.0
     w_table: float = 2.0
     w_reason: float = 1.5
-    table_sim_threshold: float = 0.8
+    table_sim_threshold: float = 0.6  # was 0.8; must match HCPCComputer default
 
-    # CLC reward settings (disabled for now)
+    # Original CLC reward (self-coherence, disabled — replaced by GT-CLC)
     use_clc: bool = False
     w_clc: float = 1.0
+
+    # GT-anchored CLC reward (replaces process_reward, compatible with HCPC)
+    use_gt_clc: bool = True
+    w_gt_clc: float = 1.0
+    value_weight: float = 1.0   # weight per matched intermediate data value
+    answer_weight: float = 2.0  # weight for the GT answer value in reasoning
 
 
 @dataclass

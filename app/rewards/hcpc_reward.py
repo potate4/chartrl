@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from utils.parsing import parse_response, normalize_answer, try_parse_numeric
 from utils.similarity import (
     compute_pairwise_similarity,
+    compute_similarity,
     compute_table_similarity,
 )
 
@@ -117,7 +118,7 @@ class HCPCComputer:
         # Step 4: Compute reasoning diversity (among correct rollouts)
         d_reason = self._compute_reasoning_diversity(correct_rollouts)
 
-        # Step 5: Combine into HCPC reward
+        # Step 5: Combine into HCPC group-level reward (for logging only)
         # R_HCPC = correct_rate × (w1·C_type + w2·C_table + w3·D_reason)
         weighted_sum = (
             self.w_type * c_type +
@@ -126,12 +127,42 @@ class HCPCComputer:
         )
         reward = correct_rate * weighted_sum
 
-        # Per-rollout: only correct rollouts receive the HCPC bonus
-        correct_set = set(correct_indices)
-        per_rollout_rewards = [
-            reward if i in correct_set else 0.0
-            for i in range(n_rollouts)
-        ]
+        # Step 6: Per-rollout differentiated rewards based on individual uniqueness.
+        # Consistency bonus (c_type, c_table) is shared equally among correct rollouts.
+        # Diversity bonus is per-rollout: each correct rollout earns more if its
+        # reasoning is more unique relative to the other correct rollouts.
+        base_group = correct_rate * (self.w_type * c_type + self.w_table * c_table)
+
+        reasonings = [correct_rollouts[k].get("reasoning", "").strip() for k in range(num_correct)]
+
+        # Use pairwise similarity matrix (one batch call) to derive per-rollout
+        # uniqueness. Empty reasoning strings are assigned uniqueness=0 so that
+        # a rollout with no reasoning never earns a diversity bonus.
+        valid_mask = [bool(r) for r in reasonings]
+        if sum(valid_mask) >= 2:
+            valid_reasonings = [r for r in reasonings if r]
+            _, sim_matrix = compute_pairwise_similarity(valid_reasonings)
+            # Map back to original indices
+            valid_iter = iter(range(len(valid_reasonings)))
+            vi_map = []  # original index → index in sim_matrix (or None)
+            for is_valid in valid_mask:
+                vi_map.append(next(valid_iter) if is_valid else None)
+
+            uniqueness_scores = []
+            for k, is_valid in enumerate(valid_mask):
+                if not is_valid:
+                    uniqueness_scores.append(0.0)
+                    continue
+                vi = vi_map[k]
+                row = [sim_matrix[vi][j] for j in range(len(valid_reasonings)) if j != vi]
+                uniqueness_scores.append(1.0 - (sum(row) / len(row)) if row else 0.5)
+        else:
+            # Fewer than 2 valid reasonings — assign neutral uniqueness
+            uniqueness_scores = [0.5 if valid_mask[k] else 0.0 for k in range(num_correct)]
+
+        per_rollout_rewards = [0.0] * n_rollouts
+        for k, idx in enumerate(correct_indices):
+            per_rollout_rewards[idx] = base_group + self.w_reason * uniqueness_scores[k]
 
         return HCPCResult(
             reward=reward,
@@ -173,19 +204,25 @@ class HCPCComputer:
         correct_indices = []
 
         for i, rollout in enumerate(parsed_rollouts):
-            # Check table similarity
+            # Gate 1: format must be compliant — reject bare answers with no structure
+            if not rollout.get("parse_success", False):
+                continue
+            if not rollout.get("table_parse_success_strict", False):
+                continue
+
+            # Gate 2: table similarity (only when GT table is available)
             pred_table = rollout.get("table", {})
             if gt_table:
                 table_sim = compute_table_similarity(pred_table, gt_table)
                 if table_sim < self.table_sim_threshold:
                     continue
 
-            # Check answer
+            # Gate 3: answer must match GT
             pred_answer = rollout.get("answer", "")
             if not self._answers_match(pred_answer, gt_answer):
                 continue
 
-            # All checks passed
+            # All gates passed
             correct_rollouts.append(rollout)
             correct_indices.append(i)
 
