@@ -1,0 +1,28 @@
+{
+  "model": "checkpoint-2000",
+  "checkpoint": "/kaggle/input/models/sumsumaiya/updated-grpo-hcpc/transformers/default/1/kaggle/working/chartrl/app/outputs/grpo_hcpc/run_20260228_170909/trl_output/checkpoint-2000",
+  "base_model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "dataset": "chartqa",
+  "split": "test",
+  "subset_size": 500,
+  "num_generations_per_sample": 4,
+  "temperature": 0.8,
+  "top_p": 0.95,
+  "accuracy": 0.622,
+  "pass_at_k": {
+    "1": 0.6285,
+    "2": 0.7456666666666666,
+    "4": 0.828
+  },
+  "c_table": 0.7412,
+  "d_reason": 0.0521,
+  "coherence": 0.2444,
+  "correct_rate": 0.654,
+  "format_compliance_rate": 0.982,
+  "avg_time_per_sample": 37.93,
+  "total_time_seconds": 18965.3,
+  "total_time_human": "5h 16m 5s",
+  "session_time_seconds": 18965.5,
+  "num_samples_evaluated": 500,
+  "timestamp": "20260301_170306"
+}

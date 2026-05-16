@@ -1,0 +1,28 @@
+{
+  "model": "checkpoint-2000",
+  "checkpoint": "/kaggle/input/models/safahaqiii/nsr/transformers/default/1/kaggle/working/outputs/nsr_baseline/run_20260228_225209/trl_output/checkpoint-2000",
+  "base_model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "dataset": "chartfc",
+  "split": "test",
+  "subset_size": 500,
+  "num_generations_per_sample": 4,
+  "temperature": 0.8,
+  "top_p": 0.95,
+  "accuracy": 0.708,
+  "pass_at_k": {
+    "1": 0.687,
+    "2": 0.826,
+    "4": 0.924
+  },
+  "c_table": 0.9607,
+  "d_reason": 0.0598,
+  "coherence": 0.3142,
+  "correct_rate": 0.687,
+  "format_compliance_rate": 0.994,
+  "avg_time_per_sample": 127.54,
+  "total_time_seconds": 63771.2,
+  "total_time_human": "17h 42m 51s",
+  "session_time_seconds": 20771.7,
+  "num_samples_evaluated": 500,
+  "timestamp": "20260421_165136"
+}

@@ -1,0 +1,16 @@
+{
+  "checkpoint": "/home/cse/Desktop/sumaiya223/chartrl/app/outputs/grpo_baseline/run_20260218_125045/trl_output/checkpoint-2000",
+  "base_model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "dataset": "chartqa",
+  "split": "test",
+  "subset": 500,
+  "num_samples": 4,
+  "temperature": 0.8,
+  "top_p": 0.95,
+  "max_new_tokens": 768,
+  "output_dir": "outputs/eval_results",
+  "run_name": "checkpoint-2000_chartqa_20260219_073124",
+  "cache_dir": "./cache",
+  "seed": 42,
+  "timestamp": "20260219_073124"
+}
