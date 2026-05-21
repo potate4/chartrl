@@ -382,7 +382,12 @@ class BaseTrainer(ABC):
             summary = {
                 "step": self._metrics_step,
                 "window": len(self._metrics_window),
-                "avg_total": roll.get("base_total", 0.0) + roll.get("hcpc", 0.0) + roll.get("clc", 0.0),
+                "avg_total": (
+                    roll.get("base_total", 0.0)
+                    + roll.get("hcpc", 0.0)
+                    + roll.get("clc", 0.0)
+                    + roll.get("gt_clc", 0.0)
+                ),
                 "avg_base_total": roll.get("base_total", 0.0),
                 "avg_base_accuracy": roll.get("base_accuracy", 0.0),
                 "avg_base_format": roll.get("base_format", 0.0),
@@ -390,6 +395,8 @@ class BaseTrainer(ABC):
                 "avg_base_type": roll.get("base_chart_type", 0.0),
                 "avg_hcpc": roll.get("hcpc", 0.0),
                 "avg_clc": roll.get("clc", 0.0),
+                "avg_gt_clc": roll.get("gt_clc", 0.0),
+                "avg_gt_clc_recall": roll.get("gt_clc_recall", 0.0),
             }
 
             self.logger.info(f"[metrics_summary] {summary}")

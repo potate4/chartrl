@@ -18,7 +18,6 @@ from dataclasses import dataclass
 from utils.parsing import parse_response, normalize_answer, try_parse_numeric
 from utils.similarity import (
     compute_pairwise_similarity,
-    compute_similarity,
     compute_table_similarity,
 )
 

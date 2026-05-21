@@ -14,6 +14,7 @@ CLC catches this by checking:
     C_coherence = |values_in_reasoning ∩ values_in_table| / |values_in_reasoning|
 """
 
+import re
 from typing import Dict, Any, Set, List
 from dataclasses import dataclass
 
@@ -279,6 +280,8 @@ class GTCLCComputer:
         # 2. Values mentioned in GT reasoning, filtered to those that also
         #    appear in the GT table.  This excludes intermediate computed
         #    results (e.g. differences, sums) that may vary across rollouts.
+        #    NOTE: if gt_reasoning is empty (common in sanchit97/chart-rvr-grpo-train),
+        #    gt_key_values stays empty and only the GT answer acts as target below.
         gt_key_values: Set[float] = set()
         if gt_table_values and gt_reasoning:
             for gv in extract_numbers(gt_reasoning):
@@ -290,6 +293,10 @@ class GTCLCComputer:
 
         # 4. GT answer value gets answer_weight (the most critical target)
         gt_answer_num = try_parse_numeric(gt_label) if gt_label else None
+        # try_parse_numeric("14.2%") → 14.2, but extract_numbers("14.2%") → {0.142}.
+        # Align by dividing by 100 when the label explicitly uses a percent sign.
+        if gt_answer_num is not None and gt_label.strip().endswith("%"):
+            gt_answer_num = gt_answer_num / 100.0
         if gt_answer_num is not None:
             # If answer overlaps with an existing target, upgrade its weight
             upgraded = False
@@ -315,10 +322,29 @@ class GTCLCComputer:
 
         total_weight = sum(targets.values())
 
-        # --- Extract values from model's reasoning steps ---
-        parsed = parse_response(completion)
-        model_reasoning = parsed.get("reasoning", "")
-        model_values = extract_numbers(model_reasoning)
+        # For percentage GT answers, also keep the raw (non-divided) form so we can
+        # match a model that writes "14.2" instead of "14.2%" in its reasoning.
+        gt_answer_raw_pct = None
+        if gt_answer_num is not None and gt_label.strip().endswith("%"):
+            gt_answer_raw_pct = gt_answer_num * 100.0
+
+        # --- Extract values from model's reasoning steps (Fix A) ---
+        # Qwen2.5-VL prepends a native <think> block before the structured one.
+        # re.search non-greedy would always return the native block, missing the
+        # <step-N> citations entirely. Take the LAST <think> block instead.
+        all_thinks = re.findall(r"<think>(.*?)</think>", completion, re.DOTALL)
+        if all_thinks:
+            structured = all_thinks[-1]
+            structured = re.sub(r"<type>.*?</type>", "", structured, flags=re.DOTALL)
+            structured = re.sub(r"<table>.*?</table>", "", structured, flags=re.DOTALL)
+            model_reasoning = structured.strip()
+        else:
+            model_reasoning = ""
+
+        # Strip <step-N>: tags before extracting numbers — tag indices (1, 2, 3...)
+        # would otherwise contaminate model_values and trivially match small answers.
+        model_reasoning_clean = re.sub(r"<step-\w+>\s*:\s*", "", model_reasoning)
+        model_values = extract_numbers(model_reasoning_clean)
 
         if not model_values:
             return GTCLCResult(
@@ -330,19 +356,31 @@ class GTCLCComputer:
                 details={"reason": "no_values_in_model_reasoning"},
             )
 
-        # --- Weighted recall ---
+        # --- Weighted recall (Fix B) ---
         earned_weight = 0.0
         matched_targets = []
         for target_val, weight in targets.items():
+            matched = False
             for mv in model_values:
                 if _num_match(mv, target_val, self.tolerance):
-                    earned_weight += weight
-                    matched_targets.append(target_val)
+                    matched = True
                     break
+                # For percentage GT answers: also accept the non-divided form.
+                # Matches when target_val is the GT answer target (≈ gt_answer_num)
+                # and the model wrote "14.2" instead of "14.2%" in its reasoning.
+                if (gt_answer_raw_pct is not None
+                        and _num_match(target_val, gt_answer_num, self.tolerance)
+                        and _num_match(mv, gt_answer_raw_pct, self.tolerance)):
+                    matched = True
+                    break
+            if matched:
+                earned_weight += weight
+                matched_targets.append(target_val)
 
         recall = earned_weight / total_weight
         reward = self.w_gt_clc * recall
 
+        mode = "full" if gt_key_values else "answer_only"
         return GTCLCResult(
             reward=reward,
             recall=recall,
@@ -350,6 +388,7 @@ class GTCLCComputer:
             earned_weight=earned_weight,
             total_weight=total_weight,
             details={
+                "mode": mode,  # "full" = gt_reasoning+table values, "answer_only" = gt_label only
                 "num_matched": len(matched_targets),
                 "answer_in_targets": gt_answer_num is not None,
                 "gt_key_values": list(gt_key_values),

@@ -4,13 +4,18 @@ from .base import TrainingConfig, RewardConfig, CheckpointConfig
 from typing import Dict
 
 
-def _make_reward_config(use_hcpc: bool) -> RewardConfig:
+def _make_reward_config(use_hcpc: bool, use_gt_clc: bool = True) -> RewardConfig:
     """Create reward config with HCPC settings."""
     return RewardConfig(
         use_hcpc=use_hcpc,
-        use_clc=False,          # original self-coherence CLC disabled
-        use_process_reward=False,  # replaced by GT-CLC below
-        use_gt_clc=True,        # GT-anchored CLC — compatible with HCPC
+        use_clc=False,             # original self-coherence CLC disabled
+        use_process_reward=False,  # replaced by GT-CLC
+        use_gt_clc=use_gt_clc,     # GT-anchored CLC — compatible with HCPC
+        # Disable rewards that always fire at 0 in sanchit97/chart-rvr-grpo-train:
+        #   chart_type: GT field is empty in training data
+        #   token_count: model produces multiple <think> tags, never passes check
+        use_chart_type_reward=False,
+        use_token_count_reward=False,
         w_type=1.0,
         w_table=2.0,
         w_reason=1.5,
@@ -44,6 +49,7 @@ _SHARED = dict(
     torch_dtype_auto=True,
     attn_implementation=None,
     use_flash_attention=False,
+    max_completion_length=1280,
     use_python_list_dataset=True,
     wandb_project="chartrl-nsr",
     checkpoint=CheckpointConfig(
@@ -56,9 +62,34 @@ _SHARED = dict(
 
 # The 6 experiments from the methodology
 EXPERIMENTS: Dict[str, TrainingConfig] = {
-    # Experiment 1: GRPO baseline (Chart-RVR reproduction)
+    # True Chart-RVR baseline: process_reward=True, no GT-CLC, no HCPC
+    # Use this to compare against published Chart-RVR numbers.
+    "grpo_true_baseline": TrainingConfig(
+        experiment_name="grpo_true_baseline",
+        policy_method="grpo",
+        **_SHARED,
+        rewards=RewardConfig(
+            use_hcpc=False,
+            use_clc=False,
+            use_process_reward=True,   # matches original Chart-RVR
+            use_gt_clc=False,
+            use_chart_type_reward=False,
+            use_token_count_reward=False,
+            table_sim_threshold=0.6,
+        ),
+    ),
+
+    # Experiment 1: GRPO + GT-CLC (our new baseline — replaces process_reward)
     "grpo_baseline": TrainingConfig(
         experiment_name="grpo_baseline",
+        policy_method="grpo",
+        **_SHARED,
+        rewards=_make_reward_config(use_hcpc=False),
+    ),
+
+    # Explicit GRPO + GT-CLC entry (same config as grpo_baseline, separate output dir)
+    "grpo_gt_clc": TrainingConfig(
+        experiment_name="grpo_gt_clc",
         policy_method="grpo",
         **_SHARED,
         rewards=_make_reward_config(use_hcpc=False),

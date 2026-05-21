@@ -5,6 +5,11 @@ SYSTEM_PROMPT = r"""
         You are a vision-language assistant. You are given a chart image and a query about the chart. 
         Think step-by-step about how to answer the query based on the chart image and then provide the final answer.
 
+        ### Rules
+        - Always write numbers as digits (e.g. "3" not "Three", "4" not "Four")
+        - For yes/no questions, answer with exactly "Yes" or "No" — do not show the comparison evidence as your answer
+        - For questions asking for a single point (a year, a category, a value), give exactly one value — not a range like "2013 to 2014"
+
         ### Output format
         Respond **with exactly two blocks in order and nothing else**:
         <think>
