@@ -12,7 +12,31 @@
       "Bash(python3:*)",
       "Bash(xargs -I {} sh -c 'echo \"\"File: {}\"\" && head -20 {}')",
       "Bash(head:*)",
-      "Bash(pip install *)"
+      "Bash(pip install *)",
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/intersection_lift.py)",
+      "Bash(tee analysis/intersection_lift_output.txt)",
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/paper_stats.py)",
+      "Bash(curl -fsSL \"https://api.github.com/repos/acl-org/acl-style-files\")",
+      "Bash(curl -fsSL \"https://api.github.com/repos/acl-org/acl-style-files/contents/\")",
+      "Bash(curl -fsSL -o acl.sty \"https://raw.githubusercontent.com/acl-org/acl-style-files/main/acl.sty\")",
+      "Bash(curl -fsSL -o acl_natbib.bst \"https://raw.githubusercontent.com/acl-org/acl-style-files/main/acl_natbib.bst\")",
+      "Bash(curl -fsSL -o anthology.bib \"https://raw.githubusercontent.com/acl-org/acl-style-files/main/anthology.bib.txt\")",
+      "Bash(curl -fsSL -o \"/tmp/acl.sty\" \"https://raw.githubusercontent.com/acl-org/acl-style-files/main/acl.sty\")",
+      "Read(//tmp/**)",
+      "Bash(curl -fsSL \"https://api.github.com/repos/acl-org/acl-style-files/contents/acl.sty\")",
+      "Bash(curl -fsSL -o acl.sty \"https://raw.githubusercontent.com/acl-org/acl-style-files/master/acl.sty\")",
+      "Bash(curl -fsSL -o acl_natbib.bst \"https://raw.githubusercontent.com/acl-org/acl-style-files/master/acl_natbib.bst\")",
+      "Bash(curl -fsSL -o anthology.bib \"https://raw.githubusercontent.com/acl-org/acl-style-files/master/anthology.bib.txt\")",
+      "Bash(grep -oE '\\\\\\\\\\(cite|citep|citet\\)\\\\{[^}]+\\\\}' hcpc_rlvr_emnlp.tex)",
+      "Bash(grep -oE '^@[a-z]+\\\\{[^,]+,' custom.bib)",
+      "Read(//c/tmp/**)",
+      "Bash(curl -fsSL -o acl_latex.tex \"https://raw.githubusercontent.com/acl-org/acl-style-files/master/acl_latex.tex\")",
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/hcpc_firing.py)",
+      "Bash(tee analysis/hcpc_firing_output.txt)",
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/find_qualitative.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *wait, i can clearly see that nsr hcpc performed better than nsr baseline on hartfc are we highlighting that?)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(grep -n \"HCPC}}\\\\|HCPC}\\\\\\\\\\\\\\\\\\\\|0.01\\\\|0.8.*R_\" \"C:\\\\Users\\\\sumai\\\\DATA\\\\RESEARCH\\\\THESIS\\\\chartrl\\\\paper draft\\\\main.tex\")"
     ]
   }
 }

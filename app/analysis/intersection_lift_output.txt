@@ -1,0 +1,51 @@
+
+========== chartqa: full-set Δ_tbl ==========
+  method      P(table)  P(ans|tbl)  P(ans|~tbl)  Δ_tbl
+  base          0.700      0.509       0.540     -0.031
+  grpo          0.948      0.639       0.462     +0.178
+  hcpc          0.962      0.632       0.368     +0.264
+  nsr           0.658      0.620       0.538     +0.082
+  nsr_hcpc      0.770      0.608       0.461     +0.147
+
+  ---- intersection Δ_tbl on samples where BOTH methods parsed table ----
+    grpo       on intersect: P(ans|tbl)=0.666 (n=335)  P(ans|~tbl)=0.455 (n=11)  Δ=+0.211
+    base       on intersect: P(ans|tbl)=0.513 (n=335)  P(ans|~tbl)=0.273 (n=11)  Δ=+0.241
+
+    grpo       on intersect: P(ans|tbl)=0.643 (n=462)  P(ans|~tbl)=0.714 (n=7)  Δ=-0.071
+    hcpc       on intersect: P(ans|tbl)=0.636 (n=462)  P(ans|~tbl)=0.429 (n=7)  Δ=+0.208
+
+    grpo       on intersect: P(ans|tbl)=0.683 (n=312)  P(ans|~tbl)=0.444 (n=9)  Δ=+0.238
+    nsr        on intersect: P(ans|tbl)=0.628 (n=312)  P(ans|~tbl)=0.222 (n=9)  Δ=+0.406
+
+    grpo       on intersect: P(ans|tbl)=0.671 (n=371)  P(ans|~tbl)=0.500 (n=12)  Δ=+0.171
+    nsr_hcpc   on intersect: P(ans|tbl)=0.617 (n=371)  P(ans|~tbl)=0.333 (n=12)  Δ=+0.284
+
+
+  ---- paired-per-sample Δ_tbl: each method evaluated on common subset ----
+  n_common_table=188  n_common_no_table=2
+    base        P(ans|tbl)=0.527  P(ans|~tbl)=0.500  Δ_common=+0.027
+    grpo        P(ans|tbl)=0.734  P(ans|~tbl)=0.500  Δ_common=+0.234
+    hcpc        P(ans|tbl)=0.707  P(ans|~tbl)=0.000  Δ_common=+0.707
+    nsr         P(ans|tbl)=0.665  P(ans|~tbl)=0.500  Δ_common=+0.165
+    nsr_hcpc    P(ans|tbl)=0.686  P(ans|~tbl)=0.000  Δ_common=+0.686
+
+========== chartfc: full-set Δ_tbl ==========
+  method      P(table)  P(ans|tbl)  P(ans|~tbl)  Δ_tbl
+  grpo          0.992      0.639       0.500     +0.139
+  hcpc          0.860      0.598       0.657     -0.059
+  nsr           0.550      0.564       0.622     -0.059
+  nsr_hcpc      0.610      0.633       0.631     +0.002
+
+  ---- intersection Δ_tbl on samples where BOTH methods parsed table ----
+    grpo       on intersect: P(ans|tbl)=0.651 (n=427)  P(ans|~tbl)=0.000 (n=1)  Δ=+0.651
+    hcpc       on intersect: P(ans|tbl)=0.597 (n=427)  P(ans|~tbl)=0.000 (n=1)  Δ=+0.597
+
+    grpo       on intersect: P(ans|tbl)=0.637 (n=273)  P(ans|~tbl)=0.000 (n=2)  Δ=+0.637
+    nsr        on intersect: P(ans|tbl)=0.564 (n=273)  P(ans|~tbl)=0.000 (n=2)  Δ=+0.564
+
+    grpo       on intersect: P(ans|tbl)=0.660 (n=303)  P(ans|~tbl)=1.000 (n=2)  Δ=-0.340
+    nsr_hcpc   on intersect: P(ans|tbl)=0.634 (n=303)  P(ans|~tbl)=1.000 (n=2)  Δ=-0.366
+
+
+  ---- paired-per-sample Δ_tbl: each method evaluated on common subset ----
+  n_common_table=165  n_common_no_table=0
