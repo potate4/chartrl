@@ -77,9 +77,9 @@ helps under distribution shift \citep{chartrvr2025,zhu2025nsr}.
 We propose Hierarchical Correct-Path Consistency
 (\textbf{HCPC}), a cross-rollout bonus that aims to preserve diverse
 reasoning paths in a structured way. HCPC conditions on ground-truth
-correctness and, among the rollouts in a group that get the chart
-type, table, and answer right, rewards \emph{consistent} extraction
-together with \emph{diverse} reasoning traces. The level-specific
+correctness and, among the rollouts in a group that get the table and
+answer right, rewards \emph{consistent} table extraction together
+with \emph{diverse} reasoning traces. The level-specific
 objective reflects the structure of chart reasoning---perception
 admits one right answer while reasoning over the extracted table
 admits many---and the GT-anchored filter ensures the bonus rewards
@@ -182,17 +182,15 @@ We augment $R_{\text{base}}$ with a single group-level component
 designed to provide positive gradient over a non-saturating landscape.
 
 Let $G=\{o_1,\dots,o_K\}$ be the rollouts for a prompt with ground
-truth $(c^*, T^*, y^*)$. Define the \emph{correct-path} subset
+truth $(T^*, y^*)$. Define the \emph{correct-path} subset
 \[
-G^+ = \{\,o_i\in G : \hat c_i = c^* \wedge \hat y_i = y^*
+G^+ = \{\,o_i\in G : \hat y_i = y^*
 \wedge \mathrm{sim}(\hat T_i, T^*) \ge \tau\,\},
 \]
 with $\tau{=}0.8$ to forbid ``lucky'' rollouts that produce the right
-answer from a wrong table or with a wrong chart type. On $G^+$ we
-measure three level-specific quantities:
+answer from a wrong table. On $G^+$ we measure two level-specific
+quantities:
 \begin{align*}
-C_{\text{type}}  &= \tfrac{1}{|G^+|}\sum_{o\in G^+}
-  \mathbb{1}[\hat c_o = \mathrm{mode}(\{\hat c_o\})]\\
 C_{\text{table}} &= \tfrac{1}{\binom{|G^+|}{2}}\!\!\sum_{i<j\in G^+}\!\!
   \mathrm{sim}(\hat T_i, \hat T_j)\\
 D_{\text{reason}} &= 1 - \tfrac{1}{\binom{|G^+|}{2}}\!\!\sum_{i<j\in G^+}\!\!
@@ -201,9 +199,9 @@ D_{\text{reason}} &= 1 - \tfrac{1}{\binom{|G^+|}{2}}\!\!\sum_{i<j\in G^+}\!\!
 The HCPC group bonus is
 \[
 B_{\text{HCPC}} \!=\! \tfrac{|G^+|}{K}\!
-\left(w_1 C_{\text{type}} + w_2 C_{\text{table}} + w_3 D_{\text{reason}}\right),
+\left(w_1 C_{\text{table}} + w_2 D_{\text{reason}}\right),
 \]
-with $w_1{=}1.0,\,w_2{=}2.0,\,w_3{=}1.5$. We set
+with $w_1{=}2.0,\,w_2{=}1.5$. We set
 $B_{\text{HCPC}}{=}0$ when $|G^+|{<}2$. Pairwise similarities use
 cosine over MiniLM-L6 embeddings \citep{minilm}, matching Chart-RVR's
 process-conformity backbone. The bonus is then applied
@@ -222,7 +220,7 @@ incorrect rollouts receive no HCPC bonus.
 Empirically the $D_{\text{reason}}$ term is small ($\sim$0.05 at
 $K{=}4$, since reasoning traces for the same chart question are
 near-duplicates in MiniLM space), so the effective signal is dominated
-by $w_2 \cdot C_{\text{table}}$; we retain $D_{\text{reason}}$ in the
+by $w_1 \cdot C_{\text{table}}$; we retain $D_{\text{reason}}$ in the
 formulation for level-completeness but note that a simpler variant
 weighting only $C_{\text{table}}$ would behave similarly at this $K$.
 
