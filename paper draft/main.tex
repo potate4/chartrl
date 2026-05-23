@@ -88,12 +88,17 @@ rollouts.
 
 As a comparison point we port Negative-Sample Reinforcement
 \citep[NSR;][]{zhu2025nsr}, a recent advantage rule from text-only
-math RLVR that pursues the same diversity-preservation goal by a
+math RLVR that targets the same diversity-preservation goal by a
 different route: masking the gradient of correct rollouts and
-penalizing only incorrect ones. NSR and HCPC are thus two routes to
-the same outcome---preserving diverse reasoning while training---one
-by removing positive reinforcement (NSR), the other by adding
-structured positive reinforcement (HCPC).
+penalizing only incorrect ones. \citet{zhu2025nsr} show that NSR
+matches or beats GRPO at Pass@$K$ on math benchmarks while
+preserving diversity; whether that property transfers to a
+multi-component, multimodal reward landscape is one of the questions
+we test, and as we show in \S\ref{sec:nsr_collapse} the answer is no.
+NSR and HCPC therefore enter the paper as two \emph{attempts} at
+preserving correct-path diversity---one by removing positive
+reinforcement, the other by adding structured positive
+reinforcement---only one of which delivers in our setting.
 
 \paragraph{Contributions.}
 
