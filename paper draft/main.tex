@@ -454,8 +454,19 @@ $16.2\%\!\to\!17.8\%$. The $\Delta_{\text{tbl}}$ sign flip from
 negative to zero indicates that table extraction stops actively
 hurting; the format gain is marginal. Plain NSR is the weakest OOD
 configuration in Table~\ref{tab:main} on every metric, and HCPC
-closes most of that gap. How the gap is closed (mechanism below)
-turns out to be more interesting than the gap-closing itself.
+closes most of that gap (Figure~\ref{fig:passk_chartfc}). How the
+gap is closed (mechanism below) turns out to be more interesting
+than the gap-closing itself.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\columnwidth]{fig_passk_chartfc.pdf}
+\caption{Pass@$K$ on ChartFC (OOD, $n{=}500$). Plain NSR (green)
+sits below all other configurations at every $K$; adding HCPC
+(purple) closes most of the gap to GRPO. \textsc{Base} was not
+evaluated on ChartFC.}
+\label{fig:passk_chartfc}
+\end{figure}
 
 \paragraph{Format/accuracy dissociation.} The way in which HCPC
 mitigates NSR's damage is unusual: NSR+HCPC reaches Pass@1 $=0.632$,
