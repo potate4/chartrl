@@ -28,32 +28,30 @@ A Cross-Rollout Bonus and a Negative-Sample Caveat}
 \maketitle
 
 \begin{abstract}
-Reinforcement learning with verifiable rewards (RLVR) is the standard
-recipe for training vision-language models (VLMs) on chart reasoning.
-The canonical Chart-RVR pipeline mixes structural rewards
-(easy to saturate) with answer-accuracy rewards (hard), and computes
-each component \emph{per rollout}. We investigate two questions: how
-this multi-component reward landscape responds to advantage rules
-imported from text-only math RLVR, and whether a cross-rollout signal
-that conditions on ground-truth correctness offers a useful additional
-lever. We report three findings on Qwen2.5-VL-3B trained with LoRA.
-First, porting Negative-Sample Reinforcement \citep{zhu2025nsr}
-unchanged from text-only math collapses format compliance in chart
-RLVR ($96.8\%\!\to\!31.6\%$ on ChartQA, $98.8\%\!\to\!16.2\%$ on
-ChartFC) and significantly hurts OOD Pass@4 ($-3.8$\,pp, $p{=}0.028$);
-per-tag analysis localizes the collapse to the structural tags the
-base model does not emit unprompted. Second, we propose \textbf{HCPC},
-a cross-rollout bonus applied to ground-truth-correct rollouts that
-rewards consistent extraction together with diverse reasoning, and
-show that adding it to NSR improves over plain NSR on \emph{every}
-ChartFC metric and matches GRPO on Pass@1 ($0.632$ vs.\ $0.638$).
-Third, this happens at near-zero format compliance ($17.8\%$ vs.\
-GRPO's $98.8\%$): structured output and answer accuracy are
-empirically separable behaviors in this reward mixture. We argue that
-advantage-rule asymmetries developed for single-reward source domains
-can interact destructively with reward components the source domain
-did not have, and that cross-rollout bonuses are a useful tool for
-shaping the multi-component RLVR landscapes that result.
+Recent chart-reasoning vision-language models are trained via
+reinforcement learning with verifiable rewards (RLVR), typically
+following the Chart-RVR pipeline \citep{chartrvr2025}: GRPO with
+multi-component rewards covering format adherence, chart-type
+identification, table reconstruction, and answer accuracy. We
+investigate two interventions on top of this pipeline: applying an
+asymmetric advantage rule (Negative-Sample Reinforcement, NSR;
+\citealp{zhu2025nsr}) that masks the gradient of correct rollouts
+and penalizes only incorrect ones, and adding \textbf{HCPC}, a
+cross-rollout bonus that conditions on ground-truth correctness and
+rewards consistent extraction together with diverse reasoning. On
+Qwen2.5-VL-3B, NSR ported unchanged collapses format compliance
+($96.8\%\!\to\!31.6\%$ on ChartQA,
+$98.8\%\!\to\!16.2\%$ on OOD ChartFC) and significantly hurts OOD
+Pass@4 ($-3.8$\,pp, $p{=}0.028$); per-tag analysis localizes the
+collapse to the structural tags the base model does not emit
+unprompted. Adding HCPC to NSR improves over plain NSR on
+\emph{every} ChartFC metric and matches GRPO on Pass@1
+($0.632$ vs.\ $0.638$)---at near-zero format compliance
+($17.8\%$ vs.\ $98.8\%$). The dissociation between recovered accuracy
+and unrecovered format is evidence that the two travel through
+separable reward channels in chart RLVR; HCPC's recovery operates
+through a baseline shift in the GRPO advantage that provides no
+direct positive gradient on correct rollouts.
 \end{abstract}
 
 \section{Introduction}
