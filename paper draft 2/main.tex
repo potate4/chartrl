@@ -28,94 +28,73 @@ A Cross-Rollout Bonus and a Negative-Sample Caveat}
 \maketitle
 
 \begin{abstract}
-Recent chart-reasoning vision-language models are trained via
-reinforcement learning with verifiable rewards (RLVR), typically
-following the Chart-RVR pipeline \citep{chartrvr2025}: GRPO with
-multi-component rewards covering format adherence, chart-type
-identification, table reconstruction, and answer accuracy. GRPO's
-symmetric advantage rule reinforces correct rollouts uniformly,
-which can erode the reasoning diversity that supports coverage at
-higher inference compute. We propose \textbf{HCPC}, a cross-rollout
-bonus that aims to preserve diverse reasoning paths by conditioning
-on ground-truth correctness and rewarding consistent extraction
-together with diverse reasoning. On Qwen2.5-VL-3B, HCPC matches
-GRPO on Pass@1 ($0.622$ vs.\ $0.630$) while producing more robust
-correct-path behavior: $40.8\%$ of ChartQA test samples have all $4$
-rollouts correct (vs.\ $38.6\%$), Pass@4 is highest at $0.828$
-(vs.\ $0.816$), and table-dependence is stronger
-($\Delta_{\text{tbl}}{=}{+}0.264$ vs.\ ${+}0.178$). As a comparison
-point we also port Negative-Sample Reinforcement (NSR;
-\citealp{zhu2025nsr}), a recent advantage rule from text-only math
-RLVR that masks the gradient of correct rollouts to preserve
-diversity. NSR ported unchanged collapses format compliance in chart
-RLVR ($96.8\%\!\to\!31.6\%$ on ChartQA,
+Reinforcement learning recipes from text-only math RLVR are
+increasingly being adapted to multimodal training pipelines. We
+investigate one such recipe---Negative-Sample Reinforcement (NSR;
+\citealp{zhu2025nsr}), which masks the gradient of correct
+rollouts---together with \textbf{HCPC}, a cross-rollout bonus we
+propose that rewards consistent extraction and diverse reasoning
+among ground-truth-correct rollouts. We report two main findings
+and one supporting one. \textbf{(1)} NSR ported unchanged collapses
+format compliance in chart RLVR
+($96.8\%\!\to\!31.6\%$ on ChartQA,
 $98.8\%\!\to\!16.2\%$ on OOD ChartFC) and significantly hurts OOD
 Pass@4 ($-3.8$\,pp, $p{=}0.028$); per-tag analysis localizes the
 collapse to the structural tags the base model does not emit
-unprompted. Adding HCPC to NSR improves over plain NSR on
-\emph{every} ChartFC metric and matches GRPO on Pass@1
-($0.632$ vs.\ $0.638$)---at near-zero format compliance
-($17.8\%$ vs.\ $98.8\%$). The dissociation between recovered accuracy
-and unrecovered format is evidence that the two travel through
-separable reward channels in chart RLVR.
+unprompted, with a mechanistic explanation (structural rewards
+saturate, well-formed rollouts cross NSR's threshold, NSR masks
+their gradient). \textbf{(2)} Adding HCPC to NSR closes most of the
+OOD accuracy gap to GRPO (NSR+HCPC Pass@1 $0.632$ vs.\ $0.638$) at
+near-zero format compliance ($17.8\%$ vs.\ $98.8\%$): the
+conditional gap
+$P(\text{correct}\mid\text{formatted}){-}P(\text{correct}\mid\text{not formatted})$
+drops from $0.30$ under GRPO to $0.05$ under NSR+HCPC, empirical
+evidence that the structured-output scaffold is no longer
+load-bearing in the answer pathway. The recovery operates through a
+baseline-shift mechanism in the GRPO advantage computation, not
+direct positive reinforcement on correct rollouts.
+\textbf{(3, supporting)} On top of GRPO alone, HCPC matches the
+baseline on Pass@1 ($0.622$ vs.\ $0.630$) and trends ahead on
+rollout-set robustness ($40.8\%$ all-4-correct vs.\ $38.6\%$, Pass@4
+$0.828$ vs.\ $0.816$), consistent with the cross-rollout signal
+behaving as designed.
 \end{abstract}
 
 \section{Introduction}
 \label{sec:intro}
 
-Recent chart-reasoning vision-language models are trained with RLVR
-\citep{chartrvr2025,chartr12025,bigcharts2025,distill-vcr-2025},
-typically following the Chart-RVR recipe: GRPO \citep{deepseekmath}
-with verifiable rewards for chart-type identification, table
-reconstruction, process conformity, and answer accuracy. GRPO's
-symmetric advantage rule reinforces correct rollouts uniformly. This
-can be effective for in-distribution single-shot accuracy but tends
-to over-commit the policy to one solution path, eroding the reasoning
-diversity that supports coverage at higher $K$ in Pass@$K$ and that
-helps under distribution shift \citep{chartrvr2025,zhu2025nsr}.
+Reinforcement learning recipes developed for text-only math RLVR are
+increasingly being adapted to multimodal training pipelines. Whether
+those recipes transfer cleanly is a meaningful empirical question:
+multimodal RLVR pipelines---particularly for chart reasoning
+\citep{chartrvr2025,chartr12025,bigcharts2025,distill-vcr-2025}---
+typically use a \emph{multi-component} reward landscape (format,
+chart type, table reconstruction, process conformity, answer
+accuracy) very different from the single answer bit that drives
+text-only math RLVR. An advantage-rule trick tuned for one might
+behave very differently under the other.
 
-We propose Hierarchical Correct-Path Consistency
-(\textbf{HCPC}), a cross-rollout bonus that aims to preserve diverse
-reasoning paths in a structured way. HCPC conditions on ground-truth
-correctness and, among the rollouts in a group that get the table and
-answer right, rewards \emph{consistent} table extraction together
-with \emph{diverse} reasoning traces. The level-specific
-objective reflects the structure of chart reasoning---perception
-admits one right answer while reasoning over the extracted table
-admits many---and the GT-anchored filter ensures the bonus rewards
-correct-path \emph{quality} rather than agreement among arbitrary
-rollouts.
-
-As a comparison point we port Negative-Sample Reinforcement
-\citep[NSR;][]{zhu2025nsr}, a recent advantage rule from text-only
-math RLVR that targets the same diversity-preservation goal by a
-different route: masking the gradient of correct rollouts and
-penalizing only incorrect ones. \citet{zhu2025nsr} show that NSR
-matches or beats GRPO at Pass@$K$ on math benchmarks while
-preserving diversity; whether that property transfers to a
-multi-component, multimodal reward landscape is one of the questions
-we test, and as we show in \S\ref{sec:nsr_collapse} the answer is no.
-NSR and HCPC therefore enter the paper as two \emph{attempts} at
-preserving correct-path diversity---one by removing positive
-reinforcement, the other by adding structured positive
-reinforcement---only one of which delivers in our setting.
+We study this question concretely by porting Negative-Sample
+Reinforcement \citep[NSR;][]{zhu2025nsr}---a recipe from recent
+text-only math RLVR that masks the gradient of correct rollouts and
+penalizes only incorrect ones---into a chart-reasoning RLVR pipeline
+built on Chart-RVR \citep{chartrvr2025}. To exercise the reward
+landscape we also propose \textbf{HCPC} (Hierarchical Correct-Path
+Consistency), a cross-rollout bonus that conditions on ground-truth
+correctness and rewards consistent table extraction together with
+diverse reasoning traces, applied per-rollout to the correct-path
+subgroup. HCPC enters the paper both as a positive-reinforcement
+augmentation in its own right (we report its effects on top of GRPO)
+and as the cross-rollout signal that, when combined with NSR,
+exposes a clean dissociation between two behaviors of the trained
+policy that are intuitively coupled.
 
 \paragraph{Contributions.}
 
 \begin{enumerate}
-    \item \textbf{HCPC as a diversity-preserving reward
-    (\S\ref{sec:hcpc}, \S\ref{sec:hcpc_grpo}).} On Qwen2.5-VL-3B,
-    HCPC on top of GRPO matches the Chart-RVR baseline on Pass@1
-    ($0.622$ vs.\ $0.630$, ns) and produces more robust correct-path
-    behavior: $40.8\%$ all-4-correct rate (vs.\ $38.6\%$), Pass@4
-    $0.828$ (vs.\ $0.816$, highest of all configurations), and
-    table-dependence $\Delta_{\text{tbl}}{=}{+}0.264$
-    (vs.\ ${+}0.178$). Differences are within paired-bootstrap noise
-    individually at $n{=}500$, but all in the direction the
-    cross-rollout signal is designed to produce.
     \item \textbf{An NSR-on-VLM transferability finding
-    (\S\ref{sec:nsr_collapse}).} Porting NSR unchanged from text-only
-    math collapses format compliance in chart RLVR
+    (\S\ref{sec:nsr_collapse}).} Porting NSR unchanged from
+    text-only math collapses format compliance in chart RLVR
     ($96.8\%{\to}31.6\%$ on ChartQA, $98.8\%{\to}16.2\%$ on ChartFC)
     and significantly hurts OOD Pass@4 on ChartFC
     ($-3.8$\,pp, $p{=}0.028$). The mechanism is mechanical:
@@ -124,21 +103,33 @@ reinforcement---only one of which delivers in our setting.
     their answer is right, and NSR masks the gradient that would
     teach structured output. Per-tag analysis localizes the collapse
     to exactly the tags the base model does not emit unprompted.
-    \item \textbf{HCPC mitigates NSR's OOD damage; format and
-    accuracy are empirically separable
-    (\S\ref{sec:dissociation}).} Adding HCPC to NSR improves over
-    plain NSR on \emph{every} ChartFC metric---Pass@1 $+4.2$\,pp,
-    Pass@4 $+1.0$\,pp, $\Delta_{\text{tbl}}$ $+0.061$, format
-    $+1.6$\,pp---and matches GRPO on Pass@1 ($0.632$ vs.\ $0.638$) at
-    \emph{near-zero} format compliance ($17.8\%$ vs.\ $98.8\%$).
-    What is surprising is not that the two metrics can move
-    differently, but that NSR+HCPC reaches GRPO-level answer accuracy
-    via a mechanism that provides \emph{no positive gradient on
-    correct rollouts}---the very gradient that would be needed to
-    restore format. The recovery instead operates through a baseline
-    shift in the GRPO advantage computation: HCPC's bonus on correct
-    rollouts raises the group mean, making wrong-rollout advantages
-    more negative under NSR's mask.
+    \item \textbf{HCPC mitigates NSR's OOD damage and exposes a
+    format/accuracy decoupling (\S\ref{sec:dissociation}).} Adding
+    HCPC to NSR closes most of the OOD accuracy gap to GRPO
+    (Pass@1 $0.632$ vs.\ $0.638$) at \emph{near-zero} format
+    compliance ($17.8\%$ vs.\ $98.8\%$). Per-rollout analysis shows
+    the conditional gap
+    $P(\text{correct}\mid\text{formatted}){-}P(\text{correct}\mid\text{not formatted})$
+    drops from $0.30$ under GRPO to $0.05$ under NSR+HCPC: the
+    structured-output scaffold has become non-load-bearing in the
+    answer pathway. The recovery operates through a baseline shift
+    in the GRPO advantage---HCPC's bonus on correct rollouts raises
+    the group mean, making wrong-rollout advantages more negative
+    under NSR's mask---rather than direct positive reinforcement on
+    correct rollouts.
+    \item \textbf{HCPC as a positive-reinforcement augmentation on
+    GRPO (\S\ref{sec:hcpc_grpo}).} On top of standard GRPO, HCPC
+    matches the Chart-RVR baseline on Pass@1
+    ($0.622$ vs.\ $0.630$, ns) and produces more robust correct-path
+    behavior: $40.8\%$ all-4-correct rate vs.\ $38.6\%$, Pass@4
+    $0.828$ vs.\ $0.816$, and table-dependence
+    $\Delta_{\text{tbl}}{=}{+}0.264$ vs.\ ${+}0.178$. Individual
+    differences are within paired-bootstrap noise at $n{=}500$, but
+    all in the direction the cross-rollout signal is designed to
+    produce. This contribution is auxiliary: the strongest evidence
+    in the paper is in (1) and (2), and we report (3) as the
+    in-distribution behavioral signature of the same signal that
+    drives the dissociation.
 \end{enumerate}
 
 \section{Background}
@@ -331,72 +322,6 @@ Pass@4 uses the unbiased estimator over 4 generations per prompt.}
 \label{tab:main}
 \end{table*}
 
-\subsection{HCPC under GRPO: Preserving Correct-Path Diversity}
-\label{sec:hcpc_grpo}
-
-We first examine HCPC as a positive-reinforcement augmentation on
-top of standard GRPO. The cross-rollout bonus is designed to
-strengthen correct-path \emph{quality} (consistent extraction +
-diverse reasoning); the metrics that should reflect this are
-rollout-set robustness (how often does the group of $K{=}4$ rollouts
-contain multiple correct paths?) and Pass@$K$ at higher $K$
-(does the model's solution-path coverage grow?), not single-shot
-Pass@1.
-
-Headline Pass@1 on ChartQA is statistically tied: \textsc{GRPO}
-$0.630$ vs.\ \textsc{GRPO+HCPC} $0.622$ (paired bootstrap
-$-0.8$\,pp, CI $[-3.8,+5.4]$, $p{=}0.77$, $n_{\text{boot}}{=}10{,}000$).
-On every other in-distribution metric, the direction favors HCPC:
-the fraction of test samples where all 4 rollouts are correct is
-$40.8\%$ for HCPC vs.\ $38.6\%$ for GRPO; the average correct rate
-per group is $0.628$ vs.\ $0.620$; Pass@4 is $0.828$ vs.\ $0.816$;
-table-dependence is $\Delta_{\text{tbl}}{=}{+}0.264$ vs.\
-$+0.178$; format compliance is $98.2\%$ vs.\ $96.8\%$. No individual
-difference reaches significance at $n{=}500$ (Pass@4 boot-$p{=}0.48$),
-but the \emph{joint} direction across six metrics in HCPC's favor is
-consistent with the design hypothesis that a cross-rollout bonus
-preserves correct-path quality without trading off single-shot
-accuracy. Figure~\ref{fig:passk} shows the Pass@$K$ curves: HCPC
-matches GRPO at $K{=}1$ and pulls ahead at $K{\geq}3$, the regime
-where rollout-set coverage matters.
-
-\begin{figure}[t]
-\centering
-\includegraphics[width=0.95\columnwidth]{fig_passk.pdf}
-\caption{Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows
-with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The
-direction is consistent with the design hypothesis that a
-cross-rollout bonus preserves correct-path coverage at higher $K$.
-Individual differences are not significant at $n{=}500$
-(Pass@4 boot-$p{=}0.48$).}
-\label{fig:passk}
-\end{figure}
-
-Unpacking $\Delta_{\text{tbl}}$: $P(\hat y=y^*\mid\text{tbl})$ is
-$0.639$ for GRPO and $0.632$ for HCPC (tied; also tied on the
-common-table intersection of 462 samples, Appendix~C), while
-$P(\hat y=y^*\mid\text{no tbl})$ is $0.462$ for GRPO and $0.368$ for
-HCPC. The gain therefore reflects stronger \emph{table-dependence}:
-HCPC drops 9.4\,pp more than GRPO when no table is produced, while
-matching it when a table is produced. The correct-path bonus makes
-the extracted table load-bearing in the answer pathway.
-
-\paragraph{GRPO+HCPC OOD limitation.} The same property makes
-GRPO+HCPC \emph{worse} than plain GRPO on the OOD ChartFC probe
-(Pass@1 $0.606$ vs.\ $0.638$, Pass@4 $0.918$ vs.\ $0.922$,
-$\Delta_{\text{tbl}}$ $-0.059$ vs.\ $+0.139$, format
-$66.4\%$ vs.\ $98.8\%$). The mechanism is plausible from the
-in-distribution finding: HCPC trains the model to rely on the
-extracted table, so when table extraction degrades OOD (HCPC's
-format compliance drops to $66.4\%$ on ChartFC, indicating the
-extraction pipeline is less reliable on unfamiliar visual styles),
-the answer pathway degrades with it. The table-dependence that
-benefits HCPC in-distribution becomes a liability OOD. This is a
-genuine limitation of standalone GRPO+HCPC, complementary to the
-NSR-mitigation result in \S\ref{sec:dissociation}; we leave a fix
-(e.g., a chart-style augmentation in training or a softer
-GT-anchored filter) to future work.
-
 \begin{table}[t]
 \centering
 \footnotesize
@@ -482,16 +407,30 @@ evaluated on ChartFC.}
 \label{fig:passk_chartfc}
 \end{figure}
 
-\paragraph{Format/accuracy dissociation.} The way in which HCPC
+\paragraph{Format/accuracy decoupling.} The way in which HCPC
 mitigates NSR's damage is unusual: NSR+HCPC reaches Pass@1 $=0.632$,
 \emph{statistically indistinguishable from GRPO} ($0.638$;
 paired-bootstrap CI $[-0.046,+0.060]$, $p{=}0.85$)
 \emph{while format compliance remains collapsed} at $17.8\%$ (vs.\
-GRPO's $98.8\%$). In other words, HCPC under NSR recovers
-GRPO-level OOD answer accuracy without recovering format. This is
-the cleanest empirical evidence in the paper that format compliance
-and answer accuracy are \emph{separable} downstream behaviors in
-chart RLVR.
+GRPO's $98.8\%$). To check whether this is a genuine decoupling or
+a denominator artifact, we compute the per-rollout conditional
+probability that an answer is correct given that the rollout is
+fully formatted, vs.\ given that it is not:
+\[
+\Delta_{\text{fmt}} = P(\hat y=y^*\mid\text{fmt}) - P(\hat y=y^*\mid\text{\textasciitilde fmt}).
+\]
+Under GRPO, $\Delta_{\text{fmt}} = 0.664 - 0.368 = 0.296$:
+formatted rollouts are dramatically more likely to be correct,
+indicating that the structured-output scaffold is load-bearing in
+GRPO's answer pathway. Under NSR+HCPC, $\Delta_{\text{fmt}} =
+0.661 - 0.608 = 0.053$: formatted and unformatted rollouts answer
+correctly at nearly the same rate. NSR+HCPC has effectively
+decoupled answer accuracy from the structured-output scaffold:
+unformatted rollouts (the majority, 91.3\%) still reach correct
+answers at $60.8\%$, well above any plausible guessing rate on this
+benchmark.\footnote{ChartFC is a fact-checking task with a
+constrained answer space, which raises the floor; we report the
+conditional gap as the apples-to-apples decoupling measure.}
 
 \paragraph{Why HCPC behaves so differently under GRPO and NSR.}
 Under GRPO, HCPC behaves as designed: the bonus is added to
@@ -525,7 +464,74 @@ On ChartQA, adding HCPC on top of NSR also partially restores format
 $\langle$table$\rangle$: $72.2\%\!\to\!83.2\%$, Table~\ref{tab:tags}).
 The asymmetry between ID and OOD---partial format recovery on ID,
 near-zero format recovery on OOD despite full accuracy recovery on
-OOD---is what makes the channel-separability claim concrete.
+OOD---is what makes the decoupling claim concrete.
+
+\subsection{HCPC under GRPO: Auxiliary In-Distribution Evidence}
+\label{sec:hcpc_grpo}
+
+We also report HCPC's behavior as a standalone positive-reinforcement
+augmentation on top of standard GRPO, as in-distribution evidence
+that the cross-rollout bonus is behaving as designed (rather than
+purely as an instrument for revealing the NSR dissociation).
+
+Headline Pass@1 on ChartQA is statistically tied: \textsc{GRPO}
+$0.630$ vs.\ \textsc{GRPO+HCPC} $0.622$ (paired bootstrap
+$-0.8$\,pp, CI $[-3.8,+5.4]$, $p{=}0.77$, $n_{\text{boot}}{=}10{,}000$).
+On every other in-distribution metric, the direction favors HCPC:
+the fraction of test samples where all 4 rollouts are correct is
+$40.8\%$ for HCPC vs.\ $38.6\%$ for GRPO; the average correct rate
+per group is $0.628$ vs.\ $0.620$; Pass@4 is $0.828$ vs.\ $0.816$;
+table-dependence is $\Delta_{\text{tbl}}{=}{+}0.264$ vs.\ $+0.178$;
+format compliance is $98.2\%$ vs.\ $96.8\%$. No individual difference
+reaches significance at $n{=}500$ (Pass@4 boot-$p{=}0.48$), but the
+\emph{joint} direction across six metrics in HCPC's favor is
+consistent with the design hypothesis that a cross-rollout bonus
+preserves correct-path quality without trading off single-shot
+accuracy. Figure~\ref{fig:passk} shows the Pass@$K$ curves: HCPC
+matches GRPO at $K{=}1$ and pulls ahead at $K{\geq}3$, the regime
+where rollout-set coverage matters.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\columnwidth]{fig_passk.pdf}
+\caption{Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows
+with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The
+direction is consistent with the design hypothesis that a
+cross-rollout bonus preserves correct-path coverage at higher $K$.
+Individual differences are not significant at $n{=}500$
+(Pass@4 boot-$p{=}0.48$).}
+\label{fig:passk}
+\end{figure}
+
+Unpacking $\Delta_{\text{tbl}}$ for HCPC under GRPO:
+$P(\hat y=y^*\mid\text{tbl})$ is $0.639$ for GRPO and $0.632$ for
+HCPC (tied; also tied on the common-table intersection of 462
+samples, Appendix~C), while $P(\hat y=y^*\mid\text{no tbl})$ is
+$0.462$ for GRPO and $0.368$ for HCPC. HCPC's $\Delta_{\text{tbl}}$
+gain therefore reflects stronger \emph{table-dependence}---the
+extracted table becomes more load-bearing in the answer pathway---
+which is the in-distribution mirror of the decoupling effect we see
+under NSR+HCPC. The same cross-rollout signal that, paired with
+NSR, breaks the answer pathway's reliance on format-structured
+output produces, paired with GRPO, a model whose answer correctness
+is more strongly tied to its own extracted table.
+
+\paragraph{GRPO+HCPC OOD limitation.} This same property makes
+GRPO+HCPC \emph{worse} than plain GRPO on the OOD ChartFC probe:
+Pass@1 $0.606$ vs.\ $0.638$, Pass@4 $0.918$ vs.\ $0.922$,
+$\Delta_{\text{tbl}}$ $-0.059$ vs.\ $+0.139$, format
+$66.4\%$ vs.\ $98.8\%$. The mechanism is plausible from the
+in-distribution finding: HCPC trains the model to rely on the
+extracted table, so when table extraction degrades OOD (HCPC's
+format compliance drops from $98.2\%$ to $66.4\%$ on ChartFC,
+indicating the extraction pipeline is less reliable on unfamiliar
+visual styles), the answer pathway degrades with it. The
+table-dependence that benefits HCPC in-distribution becomes a
+liability OOD. This is a genuine limitation of standalone
+GRPO+HCPC as a method, complementary to the NSR-mitigation result
+in \S\ref{sec:dissociation}; we leave a fix (e.g., a chart-style
+augmentation in training or a softer GT-anchored filter) to future
+work.
 
 \section{Related Work}
 
@@ -563,23 +569,25 @@ rather than a single aggregate.
 
 \section{Conclusion}
 
-We introduced HCPC, a cross-rollout bonus that preserves
-correct-path diversity in chart RLVR by conditioning on ground-truth
-correctness and rewarding consistent extraction together with diverse
-reasoning. On Qwen2.5-VL-3B, GRPO+HCPC matches the Chart-RVR baseline
-on Pass@1 and produces consistently more robust correct groups
-($40.8\%$ all-4-correct vs.\ $38.6\%$; Pass@4 $0.828$ vs.\ $0.816$;
-$\Delta_{\text{tbl}}$ $+0.264$ vs.\ $+0.178$). Comparing against
-Negative-Sample Reinforcement, an alternative diversity-preservation
-recipe imported from text-only math RLVR, we find that NSR ported
-unchanged collapses format compliance in chart RLVR ($96.8\%$ to
-$31.6\%$) and significantly hurts OOD Pass@4, because structural
-rewards saturate quickly enough for well-formed rollouts to cross
-NSR's correctness threshold regardless of answer quality. Adding HCPC
-on top of NSR recovers GRPO-level OOD accuracy at near-zero format
-compliance via a baseline-shift mechanism in the GRPO advantage,
-empirical evidence that format and answer accuracy are separable
-behavioral channels of the trained policy. The takeaway for
+Porting Negative-Sample Reinforcement from text-only math RLVR into
+multimodal chart RLVR collapses format compliance ($96.8\%\!\to\!31.6\%$
+on ChartQA) and significantly hurts OOD Pass@4, for a mechanically
+identifiable reason: Chart-RVR's structural rewards saturate quickly
+enough that well-formed rollouts cross NSR's correctness threshold
+regardless of answer quality, and NSR masks their gradient. Adding
+HCPC, a cross-rollout bonus we propose, on top of NSR recovers
+GRPO-level OOD answer accuracy at near-zero format compliance:
+formatted and unformatted rollouts under NSR+HCPC reach correct
+answers at nearly the same rate
+($P(\text{correct}\mid\text{fmt}){-}P(\text{correct}\mid\text{\textasciitilde fmt}){=}0.05$
+under NSR+HCPC vs.\ $0.30$ under GRPO), evidence that the
+structured-output scaffold has become non-load-bearing in the
+answer pathway. The recovery operates through a baseline-shift
+mechanism in the GRPO advantage---HCPC's bonus on correct rollouts
+raises the group mean, making wrong-rollout advantages more negative
+under NSR's mask---not through direct positive reinforcement. As an
+in-distribution check, GRPO+HCPC matches the Chart-RVR baseline on
+Pass@1 and trends ahead on rollout-set robustness. The takeaway for
 practitioners: advantage-rule asymmetries developed for single-reward
 source domains can interact destructively with reward components the
 source domain did not have, and the shape of the multi-component

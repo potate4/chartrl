@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  23 MAY 2026 16:58
+This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  23 MAY 2026 18:22
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -816,56 +816,61 @@ Underfull \hbox (badness 1033) in paragraph at lines 346--362
 
 File: fig_passk.pdf Graphic file (type pdf)
 <fig_passk.pdf>
-LaTeX Font Info:    Trying to load font information for T1+zi4 on input line 40
-4.
+
+Underfull \hbox (badness 5036) in paragraph at lines 384--399
+ []\T1/ptm/b/n/10.95 GRPO+HCPC OOD lim-i-ta-tion.[] \T1/ptm/m/n/10.95 The same
+ []
+
+
+Underfull \hbox (badness 1033) in paragraph at lines 384--399
+\T1/ptm/m/n/10.95 on ChartFC, in-di-cat-ing the ex-trac-tion pipeline
+ []
+
+
+
+LaTeX Font Info:    Trying to load font information for T1+zi4 on input line 42
+0.
 (C:\Users\sumai\AppData\Local\Programs\MiKTeX\tex/latex/inconsolata\t1zi4.fd
 File: t1zi4.fd 2018/01/14 T1/zi4 (Inconsolata)
 )
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
-(Font)              scaled to size 10.0pt on input line 404.
+(Font)              scaled to size 10.0pt on input line 420.
 Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `zi4' (encoding: T1).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
 
 
-
 Package natbib Warning: Citation `zhu2025nsr' on page 4 undefined on input line
- 438.
+ 454.
 
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
-(Font)              scaled to size 10.95pt on input line 440.
-
-Underfull \vbox (badness 1259) has occurred while \output is active []
-
-
-Underfull \vbox (badness 1259) has occurred while \output is active []
-
+(Font)              scaled to size 10.95pt on input line 456.
 
 
 [4]
-Underfull \hbox (badness 1412) in paragraph at lines 447--458
+Underfull \hbox (badness 1412) in paragraph at lines 463--474
 \T1/ptm/m/n/10.95 On ChartFC, HCPC added to NSR im-proves
  []
 
 
-Underfull \hbox (badness 4242) in paragraph at lines 447--458
+Underfull \hbox (badness 4242) in paragraph at lines 463--474
 \T1/ptm/m/n/10.95 over plain NSR on \T1/ptm/m/it/10.95 ev-ery met-ric\T1/ptm/m/
 n/10.95 : Pass@1
  []
 
+
+
 File: fig_passk_chartfc.pdf Graphic file (type pdf)
 <fig_passk_chartfc.pdf>
 
-Underfull \hbox (badness 5490) in paragraph at lines 469--479
+Underfull \hbox (badness 5490) in paragraph at lines 485--495
  []\T1/ptm/b/n/10.95 Format/accuracy dis-so-ci-a-tion.[] \T1/ptm/m/n/10.95 The 
 way in
  []
 
 
-
-
-Underfull \hbox (badness 4291) in paragraph at lines 481--487
+Underfull \hbox (badness 4291) in paragraph at lines 497--503
  []\T1/ptm/b/n/10.95 Why HCPC be-haves so dif-fer-ently un-der
  []
 
@@ -874,210 +879,210 @@ Underfull \hbox (badness 4291) in paragraph at lines 481--487
 [5]
 
 Package natbib Warning: Citation `chartrvr2025' on page 6 undefined on input li
-ne 516.
+ne 532.
 
 
 Package natbib Warning: Citation `chartgemma' on page 6 undefined on input line
- 522.
+ 538.
 
 
 Package natbib Warning: Citation `chartinstruct' on page 6 undefined on input l
-ine 522.
+ine 538.
 
 
 Package natbib Warning: Citation `bigcharts2025' on page 6 undefined on input l
-ine 522.
+ine 538.
 
 
 Package natbib Warning: Citation `chartr12025' on page 6 undefined on input lin
-e 523.
+e 539.
 
 
 Package natbib Warning: Citation `chartqax2026' on page 6 undefined on input li
-ne 523.
+ne 539.
 
 
 Package natbib Warning: Citation `distill-vcr-2025' on page 6 undefined on inpu
-t line 523.
+t line 539.
 
 
 Package natbib Warning: Citation `chartagent2025' on page 6 undefined on input 
-line 525.
+line 541.
 
 
 Package natbib Warning: Citation `vprochart2025' on page 6 undefined on input l
-ine 525.
+ine 541.
 
 
 Package natbib Warning: Citation `chartcitor2025' on page 6 undefined on input 
-line 525.
+line 541.
 
 
 Package natbib Warning: Citation `chartpoint2025' on page 6 undefined on input 
-line 525.
+line 541.
 
 
 Package natbib Warning: Citation `chartx2024' on page 6 undefined on input line
- 527.
+ 543.
 
 
 Package natbib Warning: Citation `evochart' on page 6 undefined on input line 5
-28.
+44.
 
 
 Package natbib Warning: Citation `chartqapro' on page 6 undefined on input line
- 529.
+ 545.
 
 
-Underfull \hbox (badness 1043) in paragraph at lines 516--530
+Underfull \hbox (badness 1043) in paragraph at lines 532--546
 \T1/ptm/m/n/10.95 (\T1/ptm/b/n/10.95 ?\T1/ptm/m/n/10.95 ); we leave style-OOD e
 val-u-a-tion as fu-ture
  []
 
 
+
+
 Package natbib Warning: Citation `zhu2025nsr' on page 6 undefined on input line
- 531.
+ 547.
 
 
 Package natbib Warning: Citation `su2025crossing' on page 6 undefined on input 
-line 536.
+line 552.
 
 
 Package natbib Warning: Citation `wen2025rlvr' on page 6 undefined on input lin
-e 536.
+e 552.
 
 
 Package natbib Warning: Citation `rlvmr2025' on page 6 undefined on input line 
-536.
+552.
 
 
 Package natbib Warning: Citation `koksal2025fewshot' on page 6 undefined on inp
-ut line 536.
+ut line 552.
 
 
 Package natbib Warning: Citation `wang2022sc' on page 6 undefined on input line
- 540.
+ 556.
 
 
 Package natbib Warning: Citation `ettrl2025' on page 6 undefined on input line 
-541.
+557.
 
 
-
-
-Underfull \hbox (badness 3568) in paragraph at lines 550--572
+Underfull \hbox (badness 3568) in paragraph at lines 566--588
 \T1/ptm/m/n/10.95 We in-tro-duced HCPC, a cross-rollout bonus
  []
 
 
-Underfull \hbox (badness 3386) in paragraph at lines 550--572
+Underfull \hbox (badness 3386) in paragraph at lines 566--588
 \T1/ptm/m/n/10.95 that pre-serves correct-path di-ver-sity in chart
  []
 
 
-Underfull \hbox (badness 1210) in paragraph at lines 550--572
+Underfull \hbox (badness 1210) in paragraph at lines 566--588
 \T1/ptm/m/n/10.95 with di-verse rea-son-ing. On Qwen2.5-VL-3B,
- []
-
-
-Package natbib Warning: Citation `evochart' on page 6 undefined on input line 5
-79.
-
-
-Package natbib Warning: Citation `chartqapro' on page 6 undefined on input line
- 580.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 575--584
-\T1/ptm/m/n/10.95 We use a sin-gle 3B-parameter back-bone
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 575--584
-\T1/ptm/m/n/10.95 (Qwen2.5-VL-3B), a 1,000-sample train-ing
- []
-
-
-Underfull \hbox (badness 1231) in paragraph at lines 575--584
-\T1/ptm/m/n/10.95 us from train-ing on the full Chart-RVR CoT
- []
-
-
-Underfull \hbox (badness 2903) in paragraph at lines 575--584
-\T1/ptm/m/n/10.95 mix-ture (34,194 sam-ples), eval-u-at-ing on the
- []
-
-
-Underfull \hbox (badness 1082) in paragraph at lines 575--584
-\T1/ptm/m/n/10.95 probe ChartFC pro-vides. Scal-ing to the full
- []
-
-
-Underfull \hbox (badness 1924) in paragraph at lines 585--594
-\T1/ptm/m/n/10.95 and GRPO are within paired-bootstrap noise;
  []
 
 
 
 [6]
+
+Package natbib Warning: Citation `evochart' on page 7 undefined on input line 5
+95.
+
+
+Package natbib Warning: Citation `chartqapro' on page 7 undefined on input line
+ 596.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 591--600
+\T1/ptm/m/n/10.95 We use a sin-gle 3B-parameter back-bone
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 591--600
+\T1/ptm/m/n/10.95 (Qwen2.5-VL-3B), a 1,000-sample train-ing
+ []
+
+
+Underfull \hbox (badness 1231) in paragraph at lines 591--600
+\T1/ptm/m/n/10.95 us from train-ing on the full Chart-RVR CoT
+ []
+
+
+Underfull \hbox (badness 2903) in paragraph at lines 591--600
+\T1/ptm/m/n/10.95 mix-ture (34,194 sam-ples), eval-u-at-ing on the
+ []
+
+
+Underfull \hbox (badness 1082) in paragraph at lines 591--600
+\T1/ptm/m/n/10.95 probe ChartFC pro-vides. Scal-ing to the full
+ []
+
+
+Underfull \hbox (badness 1924) in paragraph at lines 601--610
+\T1/ptm/m/n/10.95 and GRPO are within paired-bootstrap noise;
+ []
+
 No file main.bbl.
 
-Package natbib Warning: Citation `passatk' on page 7 undefined on input line 60
-8.
+Package natbib Warning: Citation `passatk' on page 7 undefined on input line 62
+4.
 
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
-(Font)              scaled to size 9.0pt on input line 623.
+(Font)              scaled to size 9.0pt on input line 639.
 
-Overfull \hbox (166.40773pt too wide) in paragraph at lines 623--628
+Overfull \hbox (166.40773pt too wide) in paragraph at lines 639--644
 []\T1/zi4/m/n/9 <think><type>pie</type><table>{..., "rows": [["Asians","63"],..
 .]}</table>
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 623--628
+Underfull \hbox (badness 10000) in paragraph at lines 639--644
 \T1/zi4/m/n/9 <step-1> The chart is a pie
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 623--628
+Underfull \hbox (badness 10000) in paragraph at lines 639--644
 \T1/zi4/m/n/9 chart...<step-4> Based on the
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 623--628
+Underfull \hbox (badness 10000) in paragraph at lines 639--644
 \T1/zi4/m/n/9 information provided, there are
  []
 
 
-Underfull \hbox (badness 1859) in paragraph at lines 623--628
+Underfull \hbox (badness 1859) in paragraph at lines 639--644
 \T1/zi4/m/n/9 four distinct categories...</think>
  []
 
 
-Underfull \hbox (badness 2142) in paragraph at lines 633--641
+
+
+Underfull \hbox (badness 2142) in paragraph at lines 649--657
 \T1/zi4/m/n/9 of chart and the underlying data
  []
 
 
-
-
-Overfull \hbox (304.40466pt too wide) in paragraph at lines 652--657
+Overfull \hbox (304.40466pt too wide) in paragraph at lines 668--673
 []\T1/zi4/m/n/9 <think><type>bar</type><table>{"columns": ["Country","Bar Color
 "],"rows": [["Asians","..."],...]}</table>
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 652--657
+Underfull \hbox (badness 10000) in paragraph at lines 668--673
 \T1/zi4/m/n/9 <step-1>From the
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 652--657
+Underfull \hbox (badness 10000) in paragraph at lines 668--673
 \T1/zi4/m/n/9 chart...<step-3>...there are
  []
 
 
-Underfull \hbox (badness 1259) in paragraph at lines 671--677
+Underfull \hbox (badness 1259) in paragraph at lines 687--693
 \T1/ptm/m/n/10.95 noise on nu-meric ($\OML/cmm/m/it/10.95 n[]\OT1/cmr/m/n/10.95
  302$\T1/ptm/m/n/10.95 , $\OMS/cmsy/m/n/10.95 ^^@\OT1/cmr/m/n/10.95 1\OML/cmm/m
 /it/10.95 :\OT1/cmr/m/n/10.95 7$\T1/ptm/m/n/10.95 pp, $\OML/cmm/m/it/10.95 p[]\
@@ -1086,31 +1091,45 @@ OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 63$\T1/ptm/m/n/10.95
  []
 
 
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 678.
+Package lineno Warning: Line number reference failed, re-run to get it right.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\Delta' on input line 678.
+(hyperref)                removing `math shift' on input line 694.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 678.
+(hyperref)                removing `\Delta' on input line 694.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 678.
+(hyperref)                removing `subscript' on input line 694.
 
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 694.
+
+
+
+[7]
 
 Package natbib Warning: There were undefined citations.
 
 
 
-[7] (main.aux)
+
+
+[8
+
+] (main.aux)
  ***********
 LaTeX2e <2025-06-01> patch level 1
 L3 programming layer <2025-09-02>
  ***********
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
 Package rerunfilecheck Info: File `main.out' has not changed.
 (rerunfilecheck)             Checksum: 34566B549BABE86F4AE9DFE7ED0757C7;2410.
  ) 
@@ -1123,4 +1142,4 @@ Here is how much of TeX's memory you used:
  1348 hyphenation exceptions out of 8191
  84i,16n,93p,1003b,535s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on main.pdf (7 pages).
+Output written on main.pdf (8 pages).
