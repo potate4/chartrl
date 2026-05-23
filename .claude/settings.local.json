@@ -36,7 +36,8 @@
       "Bash(PYTHONIOENCODING=utf-8 python analysis/find_qualitative.py)",
       "Bash(PYTHONIOENCODING=utf-8 python -c ' *wait, i can clearly see that nsr hcpc performed better than nsr baseline on hartfc are we highlighting that?)",
       "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
-      "Bash(grep -n \"HCPC}}\\\\|HCPC}\\\\\\\\\\\\\\\\\\\\|0.01\\\\|0.8.*R_\" \"C:\\\\Users\\\\sumai\\\\DATA\\\\RESEARCH\\\\THESIS\\\\chartrl\\\\paper draft\\\\main.tex\")"
+      "Bash(grep -n \"HCPC}}\\\\|HCPC}\\\\\\\\\\\\\\\\\\\\|0.01\\\\|0.8.*R_\" \"C:\\\\Users\\\\sumai\\\\DATA\\\\RESEARCH\\\\THESIS\\\\chartrl\\\\paper draft\\\\main.tex\")",
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/plot_baseline_shift.py)"
     ]
   }
 }
