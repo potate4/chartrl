@@ -42,6 +42,7 @@ class RewardAggregator:
         w_table: float = 2.0,
         w_reason: float = 1.5,
         table_sim_threshold: float = 0.8,
+        use_d_reason: bool = True,
         # CLC weight
         w_clc: float = 1.0,
         # Base reward flags
@@ -85,6 +86,7 @@ class RewardAggregator:
             w_table=w_table,
             w_reason=w_reason,
             table_sim_threshold=table_sim_threshold,
+            use_d_reason=use_d_reason,
         )
         self.clc_computer = CLCComputer(w_clc=w_clc)
 
@@ -214,6 +216,7 @@ class RewardAggregator:
             w_table=config.rewards.w_table,
             w_reason=config.rewards.w_reason,
             table_sim_threshold=config.rewards.table_sim_threshold,
+            use_d_reason=config.rewards.use_d_reason,
             w_clc=config.rewards.w_clc,
             # Base reward flags
             use_format_reward=config.rewards.use_format_reward,

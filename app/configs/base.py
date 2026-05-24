@@ -44,6 +44,8 @@ class RewardConfig:
     w_table: float = 2.0
     w_reason: float = 1.5
     table_sim_threshold: float = 0.8
+    # Ablation: drop the D_reason term (HCPC = C_table only) when False
+    use_d_reason: bool = True
 
     # CLC reward settings (disabled for now)
     use_clc: bool = False

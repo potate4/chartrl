@@ -50,6 +50,7 @@ class HCPCComputer:
         w_reason: float = 1.5,
         table_sim_threshold: float = 0.6,
         answer_tolerance: float = 0.05,
+        use_d_reason: bool = True,
     ):
         """
         Initialize HCPC computer.
@@ -60,12 +61,15 @@ class HCPCComputer:
             w_reason: Weight for reasoning diversity
             table_sim_threshold: Threshold for considering table "correct"
             answer_tolerance: Tolerance for numeric answer matching
+            use_d_reason: If False, drop the reasoning-diversity term from
+                the HCPC bonus (table-only ablation).
         """
         self.w_type = w_type
         self.w_table = w_table
         self.w_reason = w_reason
         self.table_sim_threshold = table_sim_threshold
         self.answer_tolerance = answer_tolerance
+        self.use_d_reason = use_d_reason
 
     def compute(
         self,
@@ -114,15 +118,21 @@ class HCPCComputer:
         # Step 3: Compute table consistency (among correct rollouts)
         c_table = self._compute_table_consistency(correct_rollouts)
 
-        # Step 4: Compute reasoning diversity (among correct rollouts)
-        d_reason = self._compute_reasoning_diversity(correct_rollouts)
+        # Step 4: Compute reasoning diversity (among correct rollouts).
+        # Skipped under the table-only ablation (use_d_reason=False).
+        if self.use_d_reason:
+            d_reason = self._compute_reasoning_diversity(correct_rollouts)
+            reason_term = self.w_reason * d_reason
+        else:
+            d_reason = 0.0
+            reason_term = 0.0
 
         # Step 5: Combine into HCPC reward
         # R_HCPC = correct_rate × (w1·C_type + w2·C_table + w3·D_reason)
         weighted_sum = (
             self.w_type * c_type +
             self.w_table * c_table +
-            self.w_reason * d_reason
+            reason_term
         )
         reward = correct_rate * weighted_sum
 
@@ -284,6 +294,7 @@ def compute_hcpc_reward(
     w_table: float = 2.0,
     w_reason: float = 1.5,
     table_sim_threshold: float = 0.6,
+    use_d_reason: bool = True,
 ) -> float:
     """
     Convenience function to compute HCPC reward.
@@ -295,6 +306,7 @@ def compute_hcpc_reward(
         w_table: Weight for table consistency
         w_reason: Weight for reasoning diversity
         table_sim_threshold: Threshold for table matching
+        use_d_reason: If False, drop the reasoning-diversity term.
 
     Returns:
         HCPC reward value
@@ -304,6 +316,7 @@ def compute_hcpc_reward(
         w_table=w_table,
         w_reason=w_reason,
         table_sim_threshold=table_sim_threshold,
+        use_d_reason=use_d_reason,
     )
     result = computer.compute(rollouts, ground_truth)
     return result.reward

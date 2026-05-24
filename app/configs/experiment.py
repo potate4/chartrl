@@ -4,8 +4,9 @@ from .base import TrainingConfig, RewardConfig, CheckpointConfig
 from typing import Dict
 
 
-def _make_reward_config(use_hcpc: bool) -> RewardConfig:
-    """Create reward config with HCPC settings."""
+def _make_reward_config(use_hcpc: bool, use_d_reason: bool = True) -> RewardConfig:
+    """Create reward config with HCPC settings.
+       Pass use_d_reason=False for the table-only HCPC ablation."""
     return RewardConfig(
         use_hcpc=use_hcpc,
         use_clc=False,  # CLC disabled for now
@@ -16,6 +17,7 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
         w_reason=1.5,
         w_clc=1.0,
         table_sim_threshold=0.6,
+        use_d_reason=use_d_reason,
     )
 
 
@@ -101,6 +103,15 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
         lambda_psr=0.1,
         **_SHARED,
         rewards=_make_reward_config(use_hcpc=True),
+    ),
+
+    # Ablation: HCPC = C_table only (drop the D_reason term).
+    # Same training setup as grpo_hcpc; only the HCPC bonus formula differs.
+    "grpo_hcpc_table_only": TrainingConfig(
+        experiment_name="grpo_hcpc_table_only",
+        policy_method="grpo",
+        **_SHARED,
+        rewards=_make_reward_config(use_hcpc=True, use_d_reason=False),
     ),
 }
 
