@@ -37,7 +37,19 @@
       "Bash(PYTHONIOENCODING=utf-8 python -c ' *wait, i can clearly see that nsr hcpc performed better than nsr baseline on hartfc are we highlighting that?)",
       "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
       "Bash(grep -n \"HCPC}}\\\\|HCPC}\\\\\\\\\\\\\\\\\\\\|0.01\\\\|0.8.*R_\" \"C:\\\\Users\\\\sumai\\\\DATA\\\\RESEARCH\\\\THESIS\\\\chartrl\\\\paper draft\\\\main.tex\")",
-      "Bash(PYTHONIOENCODING=utf-8 python analysis/plot_baseline_shift.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/plot_baseline_shift.py)",
+      "Bash(mkdir -p supplementary/code supplementary/eval_outputs supplementary/training_logs supplementary/analysis_outputs supplementary/figures)",
+      "Bash(cp -r code/* supplementary/code/)",
+      "Bash(mkdir -p supplementary/eval_outputs/__TRACKED_VAR__)",
+      "Bash(cp app/final_outputs/__TRACKED_VAR__/per_sample.jsonl supplementary/eval_outputs/__TRACKED_VAR__/)",
+      "Bash(cp app/final_outputs/__TRACKED_VAR__/summary.json supplementary/eval_outputs/__TRACKED_VAR__/)",
+      "Bash(mkdir -p supplementary/training_logs/nsr_baseline supplementary/training_logs/nsr_hcpc)",
+      "Bash(cp app/outputs/model_nsr_baselin/outputs/nsr_baseline/run_20260515_115514/metrics.jsonl supplementary/training_logs/nsr_baseline/)",
+      "Bash(cp app/outputs/model_nsr_baselin/outputs/nsr_baseline/run_20260515_115514/trl_output/checkpoint-2000/trainer_state.json supplementary/training_logs/nsr_baseline/)",
+      "Bash(cp app/outputs/model_nsr_baselin/outputs/nsr_baseline/run_20260515_115514/config.json supplementary/training_logs/nsr_baseline/)",
+      "Bash(cp app/outputs/model_nsr_hcpc/outputs/nsr_hcpc/run_20260515_114827/metrics.jsonl supplementary/training_logs/nsr_hcpc/)",
+      "Bash(grep -rln \"sumai\\\\|sumaiya\\\\|safahaqi\\\\|nafisa\\\\|sectum\\\\|niamul\\\\|/kaggle\\\\|/home/cse\\\\|/workspace\\\\|C:\\\\\\\\\\\\\\\\Users\" --include=\"*.json\" --include=\"*.py\" --include=\"*.md\" --include=\"*.jsonl\" --include=\"*.txt\")",
+      "Bash(PYTHONIOENCODING=utf-8 python code/analysis/hcpc_firing.py)"
     ]
   }
 }

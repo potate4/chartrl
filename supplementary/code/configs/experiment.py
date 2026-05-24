@@ -15,19 +15,17 @@ from .base import TrainingConfig, RewardConfig, CheckpointConfig
 from typing import Dict
 
 
-def _make_reward_config(use_hcpc: bool, use_d_reason: bool = True) -> RewardConfig:
+def _make_reward_config(use_hcpc: bool) -> RewardConfig:
     """RewardConfig matching the paper:
        HCPC: w_table=2.0, w_reason=1.5, tau=0.8.
        When HCPC is on, the Chart-RVR process-conformity reward is disabled
-       (HCPC's D_reason rewards diversity, in tension with process-conformity).
-       For the table-only ablation, pass use_d_reason=False."""
+       (HCPC's D_reason rewards diversity, in tension with process-conformity)."""
     return RewardConfig(
         use_hcpc=use_hcpc,
         use_process_reward=not use_hcpc,
         w_table=2.0,
         w_reason=1.5,
         table_sim_threshold=0.8,
-        use_d_reason=use_d_reason,
     )
 
 
@@ -92,15 +90,6 @@ EXPERIMENTS: Dict[str, TrainingConfig] = {
         policy_method="nsr",
         **_SHARED,
         rewards=_make_reward_config(use_hcpc=True),
-    ),
-
-    # Ablation: HCPC = C_table only (drop the D_reason term).
-    # Same training setup as `grpo_hcpc`; only the reward differs.
-    "grpo_hcpc_table_only": TrainingConfig(
-        experiment_name="grpo_hcpc_table_only",
-        policy_method="grpo",
-        **_SHARED,
-        rewards=_make_reward_config(use_hcpc=True, use_d_reason=False),
     ),
 }
 

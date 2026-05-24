@@ -1,0 +1,27 @@
+{
+  "model": "base",
+  "checkpoint": null,
+  "base_model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "dataset": "chartqa",
+  "split": "test",
+  "subset_size": 500,
+  "num_generations_per_sample": 4,
+  "temperature": 0.8,
+  "top_p": 0.95,
+  "accuracy": 0.518,
+  "pass_at_k": {
+    "1": 0.5245,
+    "2": 0.6733333333333328,
+    "4": 0.774
+  },
+  "c_table": 0.5914,
+  "d_reason": 0.04,
+  "coherence": 0.5452,
+  "correct_rate": 0.5245,
+  "format_compliance_rate": 0.298,
+  "avg_time_per_sample": 38.14,
+  "total_time_seconds": 19071.2,
+  "total_time_human": "5h 17m 51s",
+  "num_samples_evaluated": 500,
+  "timestamp": "20260218_210622"
+}

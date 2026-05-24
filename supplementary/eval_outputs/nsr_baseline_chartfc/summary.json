@@ -1,0 +1,28 @@
+{
+  "model": "checkpoint-2000",
+  "checkpoint": "<path-redacted>/run_20260515_115514/trl_output/checkpoint-2000",
+  "base_model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "dataset": "chartfc",
+  "split": "test",
+  "subset_size": 500,
+  "num_generations_per_sample": 4,
+  "temperature": 0.8,
+  "top_p": 0.95,
+  "accuracy": 0.59,
+  "pass_at_k": {
+    "1": 0.584,
+    "2": 0.761,
+    "4": 0.884
+  },
+  "c_table": 0.4973,
+  "d_reason": 0.0423,
+  "coherence": 0.5329,
+  "correct_rate": 0.584,
+  "format_compliance_rate": 0.162,
+  "avg_time_per_sample": 125.08,
+  "total_time_seconds": 62538.5,
+  "total_time_human": "17h 22m 18s",
+  "session_time_seconds": 19534.1,
+  "num_samples_evaluated": 500,
+  "timestamp": "20260517_193314"
+}

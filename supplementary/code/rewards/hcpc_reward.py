@@ -44,12 +44,7 @@ class HCPCResult:
 
 
 class HCPCComputer:
-    """Computes the HCPC cross-rollout bonus.
-
-    Set `use_d_reason=False` to run the ablation where HCPC reduces to
-    just the table-consistency term ((|G+|/K) * w_table * C_table). The
-    reasoning-diversity term is then neither computed nor added.
-    """
+    """Computes the HCPC cross-rollout bonus."""
 
     def __init__(
         self,
@@ -57,7 +52,6 @@ class HCPCComputer:
         w_reason: float = 1.5,
         table_sim_threshold: float = 0.8,
         answer_tolerance: float = 0.05,
-        use_d_reason: bool = True,
     ):
         """Initialize HCPC computer.
 
@@ -69,14 +63,11 @@ class HCPCComputer:
                 "lucky" rollouts that produce a right answer from a wrong
                 table).
             answer_tolerance: Relative tolerance for numeric answer matching.
-            use_d_reason: If False, the reasoning-diversity term is dropped
-                from the bonus. Used for the "table-only" ablation.
         """
         self.w_table = w_table
         self.w_reason = w_reason
         self.table_sim_threshold = table_sim_threshold
         self.answer_tolerance = answer_tolerance
-        self.use_d_reason = use_d_reason
 
     def compute(
         self,
@@ -119,17 +110,11 @@ class HCPCComputer:
         # Step 2: pairwise table consistency among correct rollouts.
         c_table = self._compute_table_consistency(correct_rollouts)
 
-        # Step 3: pairwise reasoning diversity among correct rollouts
-        # (skipped under the table-only ablation).
-        if self.use_d_reason:
-            d_reason = self._compute_reasoning_diversity(correct_rollouts)
-            reason_term = self.w_reason * d_reason
-        else:
-            d_reason = 0.0
-            reason_term = 0.0
+        # Step 3: pairwise reasoning diversity among correct rollouts.
+        d_reason = self._compute_reasoning_diversity(correct_rollouts)
 
         # Step 4: combine into the group-level bonus.
-        weighted_sum = self.w_table * c_table + reason_term
+        weighted_sum = self.w_table * c_table + self.w_reason * d_reason
         bonus = correct_rate * weighted_sum
 
         # Step 5: per-rollout application -- only G+ receives the bonus.
@@ -229,13 +214,11 @@ def compute_hcpc_reward(
     w_table: float = 2.0,
     w_reason: float = 1.5,
     table_sim_threshold: float = 0.8,
-    use_d_reason: bool = True,
 ) -> float:
     """Convenience function: return the scalar group-level HCPC bonus."""
     computer = HCPCComputer(
         w_table=w_table,
         w_reason=w_reason,
         table_sim_threshold=table_sim_threshold,
-        use_d_reason=use_d_reason,
     )
     return computer.compute(rollouts, ground_truth).reward

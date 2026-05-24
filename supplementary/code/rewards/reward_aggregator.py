@@ -36,7 +36,6 @@ class RewardAggregator:
         w_table: float = 2.0,
         w_reason: float = 1.5,
         table_sim_threshold: float = 0.8,
-        use_d_reason: bool = True,
         # Base reward flags
         use_format_reward: bool = True,
         use_accuracy_reward: bool = True,
@@ -61,7 +60,6 @@ class RewardAggregator:
             w_table=w_table,
             w_reason=w_reason,
             table_sim_threshold=table_sim_threshold,
-            use_d_reason=use_d_reason,
         )
 
     def compute(
@@ -141,7 +139,6 @@ class RewardAggregator:
             w_table=config.rewards.w_table,
             w_reason=config.rewards.w_reason,
             table_sim_threshold=config.rewards.table_sim_threshold,
-            use_d_reason=config.rewards.use_d_reason,
             use_format_reward=config.rewards.use_format_reward,
             use_accuracy_reward=config.rewards.use_accuracy_reward,
             use_length_reward=config.rewards.use_length_reward,
