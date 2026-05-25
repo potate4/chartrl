@@ -592,9 +592,9 @@ that keeps format near ceiling under distribution shift.}
 \label{sec:nsr_collapse}
 
 Switching the advantage estimator from GRPO to NSR, with no other changes, drops format compliance from 96.8\% to 31.6\% on ChartQA and
-from 98.8\% to 16.2\% on ChartFC. The Pass@4 gap GRPO vs.\ NSR on
-ChartFC is significant: $-3.8$\,pp, CI $[+0.6,+7.2]$, $p{=}0.028$
-(paired bootstrap), McNemar exact $p{=}0.034$.
+from 98.8\% to 16.2\% on ChartFC. On ChartFC, GRPO leads NSR on
+Pass@4 by $+3.8$\,pp (CI $[+0.6,+7.2]$, $p{=}0.028$, paired
+bootstrap; McNemar exact $p{=}0.034$).
 
 Table~\ref{tab:tags} localizes the collapse. NSR keeps the tags the
 base model already emits ($\langle$type$\rangle$,
