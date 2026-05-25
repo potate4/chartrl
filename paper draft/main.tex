@@ -218,11 +218,25 @@ not a side note.
 \section{Methodology}
 \label{sec:method}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{fig_pipeline.pdf}
+\caption{Training pipeline. The multi-component reward supervises
+each rollout independently through format, table, accuracy, and
+length rewards. HCPC adds a group-level bonus computed over rollouts
+that pass the correct-path filter ($G^+$), rewarding consistent
+table extraction together with diverse reasoning. We compare two
+advantage estimators over the same per-rollout reward: standard
+GRPO and NSR, which masks the gradient of correct rollouts.}
+\label{fig:pipeline}
+\end{figure*}
+
 We build on Chart-RVR~\citep{chartrvr2025} as a reward backbone and
 introduce two interventions: HCPC (Hierarchical Correct-Path
 Consistency), a group-level bonus rewarding level-specific structure
 among correct rollouts, and NSR~\citep{zhu2025nsr}, a contrastive
 gradient-masking strategy that we port to chart RLVR as a diagnostic.
+Figure~\ref{fig:pipeline} gives the overall pipeline.
 
 \subsection{Preliminaries: Chart-RVR Reward Backbone}
 \label{sec:base}
