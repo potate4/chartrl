@@ -76,7 +76,7 @@ to richer reward landscapes.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.95\textwidth, trim=0 1in 0 1in, clip]{fig_teaser.pdf}
+\includegraphics[width=0.90\textwidth, trim=0 1in 0 1in, clip]{fig_teaser.pdf}
 \caption{Format and answer accuracy are separable channels in
 chart RLVR. \textbf{Left:} a stylized rollout under each training
 regime. GRPO emits the required structural tags and the correct
@@ -235,11 +235,12 @@ accuracy while format compliance stays at NSR's collapsed level.
 This makes reward-component independence a real design choice for
 VLM RLVR, not a side note.
 
+
 \section{Methodology}
 \label{sec:method}
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.95\textwidth]{fig_pipeline.pdf}
+\includegraphics[width=0.90\textwidth]{fig_pipeline.pdf}
 \caption{Training pipeline. The multi-component reward supervises
 each rollout independently through format, table, accuracy, and
 length rewards. HCPC adds a group-level bonus computed over rollouts
@@ -707,7 +708,6 @@ accuracy recovers fully while format does not. This asymmetry makes
 the channel-separability claim concrete.
 
 \section{Conclusion}
-
 We introduced HCPC, a cross-rollout bonus that rewards consistent
 extraction and diverse reasoning on the correct-path subset of a
 group. On top of GRPO it produces more robust correct groups and
