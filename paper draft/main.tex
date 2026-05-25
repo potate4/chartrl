@@ -73,6 +73,24 @@ to richer reward landscapes.
 
 \section{Introduction}
 \label{sec:intro}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_teaser.pdf}
+\caption{Format and answer accuracy are separable channels in
+chart RLVR. \textbf{Left:} a stylized rollout under each training
+regime. GRPO emits the required structural tags and the correct
+answer; NSR drops both; NSR$+$HCPC recovers the answer while the
+structured tags remain collapsed. \textbf{Right:} ChartFC (OOD)
+metrics for the same three regimes. Adding HCPC on top of NSR
+restores Pass@1 and Pass@4 to near GRPO levels, but format
+compliance barely moves from NSR's collapsed value (16.2\% to
+17.8\%). Accuracy returns; format does not. The dissociation is
+direct evidence that these two behaviors respond independently to
+training interventions.}
+\label{fig:teaser}
+\end{figure}
+
 Recent chart-reasoning vision-language models are trained via
 reinforcement learning with verifiable rewards (RLVR), typically using GRPO with
 multi-component rewards.
@@ -698,38 +716,6 @@ $\langle$table$\rangle$: $72.2\%\!\to\!83.2\%$, Table~\ref{tab:tags}).
 In-distribution, format partially recovers. Out-of-distribution,
 accuracy recovers fully while format does not. This asymmetry makes
 the channel-separability claim concrete.
-
-\section{Related Work}
-
-\paragraph{Chart-reasoning training.} Chart-RVR \citep{chartrvr2025}, a verifiable-reward GRPO pipeline for chart images, is the most closely related to our work, rewarding chart type prediction and table reconstruction alongside answer accuracy. We
-use its rewards verbatim as $R_{\text{base}}$ and add cross-rollout
-signal; our deltas isolate the effect of the group-level term against
-the same per-rollout backbone. Other recent chart VLMs improve
-training data \citep{chartgemma,chartinstruct,bigcharts2025},
-reasoning rationales \citep{chartr12025,chartqax2026,distill-vcr-2025},
-or wrap models in agentic pipelines
-\citep{chartagent2025,vprochart2025,chartcitor2025,chartpoint2025};
-these are complementary to our reward-side intervention. Benchmarks
-beyond ChartQA include ChartX/ChartVLM \citep{chartx2024} and the
-style-OOD sets EvoChart \citep{evochart} and ChartQAPro
-\citep{chartqapro}; we leave style-OOD evaluation as future work.
-
-\paragraph{RLVR and its decomposition.} \citet{zhu2025nsr} is the
-only prior work to isolate positive- vs.\ negative-sample
-reinforcement; we test their recipe in a multi-component multimodal
-reward landscape and document the format-collapse failure mode that
-does not appear in their text-only math setting.
-\citet{su2025crossing,wen2025rlvr,rlvmr2025,koksal2025fewshot}
-study RLVR in other settings but do not address the
-multi-component-reward asymmetry we identify.
-
-\paragraph{Self-consistency and group-level signals.} \citet{wang2022sc}
-aggregate by majority vote at inference; \citet{ettrl2025} balance
-exploration and exploitation at test time. HCPC differs in being a
-training-time, group-level reward that conditions on ground-truth
-correctness rather than majority agreement, and that targets
-level-specific objectives (consistent extraction, diverse reasoning)
-rather than a single aggregate.
 
 \section{Conclusion}
 

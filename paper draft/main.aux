@@ -7,8 +7,6 @@
 \citation{deepseekmath}
 \citation{chartrvr2025,chartr12025,bigcharts2025,distill-vcr-2025}
 \citation{passatk}
-\citation{zhu2025nsr}
-\citation{zhu2025nsr}
 \HyPL@Entry{0<</S/D>>}
 \def\@LN@column{1}
 \@LN{0}{0}
@@ -57,6 +55,9 @@
 \@LN{41}{0}
 \@LN{42}{0}
 \def\@LN@column{2}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Format and answer accuracy are separable channels in chart RLVR. \textbf  {Left:} a stylized rollout under each training regime. GRPO emits the required structural tags and the correct answer; NSR drops both; NSR$+$HCPC recovers the answer while the structured tags remain collapsed. \textbf  {Right:} ChartFC (OOD) metrics for the same three regimes. Adding HCPC on top of NSR restores Pass@1 and Pass@4 to near GRPO levels, but format compliance barely moves from NSR's collapsed value (16.2\% to 17.8\%). Accuracy returns; format does not. The dissociation is direct evidence that these two behaviors respond independently to training interventions.}}{1}{figure.caption.1}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:teaser}{{1}{1}{Format and answer accuracy are separable channels in chart RLVR. \textbf {Left:} a stylized rollout under each training regime. GRPO emits the required structural tags and the correct answer; NSR drops both; NSR$+$HCPC recovers the answer while the structured tags remain collapsed. \textbf {Right:} ChartFC (OOD) metrics for the same three regimes. Adding HCPC on top of NSR restores Pass@1 and Pass@4 to near GRPO levels, but format compliance barely moves from NSR's collapsed value (16.2\% to 17.8\%). Accuracy returns; format does not. The dissociation is direct evidence that these two behaviors respond independently to training interventions}{figure.caption.1}{}}
 \@LN{43}{0}
 \@LN{44}{0}
 \@LN{45}{0}
@@ -75,29 +76,8 @@
 \@LN{58}{0}
 \@LN{59}{0}
 \@LN{60}{0}
-\@LN{61}{0}
-\@LN{62}{0}
-\@LN{63}{0}
-\@LN{64}{0}
-\@LN{65}{0}
-\@LN{66}{0}
-\@LN{67}{0}
-\@LN{68}{0}
-\@LN{69}{0}
-\@LN{70}{0}
-\@LN{71}{0}
-\@LN{72}{0}
-\@LN{73}{0}
-\@LN{74}{0}
-\@LN{75}{0}
-\@LN{76}{0}
-\@LN{77}{0}
-\@LN{78}{0}
-\@LN{79}{0}
-\@LN{80}{0}
-\@LN{81}{0}
-\@LN{82}{0}
-\@LN{83}{0}
+\citation{zhu2025nsr}
+\citation{zhu2025nsr}
 \citation{chartrvr2025}
 \citation{bigcharts2025}
 \citation{chartr12025}
@@ -113,10 +93,30 @@
 \citation{wen2025rlvr}
 \citation{rlvmr2025}
 \citation{koksal2025fewshot}
-\citation{wang2022sc}
-\citation{ettrl2025}
-\citation{passatk}
 \def\@LN@column{1}
+\@LN{61}{1}
+\@LN{62}{1}
+\@LN{63}{1}
+\@LN{64}{1}
+\@LN{65}{1}
+\@LN{66}{1}
+\@LN{67}{1}
+\@LN{68}{1}
+\@LN{69}{1}
+\@LN{70}{1}
+\@LN{71}{1}
+\@LN{72}{1}
+\@LN{73}{1}
+\@LN{74}{1}
+\@LN{75}{1}
+\@LN{76}{1}
+\@LN{77}{1}
+\@LN{78}{1}
+\@LN{79}{1}
+\@LN{80}{1}
+\@LN{81}{1}
+\@LN{82}{1}
+\@LN{83}{1}
 \@LN{84}{1}
 \@LN{85}{1}
 \@LN{86}{1}
@@ -145,6 +145,7 @@
 \@LN{109}{1}
 \@LN{110}{1}
 \@LN{111}{1}
+\def\@LN@column{2}
 \@LN{112}{1}
 \@LN{113}{1}
 \@LN{114}{1}
@@ -164,11 +165,10 @@
 \@LN{128}{1}
 \@LN{129}{1}
 \@LN{130}{1}
-\def\@LN@column{2}
 \@LN{131}{1}
 \@writefile{toc}{\contentsline {section}{\numberline {2}Related Work}{2}{section.2}\protected@file@percent }
 \newlabel{sec:related}{{2}{2}{Related Work}{section.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{Chart reasoning with RLVR.}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Chart reasoning with RLVR.}{2}{section*.2}\protected@file@percent }
 \@LN{132}{1}
 \@LN{133}{1}
 \@LN{134}{1}
@@ -190,7 +190,7 @@
 \@LN{150}{1}
 \@LN{151}{1}
 \@LN{152}{1}
-\@writefile{toc}{\contentsline {paragraph}{Advantage-rule variants in RLVR.}{2}{section*.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Advantage-rule variants in RLVR.}{2}{section*.3}\protected@file@percent }
 \@LN{153}{1}
 \@LN{154}{1}
 \@LN{155}{1}
@@ -199,33 +199,35 @@
 \@LN{158}{1}
 \@LN{159}{1}
 \@LN{160}{1}
-\@LN{161}{1}
-\@LN{162}{1}
-\@LN{163}{1}
-\@LN{164}{1}
-\@LN{165}{1}
-\@LN{166}{1}
-\@LN{167}{1}
-\@LN{168}{1}
-\@LN{169}{1}
-\@LN{170}{1}
-\@LN{171}{1}
-\@LN{172}{1}
-\@LN{173}{1}
-\@LN{174}{1}
-\@LN{175}{1}
-\@writefile{toc}{\contentsline {paragraph}{Group-level signals and rollout-set diversity.}{2}{section*.3}\protected@file@percent }
-\@LN{176}{1}
-\@LN{177}{1}
-\@LN{178}{1}
-\@LN{179}{1}
-\@LN{180}{1}
+\citation{wang2022sc}
+\citation{ettrl2025}
+\citation{passatk}
 \citation{chartrvr2025}
 \citation{chartrvr2025}
 \citation{zhu2025nsr}
 \citation{wang2022sc}
-\citation{minilm}
 \def\@LN@column{1}
+\@LN{161}{2}
+\@LN{162}{2}
+\@LN{163}{2}
+\@LN{164}{2}
+\@LN{165}{2}
+\@LN{166}{2}
+\@LN{167}{2}
+\@LN{168}{2}
+\@LN{169}{2}
+\@LN{170}{2}
+\@LN{171}{2}
+\@LN{172}{2}
+\@LN{173}{2}
+\@LN{174}{2}
+\@LN{175}{2}
+\@writefile{toc}{\contentsline {paragraph}{Group-level signals and rollout-set diversity.}{3}{section*.4}\protected@file@percent }
+\@LN{176}{2}
+\@LN{177}{2}
+\@LN{178}{2}
+\@LN{179}{2}
+\@LN{180}{2}
 \@LN{181}{2}
 \@LN{182}{2}
 \@LN{183}{2}
@@ -241,7 +243,7 @@
 \@LN{193}{2}
 \@LN{194}{2}
 \@LN{195}{2}
-\@writefile{toc}{\contentsline {paragraph}{Format and accuracy as separable behaviors.}{3}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Format and accuracy as separable behaviors.}{3}{section*.5}\protected@file@percent }
 \@LN{196}{2}
 \@LN{197}{2}
 \@LN{198}{2}
@@ -258,6 +260,7 @@
 \@LN{209}{2}
 \@LN{210}{2}
 \@LN{211}{2}
+\def\@LN@column{2}
 \@LN{212}{2}
 \@writefile{toc}{\contentsline {section}{\numberline {3}Methodology}{3}{section.3}\protected@file@percent }
 \newlabel{sec:method}{{3}{3}{Methodology}{section.3}{}}
@@ -280,7 +283,6 @@
 \@LN{227}{2}
 \@LN{228}{2}
 \@LN{229}{2}
-\def\@LN@column{2}
 \@LN{230}{2}
 \@LN{231}{2}
 \@LN{232}{2}
@@ -315,39 +317,38 @@
 \@LN{257}{2}
 \@LN{258}{2}
 \@LN{259}{2}
-\@LN{260}{2}
-\@LN{261}{2}
-\@LN{262}{2}
-\@LN{263}{2}
-\@LN{264}{2}
-\@LN{265}{2}
-\@LN{266}{2}
-\@LN{267}{2}
-\@LN{268}{2}
-\@LN{269}{2}
-\@LN{270}{2}
-\@LN{271}{2}
-\@LN{272}{2}
-\@LN{273}{2}
-\@LN{274}{2}
-\@LN{275}{2}
-\@LN{276}{2}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}Level-Specific Group Metrics}{3}{subsubsection.3.2.2}\protected@file@percent }
-\newlabel{sec:metrics_hcpc}{{3.2.2}{3}{Level-Specific Group Metrics}{subsubsection.3.2.2}{}}
-\@LN{277}{2}
-\@LN{278}{2}
-\citation{zhu2025nsr}
-\citation{zhu2025nsr}
-\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Training pipeline. The multi-component reward supervises each rollout independently through format, table, accuracy, and length rewards. HCPC adds a group-level bonus computed over rollouts that pass the correct-path filter ($G^+$), rewarding consistent table extraction together with diverse reasoning. We compare two advantage estimators over the same per-rollout reward: standard GRPO and NSR, which masks the gradient of correct rollouts.}}{4}{figure.caption.5}\protected@file@percent }
-\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
-\newlabel{fig:pipeline}{{1}{4}{Training pipeline. The multi-component reward supervises each rollout independently through format, table, accuracy, and length rewards. HCPC adds a group-level bonus computed over rollouts that pass the correct-path filter ($G^+$), rewarding consistent table extraction together with diverse reasoning. We compare two advantage estimators over the same per-rollout reward: standard GRPO and NSR, which masks the gradient of correct rollouts}{figure.caption.5}{}}
+\citation{minilm}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Training pipeline. The multi-component reward supervises each rollout independently through format, table, accuracy, and length rewards. HCPC adds a group-level bonus computed over rollouts that pass the correct-path filter ($G^+$), rewarding consistent table extraction together with diverse reasoning. We compare two advantage estimators over the same per-rollout reward: standard GRPO and NSR, which masks the gradient of correct rollouts.}}{4}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:pipeline}{{2}{4}{Training pipeline. The multi-component reward supervises each rollout independently through format, table, accuracy, and length rewards. HCPC adds a group-level bonus computed over rollouts that pass the correct-path filter ($G^+$), rewarding consistent table extraction together with diverse reasoning. We compare two advantage estimators over the same per-rollout reward: standard GRPO and NSR, which masks the gradient of correct rollouts}{figure.caption.6}{}}
 \def\@LN@column{1}
+\@LN{260}{3}
+\@LN{261}{3}
+\@LN{262}{3}
+\@LN{263}{3}
+\@LN{264}{3}
+\@LN{265}{3}
+\@LN{266}{3}
+\@LN{267}{3}
+\@LN{268}{3}
+\@LN{269}{3}
+\@LN{270}{3}
+\@LN{271}{3}
+\@LN{272}{3}
+\@LN{273}{3}
+\@LN{274}{3}
+\@LN{275}{3}
+\@LN{276}{3}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}Level-Specific Group Metrics}{4}{subsubsection.3.2.2}\protected@file@percent }
+\newlabel{sec:metrics_hcpc}{{3.2.2}{4}{Level-Specific Group Metrics}{subsubsection.3.2.2}{}}
+\@LN{277}{3}
+\@LN{278}{3}
 \@LN{279}{3}
 \@LN{280}{3}
 \@LN{281}{3}
 \@LN{282}{3}
 \@LN{283}{3}
 \@LN{284}{3}
+\def\@LN@column{2}
 \@LN{285}{3}
 \@LN{286}{3}
 \@LN{287}{3}
@@ -366,7 +367,6 @@
 \@LN{298}{3}
 \@LN{299}{3}
 \@LN{300}{3}
-\def\@LN@column{2}
 \@LN{301}{3}
 \@LN{302}{3}
 \@LN{303}{3}
@@ -374,24 +374,8 @@
 \@LN{305}{3}
 \@LN{306}{3}
 \@LN{307}{3}
-\@LN{308}{3}
-\@LN{309}{3}
-\@LN{310}{3}
-\@LN{311}{3}
-\@LN{312}{3}
-\@LN{313}{3}
-\@LN{314}{3}
-\@LN{315}{3}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Diagnostic Baseline: NSR}{4}{subsection.3.3}\protected@file@percent }
-\newlabel{sec:nsr}{{3.3}{4}{Diagnostic Baseline: NSR}{subsection.3.3}{}}
-\@LN{316}{3}
-\@LN{317}{3}
-\@LN{318}{3}
-\@LN{319}{3}
-\@LN{320}{3}
-\@LN{321}{3}
-\@LN{322}{3}
-\@LN{323}{3}
+\citation{zhu2025nsr}
+\citation{zhu2025nsr}
 \citation{chartrvr2025}
 \citation{chartqa}
 \citation{chartfc}
@@ -400,6 +384,24 @@
 \citation{chartfc}
 \citation{passatk}
 \def\@LN@column{1}
+\@LN{308}{4}
+\@LN{309}{4}
+\@LN{310}{4}
+\@LN{311}{4}
+\@LN{312}{4}
+\@LN{313}{4}
+\@LN{314}{4}
+\@LN{315}{4}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Diagnostic Baseline: NSR}{5}{subsection.3.3}\protected@file@percent }
+\newlabel{sec:nsr}{{3.3}{5}{Diagnostic Baseline: NSR}{subsection.3.3}{}}
+\@LN{316}{4}
+\@LN{317}{4}
+\@LN{318}{4}
+\@LN{319}{4}
+\@LN{320}{4}
+\@LN{321}{4}
+\@LN{322}{4}
+\@LN{323}{4}
 \@LN{324}{4}
 \@LN{325}{4}
 \@LN{326}{4}
@@ -437,6 +439,7 @@
 \@LN{354}{4}
 \@LN{355}{4}
 \@LN{356}{4}
+\def\@LN@column{2}
 \@LN{357}{4}
 \@LN{358}{4}
 \@LN{359}{4}
@@ -451,7 +454,6 @@
 \@LN{368}{4}
 \@LN{369}{4}
 \@LN{370}{4}
-\def\@LN@column{2}
 \@LN{371}{4}
 \@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Evaluation Protocol}{5}{subsection.4.2}\protected@file@percent }
 \newlabel{sec:eval_protocol}{{4.2}{5}{Evaluation Protocol}{subsection.4.2}{}}
@@ -466,13 +468,13 @@
 \@LN{379}{4}
 \@LN{380}{4}
 \@LN{381}{4}
-\@writefile{toc}{\contentsline {paragraph}{Per-tag emission rate.}{5}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Per-tag emission rate.}{5}{section*.7}\protected@file@percent }
 \@LN{382}{4}
 \@LN{383}{4}
 \@LN{384}{4}
 \@LN{385}{4}
 \@LN{386}{4}
-\@writefile{toc}{\contentsline {paragraph}{Table-dependence $\Delta _{\text  {tbl}}$.}{5}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Table-dependence $\Delta _{\text  {tbl}}$.}{5}{section*.8}\protected@file@percent }
 \@LN{387}{4}
 \@LN{388}{4}
 \@LN{389}{4}
@@ -493,21 +495,21 @@
 \@LN{400}{4}
 \@LN{401}{4}
 \@LN{402}{4}
-\@LN{403}{4}
-\@LN{404}{4}
-\@LN{405}{4}
-\@LN{406}{4}
-\@LN{407}{4}
-\@LN{408}{4}
-\@LN{409}{4}
-\@LN{410}{4}
-\@LN{411}{4}
-\@LN{412}{4}
-\@LN{413}{4}
-\@LN{414}{4}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Main results. $\Delta _{\text  {tbl}}$ is the conditional gain in answer correctness from emitting a parseable table; higher means stronger table-dependence. Bold marks column-best per benchmark. Pass@4 uses the unbiased estimator over 4 generations per prompt.}}{6}{table.caption.8}\protected@file@percent }
-\newlabel{tab:main}{{1}{6}{Main results. $\Delta _{\text {tbl}}$ is the conditional gain in answer correctness from emitting a parseable table; higher means stronger table-dependence. Bold marks column-best per benchmark. Pass@4 uses the unbiased estimator over 4 generations per prompt}{table.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Main results. $\Delta _{\text  {tbl}}$ is the conditional gain in answer correctness from emitting a parseable table; higher means stronger table-dependence. Bold marks column-best per benchmark. Pass@4 uses the unbiased estimator over 4 generations per prompt.}}{6}{table.caption.9}\protected@file@percent }
+\newlabel{tab:main}{{1}{6}{Main results. $\Delta _{\text {tbl}}$ is the conditional gain in answer correctness from emitting a parseable table; higher means stronger table-dependence. Bold marks column-best per benchmark. Pass@4 uses the unbiased estimator over 4 generations per prompt}{table.caption.9}{}}
 \def\@LN@column{1}
+\@LN{403}{5}
+\@LN{404}{5}
+\@LN{405}{5}
+\@LN{406}{5}
+\@LN{407}{5}
+\@LN{408}{5}
+\@LN{409}{5}
+\@LN{410}{5}
+\@LN{411}{5}
+\@LN{412}{5}
+\@LN{413}{5}
+\@LN{414}{5}
 \@LN{415}{5}
 \@LN{416}{5}
 \@writefile{toc}{\contentsline {subsection}{\numberline {5.2}GRPO+HCPC: Rollout Robustness Without Accuracy Regression}{6}{subsection.5.2}\protected@file@percent }
@@ -537,6 +539,9 @@
 \@LN{439}{5}
 \@LN{440}{5}
 \@LN{441}{5}
+\def\@LN@column{2}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The direction is consistent with the design hypothesis that a cross-rollout bonus preserves correct-path coverage at higher $K$. Individual differences are not significant at $n{=}500$ (Pass@4 boot-$p{=}0.48$).}}{6}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:passk}{{3}{6}{Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The direction is consistent with the design hypothesis that a cross-rollout bonus preserves correct-path coverage at higher $K$. Individual differences are not significant at $n{=}500$ (Pass@4 boot-$p{=}0.48$)}{figure.caption.10}{}}
 \@LN{442}{5}
 \@LN{443}{5}
 \@LN{444}{5}
@@ -547,12 +552,9 @@
 \@LN{449}{5}
 \@LN{450}{5}
 \@LN{451}{5}
-\@writefile{toc}{\contentsline {paragraph}{GRPO+HCPC OOD limitation.}{6}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{GRPO+HCPC OOD limitation.}{6}{section*.11}\protected@file@percent }
 \@LN{452}{5}
 \@LN{453}{5}
-\def\@LN@column{2}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The direction is consistent with the design hypothesis that a cross-rollout bonus preserves correct-path coverage at higher $K$. Individual differences are not significant at $n{=}500$ (Pass@4 boot-$p{=}0.48$).}}{6}{figure.caption.9}\protected@file@percent }
-\newlabel{fig:passk}{{2}{6}{Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The direction is consistent with the design hypothesis that a cross-rollout bonus preserves correct-path coverage at higher $K$. Individual differences are not significant at $n{=}500$ (Pass@4 boot-$p{=}0.48$)}{figure.caption.9}{}}
 \@LN{454}{5}
 \@LN{455}{5}
 \@LN{456}{5}
@@ -561,26 +563,26 @@
 \@LN{459}{5}
 \@LN{460}{5}
 \@LN{461}{5}
-\@LN{462}{5}
-\@LN{463}{5}
-\@LN{464}{5}
-\@LN{465}{5}
-\@LN{466}{5}
-\@LN{467}{5}
-\@LN{468}{5}
-\@LN{469}{5}
-\@LN{470}{5}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}NSR Breaks VLM Format}{6}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:nsr_collapse}{{5.3}{6}{NSR Breaks VLM Format}{subsection.5.3}{}}
-\@LN{471}{5}
-\@LN{472}{5}
-\@LN{473}{5}
 \citation{zhu2025nsr}
 \def\@LN@column{1}
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Per-tag emission rate (\%) on ChartQA. Column headers refer to the \texttt  {<think>}, \texttt  {<answer>}, \texttt  {<type>}, \texttt  {<table>} tags and the ``proper order'' check. NSR's collapse is concentrated in the structural tags (think, table) that the base model does not emit unprompted; HCPC under NSR partially recovers table but not think.}}{7}{table.caption.11}\protected@file@percent }
-\newlabel{tab:tags}{{2}{7}{Per-tag emission rate (\%) on ChartQA. Column headers refer to the \texttt {<think>}, \texttt {<answer>}, \texttt {<type>}, \texttt {<table>} tags and the ``proper order'' check. NSR's collapse is concentrated in the structural tags (think, table) that the base model does not emit unprompted; HCPC under NSR partially recovers table but not think}{table.caption.11}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Overall format compliance per method on ChartQA (in-distribution) and ChartFC (OOD). NSR collapses on both; GRPO+HCPC holds ID but degrades OOD; GRPO is the only configuration that keeps format near ceiling under distribution shift.}}{7}{figure.caption.12}\protected@file@percent }
-\newlabel{fig:format}{{3}{7}{Overall format compliance per method on ChartQA (in-distribution) and ChartFC (OOD). NSR collapses on both; GRPO+HCPC holds ID but degrades OOD; GRPO is the only configuration that keeps format near ceiling under distribution shift}{figure.caption.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Per-tag emission rate (\%) on ChartQA. Column headers refer to the \texttt  {<think>}, \texttt  {<answer>}, \texttt  {<type>}, \texttt  {<table>} tags and the ``proper order'' check. NSR's collapse is concentrated in the structural tags (think, table) that the base model does not emit unprompted; HCPC under NSR partially recovers table but not think.}}{7}{table.caption.12}\protected@file@percent }
+\newlabel{tab:tags}{{2}{7}{Per-tag emission rate (\%) on ChartQA. Column headers refer to the \texttt {<think>}, \texttt {<answer>}, \texttt {<type>}, \texttt {<table>} tags and the ``proper order'' check. NSR's collapse is concentrated in the structural tags (think, table) that the base model does not emit unprompted; HCPC under NSR partially recovers table but not think}{table.caption.12}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Overall format compliance per method on ChartQA (in-distribution) and ChartFC (OOD). NSR collapses on both; GRPO+HCPC holds ID but degrades OOD; GRPO is the only configuration that keeps format near ceiling under distribution shift.}}{7}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:format}{{4}{7}{Overall format compliance per method on ChartQA (in-distribution) and ChartFC (OOD). NSR collapses on both; GRPO+HCPC holds ID but degrades OOD; GRPO is the only configuration that keeps format near ceiling under distribution shift}{figure.caption.13}{}}
+\@LN{462}{6}
+\@LN{463}{6}
+\@LN{464}{6}
+\@LN{465}{6}
+\@LN{466}{6}
+\@LN{467}{6}
+\@LN{468}{6}
+\@LN{469}{6}
+\@LN{470}{6}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}NSR Breaks VLM Format}{7}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:nsr_collapse}{{5.3}{7}{NSR Breaks VLM Format}{subsection.5.3}{}}
+\@LN{471}{6}
+\@LN{472}{6}
+\@LN{473}{6}
 \@LN{474}{6}
 \@LN{475}{6}
 \@LN{476}{6}
@@ -590,6 +592,7 @@
 \@LN{480}{6}
 \@LN{481}{6}
 \@LN{482}{6}
+\def\@LN@column{2}
 \@LN{483}{6}
 \@LN{484}{6}
 \@LN{485}{6}
@@ -602,9 +605,6 @@
 \@LN{492}{6}
 \@LN{493}{6}
 \@LN{494}{6}
-\def\@LN@column{2}
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Pass@$K$ on ChartFC (OOD, $n{=}500$). Plain NSR (green) sits below all other configurations at every $K$; adding HCPC (purple) closes most of the gap to GRPO. \textsc  {Base} was not evaluated on ChartFC.}}{7}{figure.caption.13}\protected@file@percent }
-\newlabel{fig:passk_chartfc}{{4}{7}{Pass@$K$ on ChartFC (OOD, $n{=}500$). Plain NSR (green) sits below all other configurations at every $K$; adding HCPC (purple) closes most of the gap to GRPO. \textsc {Base} was not evaluated on ChartFC}{figure.caption.13}{}}
 \@LN{495}{6}
 \@LN{496}{6}
 \@LN{497}{6}
@@ -633,7 +633,7 @@
 \@LN{518}{6}
 \@LN{519}{6}
 \@LN{520}{6}
-\@writefile{toc}{\contentsline {paragraph}{Format/accuracy dissociation.}{7}{section*.14}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Format/accuracy dissociation.}{7}{section*.15}\protected@file@percent }
 \@LN{521}{6}
 \@LN{522}{6}
 \@LN{523}{6}
@@ -642,6 +642,10 @@
 \@LN{526}{6}
 \@LN{527}{6}
 \@LN{528}{6}
+\@LN{529}{6}
+\@LN{530}{6}
+\@LN{531}{6}
+\@LN{532}{6}
 \citation{chartrvr2025}
 \citation{chartgemma,chartinstruct,bigcharts2025}
 \citation{chartr12025,chartqax2026,distill-vcr-2025}
@@ -654,12 +658,10 @@
 \citation{wang2022sc}
 \citation{ettrl2025}
 \def\@LN@column{1}
-\@LN{529}{7}
-\@LN{530}{7}
-\@LN{531}{7}
-\@LN{532}{7}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Pass@$K$ on ChartFC (OOD, $n{=}500$). Plain NSR (green) sits below all other configurations at every $K$; adding HCPC (purple) closes most of the gap to GRPO. \textsc  {Base} was not evaluated on ChartFC.}}{8}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:passk_chartfc}{{5}{8}{Pass@$K$ on ChartFC (OOD, $n{=}500$). Plain NSR (green) sits below all other configurations at every $K$; adding HCPC (purple) closes most of the gap to GRPO. \textsc {Base} was not evaluated on ChartFC}{figure.caption.14}{}}
 \@LN{533}{7}
-\@writefile{toc}{\contentsline {paragraph}{Why HCPC behaves so differently under GRPO and NSR.}{8}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why HCPC behaves so differently under GRPO and NSR.}{8}{section*.16}\protected@file@percent }
 \@LN{534}{7}
 \@LN{535}{7}
 \@LN{536}{7}
@@ -694,6 +696,7 @@
 \@LN{565}{7}
 \@LN{566}{7}
 \@LN{567}{7}
+\def\@LN@column{2}
 \@LN{568}{7}
 \@LN{569}{7}
 \@LN{570}{7}
@@ -701,13 +704,12 @@
 \@LN{572}{7}
 \@LN{573}{7}
 \@writefile{toc}{\contentsline {section}{\numberline {6}Related Work}{8}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{Chart-reasoning training.}{8}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Chart-reasoning training.}{8}{section*.17}\protected@file@percent }
 \@LN{574}{7}
 \@LN{575}{7}
 \@LN{576}{7}
 \@LN{577}{7}
 \@LN{578}{7}
-\def\@LN@column{2}
 \@LN{579}{7}
 \@LN{580}{7}
 \@LN{581}{7}
@@ -718,7 +720,7 @@
 \@LN{586}{7}
 \@LN{587}{7}
 \@LN{588}{7}
-\@writefile{toc}{\contentsline {paragraph}{RLVR and its decomposition.}{8}{section*.17}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{RLVR and its decomposition.}{8}{section*.18}\protected@file@percent }
 \@LN{589}{7}
 \@LN{590}{7}
 \@LN{591}{7}
@@ -728,7 +730,7 @@
 \@LN{595}{7}
 \@LN{596}{7}
 \@LN{597}{7}
-\@writefile{toc}{\contentsline {paragraph}{Self-consistency and group-level signals.}{8}{section*.18}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Self-consistency and group-level signals.}{8}{section*.19}\protected@file@percent }
 \@LN{598}{7}
 \@LN{599}{7}
 \@LN{600}{7}
@@ -748,23 +750,23 @@
 \@LN{613}{7}
 \@LN{614}{7}
 \@LN{615}{7}
-\@LN{616}{7}
-\@LN{617}{7}
-\@LN{618}{7}
-\@LN{619}{7}
-\@LN{620}{7}
-\@LN{621}{7}
-\@LN{622}{7}
-\@LN{623}{7}
-\@LN{624}{7}
-\@LN{625}{7}
-\@LN{626}{7}
-\@LN{627}{7}
 \citation{evochart}
 \citation{chartqapro}
 \bibdata{custom}
 \citation{passatk}
 \def\@LN@column{1}
+\@LN{616}{8}
+\@LN{617}{8}
+\@LN{618}{8}
+\@LN{619}{8}
+\@LN{620}{8}
+\@LN{621}{8}
+\@LN{622}{8}
+\@LN{623}{8}
+\@LN{624}{8}
+\@LN{625}{8}
+\@LN{626}{8}
+\@LN{627}{8}
 \@LN{628}{8}
 \@LN{629}{8}
 \@LN{630}{8}
@@ -802,6 +804,7 @@
 \@LN{660}{8}
 \@LN{661}{8}
 \@LN{662}{8}
+\def\@LN@column{2}
 \@LN{663}{8}
 \@LN{664}{8}
 \@writefile{toc}{\contentsline {section}{\numberline {B}Qualitative Example: Format Collapse in Action}{9}{appendix.B}\protected@file@percent }
@@ -811,11 +814,10 @@
 \@LN{667}{8}
 \@LN{668}{8}
 \@LN{669}{8}
-\@writefile{toc}{\contentsline {paragraph}{GRPO (correct, well-formed).}{9}{section*.20}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{GRPO (correct, well-formed).}{9}{section*.21}\protected@file@percent }
 \@LN{670}{8}
-\def\@LN@column{2}
 \@LN{671}{8}
-\@writefile{toc}{\contentsline {paragraph}{NSR (format-collapsed; arrives at right reasoning but wrong answer surface form).}{9}{section*.21}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{NSR (format-collapsed; arrives at right reasoning but wrong answer surface form).}{9}{section*.22}\protected@file@percent }
 \@LN{672}{8}
 \@LN{673}{8}
 \@LN{674}{8}
@@ -825,7 +827,7 @@
 \@LN{678}{8}
 \@LN{679}{8}
 \@LN{680}{8}
-\@writefile{toc}{\contentsline {paragraph}{NSR+HCPC (table tag recovered; answer still in word form).}{9}{section*.22}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{NSR+HCPC (table tag recovered; answer still in word form).}{9}{section*.23}\protected@file@percent }
 \@LN{681}{8}
 \@LN{682}{8}
 \@LN{683}{8}
@@ -838,17 +840,17 @@
 \@LN{690}{8}
 \@LN{691}{8}
 \@LN{692}{8}
-\@LN{693}{8}
-\@writefile{toc}{\contentsline {section}{\numberline {C}Per-Answer-Type Breakdown}{9}{appendix.C}\protected@file@percent }
-\@LN{694}{8}
-\@LN{695}{8}
-\@LN{696}{8}
-\@LN{697}{8}
-\@LN{698}{8}
-\@LN{699}{8}
-\@LN{700}{8}
-\@LN{701}{8}
 \def\@LN@column{1}
+\@LN{693}{9}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Per-Answer-Type Breakdown}{10}{appendix.C}\protected@file@percent }
+\@LN{694}{9}
+\@LN{695}{9}
+\@LN{696}{9}
+\@LN{697}{9}
+\@LN{698}{9}
+\@LN{699}{9}
+\@LN{700}{9}
+\@LN{701}{9}
 \@LN{702}{9}
 \@writefile{toc}{\contentsline {section}{\numberline {D}$\Delta _{\text  {tbl}}$ on the Common-Table Subset}{10}{appendix.D}\protected@file@percent }
 \@LN{703}{9}
