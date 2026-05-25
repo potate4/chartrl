@@ -215,8 +215,8 @@ compliance stays at NSR's collapsed level. This makes
 reward-component independence a real design choice for VLM RLVR,
 not a side note.
 
-\section{Method}
-\label{sec:hcpc}
+\section{Methodology}
+\label{sec:method}
 
 We build on Chart-RVR~\citep{chartrvr2025} as a reward backbone and
 introduce two interventions: HCPC (Hierarchical Correct-Path
@@ -250,7 +250,7 @@ ground-truth reasoning chain; we disable it as it conflicts with
 $D_{\text{reason}}$'s diversity objective.
 
 \subsection{HCPC: Hierarchical Correct-Path Consistency}
-\label{sec:hcpc_method}
+\label{sec:hcpc}
 
 HCPC augments $R_{\text{base}}$ with a group-level bonus computed
 exclusively over correct rollouts. The design enforces
