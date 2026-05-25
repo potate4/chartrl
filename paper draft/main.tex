@@ -76,7 +76,7 @@ to richer reward landscapes.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.95\textwidth]{fig_teaser.pdf}
+\includegraphics[width=0.95\textwidth, trim=0 1in 0 1in, clip]{fig_teaser.pdf}
 \caption{Format and answer accuracy are separable channels in
 chart RLVR. \textbf{Left:} a stylized rollout under each training
 regime. GRPO emits the required structural tags and the correct
@@ -762,22 +762,161 @@ our highest-priority follow-up.
 \section{Reproducibility}
 \label{sec:appendix}
 
-All training and evaluation code, model checkpoints, and per-sample
-evaluation outputs (for the 500-sample test slices of ChartQA and
-ChartFC) are released with the paper. Training uses 4 generations per
-prompt at temperature 0.8; evaluation uses 4 generations at
-temperature 0.8 and top-$p{=}0.95$. Pass@$K$ uses the unbiased
-estimator of \citet{passatk}. Cross-rollout similarities use
-MiniLM-L6 embeddings. Paired-bootstrap CIs use
-$n_{\text{boot}}{=}10{,}000$ resamples; McNemar tests use the
-two-sided exact binomial form on the discordant pair.
+All training and evaluation code, the four trained LoRA adapters, and
+per-sample evaluation outputs (for the 500-sample test slices of
+ChartQA and ChartFC, including raw rollout text) are released as
+supplementary material. Hyperparameters and the exact reward
+configuration used for every run are listed in the released training
+configs (\texttt{configs/experiment.py}); the expected output schema
+is in \S\ref{sec:prompt}. Pass@$K$ uses the unbiased estimator of
+\citet{passatk}. Cross-rollout similarities use MiniLM-L6 embeddings.
+Paired-bootstrap CIs use $n_{\text{boot}}{=}10{,}000$ resamples;
+McNemar tests use the two-sided exact binomial form on the discordant
+pair.
+
+\section{Prompt Template and Expected Output Format}
+\label{sec:prompt}
+
+The model is prompted to emit responses in a structured XML template.
+The prompt instructs the model to wrap its reasoning in
+\texttt{<think>...</think>}, identify the chart type, extract the
+underlying data table, perform step-by-step reasoning, and finally
+emit the answer in \texttt{<answer>...</answer>}. The expected
+output schema is:
+
+\begin{Verbatim}
+<think>
+<type>...</type>
+<table>{"columns": [...], "rows": [...]}</table>
+<step-1>...</step-1>
+<step-2>...</step-2>
+...
+</think>
+<answer>...</answer>
+\end{Verbatim}
+
+The per-tag emission rate metric (\S\ref{sec:eval_protocol}) and the
+format reward $R_{\text{fmt}}$ are both defined relative to this
+schema. \texttt{<think>} and \texttt{<table>} are not natively
+emitted by Qwen2.5-VL-3B-Instruct without training; the format reward
+provides the gradient that teaches them.
+
+\section{Per-Tag Format Compliance, Both Benchmarks}
+\label{sec:tags_full}
+
+Table~\ref{tab:tags} in the main body reports per-tag emission rates
+for ChartQA. Table~\ref{tab:tags_full} extends this to both
+benchmarks. \textsc{Base} was not evaluated on ChartFC.
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccc}
+\toprule
+Method & think & answer & type & table & order\\
+\midrule
+\multicolumn{6}{l}{\emph{ChartQA (in-distribution)}}\\
+\textsc{Base}      & 52.2 & 91.2 & 96.6 & 77.2 & 81.6\\
+\textsc{GRPO}      & 97.4 & 97.6 & 100  & 98.6 & 97.4\\
+\textsc{GRPO+HCPC} & 98.8 & 98.2 & 100  & 99.6 & 98.6\\
+\textsc{NSR}       & 57.4 & 94.8 & 96.6 & 72.2 & 85.4\\
+\textsc{NSR+HCPC}  & 57.8 & 91.6 & 94.6 & 83.2 & 84.0\\
+\midrule
+\multicolumn{6}{l}{\emph{ChartFC (out-of-distribution)}}\\
+\textsc{GRPO}      & 99.0 & 99.0 & 100  & 99.6 & 99.0\\
+\textsc{GRPO+HCPC} & 78.0 & 92.4 & 96.6 & 87.2 & 79.0\\
+\textsc{NSR}       & 51.4 & 91.0 & 96.2 & 55.6 & 56.0\\
+\textsc{NSR+HCPC}  & 49.2 & 90.2 & 95.6 & 61.4 & 56.0\\
+\bottomrule
+\end{tabular}
+\caption{Per-tag emission rate (\%) on both benchmarks. On ChartFC,
+the \texttt{<think>} and \texttt{<table>} tags collapse hardest under
+NSR variants (51.4--61.4\%, vs.\ GRPO's 99.0--99.6\%). GRPO+HCPC also
+degrades OOD but milder ($\sim$78--87\%), consistent with the
+table-dependence finding in \S\ref{sec:hcpc_grpo}.}
+\label{tab:tags_full}
+\end{table}
+
+\section{Pairwise Statistical Comparisons}
+\label{sec:pairwise}
+
+We computed paired-bootstrap 95\% confidence intervals
+($n_{\text{boot}}{=}10{,}000$) and exact two-sided McNemar
+$p$-values for all 20 method-pair $\times$ Pass@K $\times$ benchmark
+comparisons. Among the trained configurations
+(\textsc{GRPO}, \textsc{GRPO+HCPC}, \textsc{NSR}, \textsc{NSR+HCPC}),
+two pairwise gaps reach $p < 0.05$:
+\textsc{GRPO} vs.\ \textsc{NSR} on ChartFC Pass@4
+($+3.8$\,pp, $p{=}0.034$; reported in \S\ref{sec:nsr_collapse}) and
+\textsc{GRPO} vs.\ \textsc{NSR+HCPC} on ChartQA Pass@1
+($+5.6$\,pp, $p{=}0.029$). All comparisons involving the untuned
+\textsc{Base} model are significant on Pass@1 ($p<0.05$). All other
+pairs, including the headline \textsc{GRPO} vs.\ \textsc{GRPO+HCPC}
+comparison ($-0.8$\,pp on Pass@1, $p{=}0.80$; $+1.2$\,pp on Pass@4,
+$p{=}0.52$), do not reach significance at $\alpha{=}0.05$. The full
+table is reproducible from the released analysis script
+(\texttt{analysis/paper\_stats.py}) on the supplied per-sample
+outputs.
+
+\section{HCPC Firing-Rate Distribution}
+\label{sec:firing}
+
+HCPC's group bonus is zero when fewer than two rollouts pass the
+correct-path filter ($|G^+|<2$). The empirical distribution of
+$|G^+|$ across the 500 ChartQA test groups for the trained
+\textsc{GRPO+HCPC} model is:
+
+\begin{center}
+\footnotesize
+\begin{tabular}{lccccc}
+\toprule
+$|G^+|$  & 0 & 1 & 2 & 3 & 4 \\
+\midrule
+fraction & 17.2\% & 11.6\% & 14.6\% & 15.8\% & 40.8\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+HCPC fires on $1-(17.2+11.6) = 71.2\%$ of groups. The 17.2\%
+all-wrong rate is well above the naive Bernoulli bound of 15.7\% at
+$p{=}0.62$, indicating that correctness within a group is positively
+correlated, as expected from samples sharing the same chart image.
+
+\section{$\Delta_{\text{tbl}}$ on the Common-Table Subset}
+\label{sec:delta_intersection}
+
+To rule out the confound that $\Delta_{\text{tbl}}$ is computed on
+different denominators per method, we recompute it on the
+intersection of samples where both methods produce a parseable
+table. On the 462 ChartQA samples where both \textsc{GRPO} and
+\textsc{GRPO+HCPC} produce parseable tables,
+$P(\hat y=y^*\mid\text{tbl})$ is $0.643$ vs.\ $0.636$. The
+$\Delta_{\text{tbl}}$ gap in Table~\ref{tab:main} therefore arises
+entirely from the $P(\hat y=y^*\mid\text{no tbl})$ arm
+($0.462$ vs.\ $0.368$). We interpret this as evidence that HCPC
+induces stronger table-dependence, not stronger table-conditioned
+reasoning accuracy.
+
+\section{Per-Answer-Type Breakdown}
+\label{sec:answer_type}
+
+We split ChartQA test samples by ground-truth answer type and compare
+\textsc{GRPO} against \textsc{GRPO+HCPC} on Pass@1. Differences are
+within exact-McNemar noise on numeric ($n{=}302$, $-1.7$\,pp,
+$p{=}0.63$), boolean ($n{=}75$, $+4.0$\,pp, $p{=}0.71$), and string
+($n{=}114$, $-6.1$\,pp, $p{=}0.30$). HCPC does not provide a
+category-specific accuracy advantage at this scale; the rollout-set
+robustness gains reported in \S\ref{sec:hcpc_grpo} are uniform
+across answer types rather than concentrated on any single category.
+
 \section{Qualitative Example: Format Collapse in Action}
 \label{sec:qualitative}
 
-Figure-free illustration of the NSR collapse and HCPC partial
-recovery, on a single ChartQA sample where the question is
-\emph{``How many categories are there in the chart?''} with ground
-truth $y^* = $ \texttt{4}. We show rollout 0 from three methods.
+Illustration of the NSR collapse and HCPC partial recovery on a
+single ChartQA sample. The question is \emph{``How many categories
+are there in the chart?''} with ground truth $y^* = $ \texttt{4}. We
+show rollout 0 from three methods.
 
 \paragraph{GRPO (correct, well-formed).}
 \begin{Verbatim}
@@ -818,34 +957,11 @@ HCPC's group-level bonus on $C_{\text{table}}$ pulls NSR's policy
 back toward emitting a \texttt{<table>} tag (table fraction
 $72.2\%\!\to\!83.2\%$ on ChartQA, Table~\ref{tab:tags}). The chart
 type is incorrectly identified (\texttt{bar} instead of \texttt{pie}),
-illustrating that HCPC's partial format recovery is not the same as a
-full quality recovery, and the answer is still ``Four'' in word
+illustrating that HCPC's partial format recovery is not the same as
+a full quality recovery, and the answer is still ``Four'' in word
 form. This is exactly the dissociation pattern of
 \S\ref{sec:dissociation}: format is partly restored, but the
 answer-surface alignment that drives strict-match accuracy is
 governed by a separate channel.
-
-\section{Per-Answer-Type Breakdown}
-
-We split ChartQA test samples by ground-truth answer type. Pass@1
-differences between \textsc{GRPO} and \textsc{GRPO+HCPC} are within
-exact-McNemar noise on numeric ($n{=}302$, $-1.7$\,pp, $p{=}0.63$),
-boolean ($n{=}75$, $+4.0$\,pp, $p{=}0.71$), and string ($n{=}114$,
-$-6.1$\,pp, $p{=}0.30$). HCPC does not provide a category-specific
-accuracy advantage at this scale.
-
-\section{$\Delta_{\text{tbl}}$ on the Common-Table Subset}
-
-To rule out the confound that $\Delta_{\text{tbl}}$ is computed on
-different denominators per method, we recompute it on the
-intersection of samples where multiple methods produce a parseable
-table. On the 462 ChartQA samples where both \textsc{GRPO} and
-\textsc{GRPO+HCPC} produce parseable tables,
-$P(\hat y=y^*\mid\text{tbl})$ is 0.643 vs.\ 0.636. The
-$\Delta_{\text{tbl}}$ gap in Table~\ref{tab:main} therefore arises
-entirely from the $P(\hat y=y^*\mid\text{no tbl})$ arm
-(0.462 vs.\ 0.368). We interpret this as evidence that HCPC induces
-stronger table-dependence, not stronger table-conditioned
-reasoning accuracy.
 
 \end{document}
