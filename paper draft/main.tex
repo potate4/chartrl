@@ -141,15 +141,12 @@ breaks an assumption that held in the simpler setting.
 
 Adding HCPC to NSR recovers competitive answer accuracy
 out-of-distribution while format compliance stays near zero.
-Accuracy returns; format does not. This dissociation is the
-central finding of the paper. Format compliance and answer accuracy
-are distinct behavioral channels in chart RLVR, and they can be
-manipulated independently. The broader implication is not just
-that NSR fails here, but that reward channels in this setting are
-separable and should be designed with that separability in mind.
-A training objective that treats them as one signal will, at best,
-trade one off against the other; at worst, disrupt both while
-appearing to recover neither. Our contributions are as follows:
+Accuracy returns; format does not. This dissociation is the central
+finding of the paper: format compliance and answer accuracy are
+distinct behavioral channels in chart RLVR, and they can be
+manipulated independently. The implication is that reward channels
+in this setting are separable and should be designed with that
+separability in mind. Our contributions are as follows:
 \begin{enumerate}
     \item \textbf{HCPC (\S\ref{sec:hcpc}, \S\ref{sec:hcpc_grpo}).}
     A cross-rollout bonus applying level-specific pressure to table
