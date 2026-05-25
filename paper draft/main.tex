@@ -31,7 +31,7 @@ A Cross-Rollout Bonus and a Negative-Sample Caveat}
 Chart question answering requires a model to parse the visual
 structure, extract the relevant data, and reason to a final answer. Whether these components respond independently to different training
 signals, however, is not well understood.
-We study this with two opposing interventions: \textbf{HCPC}, a
+We study this with two opposing interventions: Hierarchical Correct-Path Consistency (\textbf{HCPC}), a
 cross-rollout bonus rewarding consistent extraction and diverse
 reasoning among correct responses, and Negative Sample Reinforcement
 (\textbf{NSR}; \citealp{zhu2025nsr}), which removes gradient signal
@@ -57,10 +57,11 @@ to richer reward landscapes.
 \end{abstract}
 
 
-
 \section{Introduction}
 \label{sec:intro}
-
+Recent chart-reasoning vision-language models are trained via
+reinforcement learning with verifiable rewards (RLVR), typically using GRPO with
+multi-component rewards.
 Answering questions about charts requires two sequential operations
 that are rarely treated as distinct \citep{chartrvr2025,chartr12025,bigcharts2025,distill-vcr-2025}. A model must first extract the
 underlying data table from the visual layout, then reason over that
@@ -114,36 +115,33 @@ that NSR fails here, but that reward channels in this setting are
 separable and should be designed with that separability in mind.
 A training objective that treats them as one signal will, at best,
 trade one off against the other; at worst, disrupt both while
-appearing to recover neither.
-
-\paragraph{Contributions.}
-
+appearing to recover neither. Our contributions are as follows:
 \begin{enumerate}
     \item \textbf{HCPC (\S\ref{sec:hcpc}, \S\ref{sec:hcpc_grpo}).}
     A cross-rollout bonus applying level-specific pressure to table
     extraction and reasoning separately. HCPC improves robustness
     across multi-sample and table-dependence metrics while
-    maintaining parity with the Chart-RVR baseline on single-sample
+    maintaining parity with the GRPO baseline on single-sample
     accuracy.
-
     \item \textbf{NSR transferability analysis
-    (\S\ref{sec:nsr_collapse}).} Porting NSR unchanged into chart
-    RLVR collapses format compliance without accuracy gain. Per-tag
-    analysis identifies reward-signal starvation as the mechanism,
-    localized to structural tags the base model does not emit
-    unprompted.
-
+    (\S\ref{sec:nsr_collapse}).} Porting NSR unchanged into our
+    multi-component chart-reasoning training pipeline collapses
+    format compliance without accuracy gain. Per-tag analysis
+    identifies reward-signal starvation as the mechanism, localized
+    to structural tags the base model does not emit unprompted.
     \item \textbf{Separability of format and accuracy
-    (\S\ref{sec:dissociation}).} NSR+HCPC recovers competitive
-    out-of-distribution accuracy at near-zero format compliance,
-    providing direct evidence that the two are distinct behavioral
+    (\S\ref{sec:dissociation}).} Adding HCPC to NSR recovers
+    out-of-distribution accuracy all the way back to the GRPO
+    baseline, while format compliance barely moves from NSR's
+    collapsed level. One channel snaps back; the other does not.
+    This is direct evidence that the two are distinct behavioral
     channels that respond independently to training interventions.
     We argue reward components in chart RLVR should be designed
     with this separability explicit.
 \end{enumerate}
 
 
-\section{Background}
+\section{Related Work}
 \label{sec:background}
 
 \paragraph{Chart question answering.}
