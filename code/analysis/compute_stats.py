@@ -1,4 +1,4 @@
-"""Statistics for the EMNLP paper.
+"""Statistics over per-sample evaluation outputs.
 
 Reads per_sample.jsonl from final_outputs/ and prints:
   - Wilson 95% CIs for Pass@1 and Pass@4 per method
@@ -177,7 +177,7 @@ for bench, runs in GROUPS.items():
 
 
 # ============================================================================
-# Paired-bootstrap CIs + McNemar p-values (the table the paper needs)
+# Paired-bootstrap CIs + McNemar p-values
 # ============================================================================
 for bench, runs in GROUPS.items():
     section(f"{bench}: Paired bootstrap CIs + McNemar p (10K resamples)")
@@ -252,7 +252,6 @@ for name, d in data.items():
 # Honest coherence: P(answer correct | per-rollout)
 # Build a real conditional from per_sample.jsonl by computing
 # P(answer_i correct | rollout_i has well-formed table) per method.
-# This is the metric the paper draft prose actually describes.
 # ============================================================================
 section("Conditional accuracy: P(answer correct | table tag present and parsed)")
 for bench, runs in GROUPS.items():

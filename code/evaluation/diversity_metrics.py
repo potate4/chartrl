@@ -96,7 +96,7 @@ def compute_diversity_metrics(
     filter_correct: bool = True,
 ) -> Dict[str, float]:
     """
-    Compute the cross-rollout diversity metrics reported in the paper:
+    Cross-rollout diversity metrics:
         C_table : mean pairwise table similarity (among correct rollouts)
         D_reason: 1 - mean pairwise reasoning similarity (among correct rollouts)
     """

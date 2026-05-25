@@ -1,14 +1,14 @@
-"""Predefined experiment configurations matching the paper's main results.
+"""Predefined experiment configurations.
 
-Five configurations cover the rows of Table 1:
+Five configurations:
     Base         : evaluation only, no training
-    GRPO         : Chart-RVR backbone with GRPO advantage rule
+    GRPO         : base reward backbone with GRPO advantage rule
     GRPO+HCPC    : GRPO with the HCPC cross-rollout bonus
-    NSR          : Chart-RVR backbone with NSR advantage rule
+    NSR          : base reward backbone with NSR advantage rule
     NSR+HCPC     : NSR with the HCPC cross-rollout bonus
 
-All training runs share the hyperparameters listed in the paper's
-Experimental Setup; only `policy_method` and `use_hcpc` differ.
+All training runs share the same hyperparameters; only `policy_method`
+and `use_hcpc` differ.
 """
 
 from .base import TrainingConfig, RewardConfig, CheckpointConfig
@@ -16,10 +16,9 @@ from typing import Dict
 
 
 def _make_reward_config(use_hcpc: bool, use_d_reason: bool = True) -> RewardConfig:
-    """RewardConfig matching the paper:
-       Four base components active: format, accuracy, table, chart-type.
+    """Four base components active: format, accuracy, table, chart-type.
        Length, token-count, and process-conformity are disabled.
-       HCPC: w_table=2.0, w_reason=1.5, tau=0.8.
+       HCPC: w_type=1.0, w_table=2.0, w_reason=1.5, tau=0.8.
        For the table-only ablation, pass use_d_reason=False."""
     return RewardConfig(
         use_hcpc=use_hcpc,
@@ -30,6 +29,7 @@ def _make_reward_config(use_hcpc: bool, use_d_reason: bool = True) -> RewardConf
         use_length_reward=False,
         use_token_count_reward=False,
         use_process_reward=False,
+        w_type=1.0,
         w_table=2.0,
         w_reason=1.5,
         table_sim_threshold=0.8,
@@ -37,19 +37,19 @@ def _make_reward_config(use_hcpc: bool, use_d_reason: bool = True) -> RewardConf
     )
 
 
-# Hyperparameters shared by all training runs. Matches Section 4.1 of the paper.
+# Hyperparameters shared by all training runs.
 _SHARED = dict(
     seed=2026,
-    learning_rate=1e-6,          # paper value
+    learning_rate=1e-6,
     gradient_accumulation_steps=2,
     batch_size=2,                # effective batch size = 4
     num_epochs=2,                # ~2000 optimization steps on a 1K-sample subset
     warmup_ratio=None,
     weight_decay=None,
-    kl_coef=None,                # no KL penalty (paper)
+    kl_coef=None,
     beta=0.0,
-    num_generations=4,           # K=4 rollouts per prompt
-    temperature=1.0,             # training temperature
+    num_generations=4,
+    temperature=0.8,
     top_p=1.0,
     reward_threshold=0.5,        # NSR threshold = 0.5 * R_max
     remove_unused_columns=False,

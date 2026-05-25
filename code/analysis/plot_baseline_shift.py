@@ -97,9 +97,8 @@ ax.legend(loc="lower right", handlelength=2.0,
           borderpad=0.3, labelspacing=0.25)
 plt.tight_layout(pad=0.2)
 
-OUT = Path(__file__).resolve().parents[2]
-plt.savefig(OUT / "paper draft"   / "fig_baseline_shift.pdf",
+OUT = Path(__file__).resolve().parent / "figures"
+OUT.mkdir(parents=True, exist_ok=True)
+plt.savefig(OUT / "fig_baseline_shift.pdf",
             bbox_inches="tight", pad_inches=0.02)
-plt.savefig(OUT / "paper draft 2" / "fig_baseline_shift.pdf",
-            bbox_inches="tight", pad_inches=0.02)
-print(f"saved figures to both paper draft folders")
+print(f"saved figure to {OUT}")

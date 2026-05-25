@@ -1,4 +1,4 @@
-"""Generate Pass@K curve figures for the paper (ChartQA + ChartFC)."""
+"""Generate Pass@K curve figures (ChartQA + ChartFC)."""
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from pathlib import Path
@@ -45,7 +45,8 @@ mpl.rcParams.update({
     "ps.fonttype": 42,
 })
 
-OUT = Path(__file__).resolve().parents[2] / "paper draft"
+OUT = Path(__file__).resolve().parent / "figures"
+OUT.mkdir(parents=True, exist_ok=True)
 
 
 def make_fig(data, ylim, outname, legend_loc="lower right"):

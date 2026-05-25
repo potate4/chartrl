@@ -29,8 +29,7 @@ class CheckpointConfig:
 class RewardConfig:
     """Reward function weights and settings."""
 
-    # Base rewards (from Chart-RVR). The four components active in the
-    # paper's reported setup are format, accuracy, table, and chart-type;
+    # Base rewards: format, accuracy, table, and chart-type are active;
     # length, token-count, and process-conformity are off by default.
     use_format_reward: bool = True
     use_accuracy_reward: bool = True
@@ -40,11 +39,14 @@ class RewardConfig:
     use_token_count_reward: bool = False
     use_process_reward: bool = False
 
-    # HCPC reward settings (paper: B_HCPC = (|G+|/K) * (w_table*C_table + w_reason*D_reason))
+    # HCPC bonus:
+    #   B_cons = (|G+|/K) * (w_type*C_type + w_table*C_table)
+    #   R_HCPC(o_i) = B_cons + w_reason*u_i   for o_i in G+
     use_hcpc: bool = True
+    w_type: float = 1.0
     w_table: float = 2.0
     w_reason: float = 1.5
-    table_sim_threshold: float = 0.8  # tau, paper value
+    table_sim_threshold: float = 0.8
     # Ablation: set to False to drop the D_reason term and run HCPC = C_table only.
     use_d_reason: bool = True
 
@@ -76,7 +78,7 @@ class TrainingConfig:
     num_epochs: int = 4
     batch_size: int = 2
     gradient_accumulation_steps: int = 4
-    learning_rate: float = 1e-6  # paper value
+    learning_rate: float = 1e-6
     warmup_ratio: Optional[float] = 0.03
     weight_decay: Optional[float] = 0.01
     max_grad_norm: float = 1.0
@@ -93,7 +95,7 @@ class TrainingConfig:
     lambda_psr: float = 0.1  # For W-REINFORCE
     reward_threshold: float = 0.5  # For NSR/W-REINFORCE correct/wrong split
 
-    # KL penalty (paper: no KL penalty applied; beta_KL = 0)
+    # No KL penalty: beta_KL = 0
     kl_coef: Optional[float] = None
     beta: float = 0.0
 

@@ -7,7 +7,7 @@ bonus into the total per-rollout reward used by the trainer:
 
 where B_HCPC is the group-level HCPC bonus (zero unless |G+| >= 2) and
 1[o_i in G+] is the indicator that rollout i is in the correct-path subgroup.
-HCPC details are in hcpc_reward.py and the paper's HCPC section.
+HCPC details are in hcpc_reward.py.
 """
 
 from typing import List, Dict, Any
@@ -33,6 +33,7 @@ class RewardAggregator:
         self,
         use_hcpc: bool = True,
         # HCPC weights
+        w_type: float = 1.0,
         w_table: float = 2.0,
         w_reason: float = 1.5,
         table_sim_threshold: float = 0.8,
@@ -58,6 +59,7 @@ class RewardAggregator:
         self.use_process_reward = use_process_reward
 
         self.hcpc_computer = HCPCComputer(
+            w_type=w_type,
             w_table=w_table,
             w_reason=w_reason,
             table_sim_threshold=table_sim_threshold,
@@ -103,6 +105,7 @@ class RewardAggregator:
 
             if hcpc_result is not None:
                 breakdown.update({
+                    "hcpc_c_type": hcpc_result.c_type,
                     "hcpc_c_table": hcpc_result.c_table,
                     "hcpc_d_reason": hcpc_result.d_reason,
                     "hcpc_correct_rate": hcpc_result.correct_rate,
@@ -138,6 +141,7 @@ class RewardAggregator:
 
         return cls(
             use_hcpc=config.rewards.use_hcpc,
+            w_type=config.rewards.w_type,
             w_table=config.rewards.w_table,
             w_reason=config.rewards.w_reason,
             table_sim_threshold=config.rewards.table_sim_threshold,
