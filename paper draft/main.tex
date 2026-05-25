@@ -741,17 +741,15 @@ our highest-priority follow-up.
 \section{Reproducibility}
 \label{sec:appendix}
 
-All training and evaluation code, the four trained LoRA adapters, and
-per-sample evaluation outputs (for the 500-sample test slices of
-ChartQA and ChartFC, including raw rollout text) are released as
-supplementary material. Hyperparameters and the exact reward
-configuration used for every run are listed in the released training
-configs (\texttt{configs/experiment.py}); the expected output schema
-is in \S\ref{sec:prompt}. Pass@$K$ uses the unbiased estimator of
-\citet{passatk}. Cross-rollout similarities use MiniLM-L6 embeddings.
-Paired-bootstrap CIs use $n_{\text{boot}}{=}10{,}000$ resamples;
-McNemar tests use the two-sided exact binomial form on the discordant
-pair.
+Training and evaluation code is included with the submission.
+Hyperparameters and the exact reward configuration used for every
+run are specified in the training configs
+(\texttt{configs/experiment.py}); the expected output schema is in
+\S\ref{sec:prompt}. Pass@$K$ uses the unbiased estimator of
+\citet{passatk}. Cross-rollout similarities use MiniLM-L6
+embeddings. Paired-bootstrap CIs use
+$n_{\text{boot}}{=}10{,}000$ resamples; McNemar tests use the
+two-sided exact binomial form on the discordant pair.
 
 \section{Prompt Template and Expected Output Format}
 \label{sec:prompt}
@@ -833,10 +831,7 @@ two pairwise gaps reach $p < 0.05$:
 \textsc{Base} model are significant on Pass@1 ($p<0.05$). All other
 pairs, including the headline \textsc{GRPO} vs.\ \textsc{GRPO+HCPC}
 comparison ($-0.8$\,pp on Pass@1, $p{=}0.80$; $+1.2$\,pp on Pass@4,
-$p{=}0.52$), do not reach significance at $\alpha{=}0.05$. The full
-table is reproducible from the released analysis script
-(\texttt{analysis/paper\_stats.py}) on the supplied per-sample
-outputs.
+$p{=}0.52$), do not reach significance at $\alpha{=}0.05$.
 
 \section{HCPC Firing-Rate Distribution}
 \label{sec:firing}
