@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  25 MAY 2026 14:04
+This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  25 MAY 2026 14:14
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1177,9 +1177,6 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 819.
 
 
-Package lineno Warning: Line number reference failed, re-run to get it right.
-
-
 Package natbib Warning: There were undefined citations.
 
 
@@ -1203,7 +1200,7 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 Here is how much of TeX's memory you used:
  15003 strings out of 403197
  233846 string characters out of 5455936
- 697728 words of memory out of 5000000
+ 697740 words of memory out of 5000000
  43311 multiletter control sequences out of 15000+600000
  683114 words of font info for 120 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
