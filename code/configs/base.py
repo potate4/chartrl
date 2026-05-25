@@ -29,14 +29,16 @@ class CheckpointConfig:
 class RewardConfig:
     """Reward function weights and settings."""
 
-    # Base rewards (from Chart-RVR)
+    # Base rewards (from Chart-RVR). The four components active in the
+    # paper's reported setup are format, accuracy, table, and chart-type;
+    # length, token-count, and process-conformity are off by default.
     use_format_reward: bool = True
     use_accuracy_reward: bool = True
-    use_length_reward: bool = True
-    use_token_count_reward: bool = True
-    use_chart_type_reward: bool = True
     use_table_reward: bool = True
-    use_process_reward: bool = True
+    use_chart_type_reward: bool = True
+    use_length_reward: bool = False
+    use_token_count_reward: bool = False
+    use_process_reward: bool = False
 
     # HCPC reward settings (paper: B_HCPC = (|G+|/K) * (w_table*C_table + w_reason*D_reason))
     use_hcpc: bool = True
@@ -74,7 +76,7 @@ class TrainingConfig:
     num_epochs: int = 4
     batch_size: int = 2
     gradient_accumulation_steps: int = 4
-    learning_rate: float = 1e-5  # paper value
+    learning_rate: float = 1e-6  # paper value
     warmup_ratio: Optional[float] = 0.03
     weight_decay: Optional[float] = 0.01
     max_grad_norm: float = 1.0

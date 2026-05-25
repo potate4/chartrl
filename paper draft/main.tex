@@ -279,20 +279,22 @@ format \texttt{<think><type/>~<table/>~\textit{reasoning}</think> } \
 Four components are active: $R_{\text{fmt}}$ (structural compliance
 with the required XML template), $R_{\text{acc}}$ (answer correctness
 against $y^*$), $R_{\text{tbl}}$ (table extraction quality assessed
-by partial structural alignment against $T^*$), and $R_{\text{len}}$
-(rationale length and step count). Their sum gives the base reward:
+by partial structural alignment against $T^*$), and $R_{\text{type}}$
+(exact match of the predicted chart type against the ground-truth
+type $c^*$). Their sum gives the base reward:
 \[
   R_{\text{base}}(o_i) = R_{\text{fmt}} + R_{\text{acc}}
-                       + R_{\text{tbl}} + R_{\text{len}}.
+                       + R_{\text{tbl}} + R_{\text{type}}.
 \]
-Two Chart-RVR components are inactive in our setup: a chart-type
-reward ($R_{\text{type}}$), which returns zero because the training
-dataset provides no ground-truth type labels, and a token-count
-reward ($R_{\text{tok}}$), which we exclude because the base model
-prepends a native reasoning block that produces duplicate tags.
+Three Chart-RVR components are inactive in our setup. A length
+reward $R_{\text{len}}$ (encouraging mid-range rationale lengths) and
+a token-count reward $R_{\text{tok}}$ (firing only when each required
+tag appears exactly once) are both disabled because the base model
+prepends a native reasoning block that yields duplicate tags and
+unconstrained length, making these signals noisy on our setup.
 Chart-RVR also defines a process reward measuring similarity to the
-ground-truth reasoning chain; we disable it as it conflicts with
-$D_{\text{reason}}$'s diversity objective.
+ground-truth reasoning chain; we disable it because it conflicts
+with $D_{\text{reason}}$'s diversity objective.
 
 \subsection{HCPC: Hierarchical Correct-Path Consistency}
 \label{sec:hcpc}
@@ -318,7 +320,7 @@ with all required tags and a valid table block.
 
 \textbf{Gate 2 (table fidelity).} The extracted table $\hat{T}_i$
 must satisfy $\mathrm{sim}(\hat{T}_i, T^*) \ge \delta$ with
-$\delta{=}0.6$, using cosine similarity over MiniLM-L6
+$\delta{=}0.8$, using cosine similarity over MiniLM-L6
 embeddings~\citep{minilm} on serialized table strings. This excludes
 rollouts that reach the correct answer from a misread table.
 
@@ -447,7 +449,6 @@ advantages on rollouts with $R_i \ge \theta$ (\S\ref{sec:nsr}).
 
 \subsection{Evaluation Protocol}
 \label{sec:eval_protocol}
-\label{sec:metrics}
 
 Evaluation samples 4 generations per test prompt at temperature 0.8
 and top-$p{=}0.95$ on a 500-sample test slice of each benchmark.
@@ -724,7 +725,7 @@ the channel-separability claim concrete.
 We introduced HCPC, a cross-rollout bonus that preserves
 correct-path diversity in chart RLVR by conditioning on ground-truth
 correctness and rewarding consistent extraction together with diverse
-reasoning. On Qwen2.5-VL-3B, GRPO+HCPC matches the Chart-RVR baseline
+reasoning. On Qwen2.5-VL-3B, GRPO+HCPC matches the GRPO baseline
 on Pass@1 and produces consistently more robust correct groups
 ($40.8\%$ all-4-correct vs.\ $38.6\%$; Pass@4 $0.828$ vs.\ $0.816$;
 $\Delta_{\text{tbl}}$ $+0.264$ vs.\ $+0.178$). Comparing against

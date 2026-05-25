@@ -17,12 +17,18 @@ from typing import Dict
 
 def _make_reward_config(use_hcpc: bool) -> RewardConfig:
     """RewardConfig matching the paper:
-       HCPC: w_table=2.0, w_reason=1.5, tau=0.8.
-       When HCPC is on, the Chart-RVR process-conformity reward is disabled
-       (HCPC's D_reason rewards diversity, in tension with process-conformity)."""
+       Four base components active: format, accuracy, table, chart-type.
+       Length, token-count, and process-conformity are disabled.
+       HCPC: w_table=2.0, w_reason=1.5, tau=0.8."""
     return RewardConfig(
         use_hcpc=use_hcpc,
-        use_process_reward=not use_hcpc,
+        use_format_reward=True,
+        use_accuracy_reward=True,
+        use_table_reward=True,
+        use_chart_type_reward=True,
+        use_length_reward=False,
+        use_token_count_reward=False,
+        use_process_reward=False,
         w_table=2.0,
         w_reason=1.5,
         table_sim_threshold=0.8,
@@ -32,7 +38,7 @@ def _make_reward_config(use_hcpc: bool) -> RewardConfig:
 # Hyperparameters shared by all training runs. Matches Section 4.1 of the paper.
 _SHARED = dict(
     seed=2026,
-    learning_rate=1e-5,          # paper value
+    learning_rate=1e-6,          # paper value
     gradient_accumulation_steps=2,
     batch_size=2,                # effective batch size = 4
     num_epochs=2,                # ~2000 optimization steps on a 1K-sample subset
