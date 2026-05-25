@@ -722,25 +722,21 @@ the channel-separability claim concrete.
 
 \section{Conclusion}
 
-We introduced HCPC, a cross-rollout bonus that preserves
-correct-path diversity in chart RLVR by conditioning on ground-truth
-correctness and rewarding consistent extraction together with diverse
-reasoning. On Qwen2.5-VL-3B, GRPO+HCPC matches the GRPO baseline
-on Pass@1 and produces consistently more robust correct groups
-($40.8\%$ all-4-correct vs.\ $38.6\%$; Pass@4 $0.828$ vs.\ $0.816$;
-$\Delta_{\text{tbl}}$ $+0.264$ vs.\ $+0.178$). Comparing against
-Negative-Sample Reinforcement, an alternative diversity-preservation
-recipe imported from text-only math RLVR, we find that directly porting unchanged NSR collapses format compliance in chart RLVR ($96.8\%$ to
-$31.6\%$) and significantly hurts OOD Pass@4. This happens because structural
-rewards saturate quickly enough for well-formed rollouts to cross
-NSR's correctness threshold regardless of answer quality. Adding HCPC
-on top of NSR recovers GRPO-level OOD accuracy at near-zero format
-compliance via a baseline-shift mechanism in the GRPO advantage. This provides
-empirical evidence that format and answer accuracy are separable
-behavioral channels of the trained policy. The takeaway for
-practitioners: advantage-rule asymmetries developed for single-reward
-source domains can interact destructively with reward components that were absent in the source domain. Therefore, the shape of the multi-component
-reward mixture deserves to be a first-class consideration when
+We introduced HCPC, a cross-rollout bonus that rewards consistent
+extraction and diverse reasoning on the correct-path subset of a
+group. On top of GRPO it produces more robust correct groups and
+stronger table grounding without sacrificing Pass@1. Comparing against
+NSR, a diversity-preservation recipe imported from text-only math
+RLVR, we find that porting it unchanged into chart RLVR collapses
+format compliance: structural rewards saturate fast enough for
+well-formed rollouts to cross NSR's threshold regardless of answer
+quality. HCPC on top of NSR recovers GRPO-level OOD accuracy at
+near-zero format compliance, providing direct evidence that format
+and answer accuracy are separable channels of the trained policy.
+The takeaway for practitioners: advantage-rule asymmetries developed
+for single-reward source domains can interact destructively with
+reward components that are new in the target domain. The shape of the
+multi-component reward mixture deserves first-class consideration when
 porting RLVR recipes across modalities.
 
 \section*{Limitations}
