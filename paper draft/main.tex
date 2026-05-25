@@ -18,7 +18,21 @@
 \usepackage{multirow}
 \usepackage{xcolor}
 \usepackage{url}
+\usepackage{fvextra}
 
+% Code-block style for rollout examples in the qualitative appendix.
+\fvset{
+  fontsize=\footnotesize,
+  frame=single,
+  framerule=0.3pt,
+  framesep=3pt,
+  xleftmargin=4pt,
+  xrightmargin=4pt,
+  breaklines=true,
+  breakanywhere=true,
+  breaksymbolleft={\textcolor{gray}{$\hookrightarrow$}\,},
+  breaksymbolright={},
+}
 \title{Reward-Channel Separability in Multimodal Chart RLVR:\\
 A Cross-Rollout Bonus and a Negative-Sample Caveat}
 
@@ -217,7 +231,6 @@ not a side note.
 
 \section{Methodology}
 \label{sec:method}
-
 \begin{figure*}[t]
 \centering
 \includegraphics[width=0.95\textwidth]{fig_pipeline.pdf}
@@ -230,13 +243,11 @@ advantage estimators over the same per-rollout reward: standard
 GRPO and NSR, which masks the gradient of correct rollouts.}
 \label{fig:pipeline}
 \end{figure*}
-
 We build on Chart-RVR~\citep{chartrvr2025} as a reward backbone and
 introduce two interventions: HCPC (Hierarchical Correct-Path
 Consistency), a group-level bonus rewarding level-specific structure
 among correct rollouts, and NSR~\citep{zhu2025nsr}, a contrastive
 gradient-masking strategy that we port to chart RLVR as a diagnostic.
-Figure~\ref{fig:pipeline} gives the overall pipeline.
 
 \subsection{Preliminaries: Chart-RVR Reward Backbone}
 \label{sec:base}
@@ -771,7 +782,6 @@ estimator of \citet{passatk}. Cross-rollout similarities use
 MiniLM-L6 embeddings. Paired-bootstrap CIs use
 $n_{\text{boot}}{=}10{,}000$ resamples; McNemar tests use the
 two-sided exact binomial form on the discordant pair.
-
 \section{Qualitative Example: Format Collapse in Action}
 \label{sec:qualitative}
 
@@ -781,26 +791,24 @@ recovery, on a single ChartQA sample where the question is
 truth $y^* = $ \texttt{4}. We show rollout 0 from three methods.
 
 \paragraph{GRPO (correct, well-formed).}
-\begin{quote}\footnotesize\ttfamily
-<{}think><{}type>pie</type><{}table>\{\dots,~"rows":~[["Asians","63"],\dots]\}</table>
-<{}step-1> The chart is a pie chart\dots
-<{}step-4> Based on the information provided, there are four distinct categories\dots
+\begin{Verbatim}
+<think><type>pie</type><table>{..., "rows": [["Asians","63"],...]}</table>
+<step-1> The chart is a pie chart...
+<step-4> Based on the information provided, there are four distinct categories...
 </think>
-<{}answer>4</answer>
-\end{quote}
+<answer>4</answer>
+\end{Verbatim}
 
 \paragraph{NSR (format-collapsed; arrives at right reasoning but
 wrong answer surface form).}
-\begin{quote}\footnotesize\ttfamily
-<{}think>First, I'll identify the type of chart and the underlying
-data table\dots
-<{}step-1> The chart shows four categories: Asians, Whites, Blacks,
-and Hispanics. \dots
-Final answer:\\
-Four\\
+\begin{Verbatim}
+<think>First, I'll identify the type of chart and the underlying data table...
+<step-1> The chart shows four categories: Asians, Whites, Blacks, and Hispanics. ...
+Final answer:
+Four
 </think>
-<{}answer>Four</answer>
-\end{quote}
+<answer>Four</answer>
+\end{Verbatim}
 NSR's rollout contains no \texttt{<table>} tag, no \texttt{<type>}
 tag, and emits the reasoning steps inline rather than as structured
 items. The answer is also expressed in word form (``Four'') rather
@@ -810,13 +818,13 @@ right.
 
 \paragraph{NSR+HCPC (table tag recovered; answer still in word
 form).}
-\begin{quote}\footnotesize\ttfamily
-<{}think><{}type>bar</type><{}table>\{"columns":~["Country","Bar~Color"],"rows":~[["Asians","\dots"],\dots]\}</table>
-<{}step-1>From the chart\dots
-<{}step-3>\dots there are four distinct categories.
+\begin{Verbatim}
+<think><type>bar</type><table>{"columns": ["Country","Bar Color"], "rows": [["Asians","..."],...]}</table>
+<step-1>From the chart...
+<step-3>... there are four distinct categories.
 </think>
-<{}answer>Four</answer>
-\end{quote}
+<answer>Four</answer>
+\end{Verbatim}
 HCPC's group-level bonus on $C_{\text{table}}$ pulls NSR's policy
 back toward emitting a \texttt{<table>} tag (table fraction
 $72.2\%\!\to\!83.2\%$ on ChartQA, Table~\ref{tab:tags}). The chart
