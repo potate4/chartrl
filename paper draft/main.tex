@@ -142,69 +142,78 @@ appearing to recover neither. Our contributions are as follows:
 
 
 \section{Related Work}
-\label{sec:background}
+\label{sec:related}
 
-\paragraph{Chart question answering.}
-Chart question answering maps a chart image $I$ and a question $q$ to
-an answer $a$~\citep{chartqa,chartfc}. Each response decomposes into a
-trajectory $\tau = (\tau_e, \tau_r)$: $\tau_e$ extracts a structured
-table $\hat{T}$ from the visual layout; $\tau_r$ derives $a$ from
-$\hat{T}$. The two phases differ in correctness structure: $\tau_e$
-has a unique target $T^*$, while $\tau_r$ admits many valid paths to
-the same $a$. We use ChartQA~\citep{chartqa} (in-distribution) and
-ChartFC~\citep{chartfc} (OOD) as our evaluation benchmarks; details in
-\S\ref{sec:eval_protocol}.
+\paragraph{Chart reasoning with RLVR.}
+Most current chart-reasoning VLMs are trained with GRPO and
+multi-component verifiable rewards. Chart-RVR \citep{chartrvr2025}
+set the template, combining rewards for format, chart-type
+identification, table reconstruction, process conformity, and answer
+accuracy. Other recent work extends this in different directions.
+BIGCHARTS-R1 \citep{bigcharts2025} and Chart-R1 \citep{chartr12025}
+push reasoning-trace supervision and chain-of-thought distillation;
+ChartGemma \citep{chartgemma} and ChartInstruct \citep{chartinstruct}
+curate richer training data; ChartPoint \citep{chartpoint2025} adds
+grounding reflection. Other work wraps base models in agentic
+pipelines instead of modifying training, including ChartAgent
+\citep{chartagent2025}, VProChart \citep{vprochart2025}, and
+ChartCitor \citep{chartcitor2025}. Our work sits next to all of these
+rather than competing with them. We keep Chart-RVR's reward backbone
+unchanged and ask a different question: how the choice of advantage
+rule and a cross-rollout reward interact with that backbone. The
+benchmarks and pipeline are standard; what is new is the lens.
 
-\paragraph{Reinforcement learning with verifiable rewards.}
-RLVR trains a policy $\pi_\theta$ to maximize an expected reward
-$r(\tau)$ computed programmatically from a verifiable criterion,
-subject to a KL penalty anchoring the policy to a frozen reference
-$\pi_{\text{ref}}$:
-\begin{align*}
-\mathcal{J}(\theta) &= \mathbb{E}_{\tau \sim \pi_\theta(\cdot \mid x)}
-  \bigl[r(\tau)\bigr] \\
-  &\quad - \beta\, D_{\text{KL}}\!\bigl(\pi_\theta(\cdot\mid x)
-  \;\|\;\pi_{\text{ref}}(\cdot\mid x)\bigr).
-\end{align*}
-Group Relative Policy Optimization~\citep{deepseekmath} approximates
-the policy gradient by sampling $K$ rollouts per prompt and normalizing
-rewards within the group; the group mean acts as a self-contained
-baseline, removing the need for a learned critic (full formula in
-\S\ref{sec:setup}). In chart RLVR, structural reward components
-saturate early while answer accuracy does not~\citep{chartrvr2025}.
-This asymmetry is the reward-signal mismatch we study.
+\paragraph{Advantage-rule variants in RLVR.}
+GRPO \citep{deepseekmath} treats correct and incorrect rollouts the
+same way, normalizing their rewards within a group.
+\citet{zhu2025nsr} break this signal into two pieces, positive-sample
+and negative-sample reinforcement (PSR and NSR), and show that
+training on NSR alone (where correct rollouts have their gradient
+masked and only incorrect ones are penalized) matches or beats GRPO
+on math benchmarks. Several related papers study RLVR in other
+settings: \citet{su2025crossing} extend verifiable rewards across
+domains, \citet{wen2025rlvr} argue RLVR implicitly incentivizes
+correct reasoning chains, \citet{rlvmr2025} introduce verifiable
+meta-reasoning rewards, and \citet{koksal2025fewshot} apply RLVR
+few-shot to satellite VLMs. All of these assume a single scalar
+reward, which is the setting NSR's rule was designed for. We are the
+first to port NSR into a multi-component, multimodal reward
+landscape, and to identify a clean failure mode there. Structural
+rewards saturate early, which pushes well-formed but answer-wrong
+rollouts above NSR's correctness threshold. NSR then masks them,
+leaving the optimizer with no positive gradient on the structural
+side.
 
-\paragraph{Chart-RVR backbone.} We build on the multi-reward GRPO
-pipeline of \citet{chartrvr2025}. The structural format reward
-$R_{\text{fmt}}$ (partial-credit, up to 1.4) reaches near-ceiling
-values well before answer accuracy does. Format adherence is therefore
-a \emph{learned} behavior reinforced by a dedicated reward, not a
-byproduct of answer correctness. The exact set of reward components
-active in our setup is described in \S\ref{sec:base}.
+\paragraph{Group-level signals and rollout-set diversity.}
+Self-consistency \citep{wang2022sc} is the closest existing
+cross-rollout signal, but it operates at inference time, aggregating
+$K$ samples by majority vote. The group structure there serves
+calibration, not training. ETTRL \citep{ettrl2025} preserves
+diversity at test time through entropy control. HCPC differs from
+both in three concrete ways. It acts at training time, as a reward
+bonus rather than an aggregation rule or loss term. It is anchored to
+ground-truth correctness rather than majority agreement, so a group
+of consistently wrong rollouts gets no bonus. And it applies
+different objectives at different levels: consistency for table
+extraction, where there is one right answer, and diversity for
+reasoning, where many paths reach the same answer. We use Pass@$K$
+\citep{passatk} as our diagnostic for solution coverage. HCPC's
+level-specific design targets exactly the higher-$K$ regime where
+symmetric advantage rules fall behind.
 
-\paragraph{PSR/NSR decomposition and transfer challenge.}
-\citet{zhu2025nsr} decompose the REINFORCE objective into
-$\mathcal{L}_{\text{RLVR}} = \mathcal{L}_{\text{PSR}} +
-\mathcal{L}_{\text{NSR}}$ and show that training on
-$\mathcal{L}_{\text{NSR}}$ alone matches or surpasses GRPO at
-Pass@$K$ on math benchmarks. Their rule, however, assumes a single
-scalar reward. In a multi-reward setting, NSR's skip-correct rule
-masks rollouts that are well-formed but answer-wrong, removing
-positive pressure on the structural components the optimizer needs
-most.
-
-\paragraph{Cross-rollout signals and rollout-set diversity.}
-Group-level training signals condition on $\{o_1,\dots,o_K\}$ jointly,
-exploiting within-group variation rather than treating each rollout
-independently. The inference-time analogue
-is self-consistency~\citep{wang2022sc}, which aggregates $K$ sampled
-answers by majority vote; the group structure there serves calibration,
-not gradient computation. Pass@$K$~\citep{passatk} evaluates solution-set coverage: a policy
-that produces a single stereotyped correct path scores high at $K{=}1$
-but plateaus for $K > 1$, making it a more sensitive diagnostic for
-diversity than Pass@1 alone. HCPC (\S\ref{sec:hcpc}) is designed to
-preserve this coverage by conditioning its group-level bonus on
-ground-truth correctness rather than majority agreement.
+\paragraph{Format and accuracy as separable behaviors.}
+The dissociation we find, where format compliance and answer
+accuracy move in opposite directions under the same training
+intervention, has no direct precedent in chart RLVR that we are
+aware of. The closest adjacent observation is that chain-of-thought
+prompting can degrade VLM accuracy in chart settings
+\citep{chartrvr2025}, which suggests structured reasoning and answer
+correctness already trade off through some channel before any RL
+training. Our result is stronger than a tradeoff. It is a clean
+independence: NSR+HCPC recovers GRPO-level accuracy while format
+compliance stays at NSR's collapsed level. This makes
+reward-component independence a real design choice for VLM RLVR,
+not a side note.
 
 \section{Method}
 \label{sec:hcpc}
