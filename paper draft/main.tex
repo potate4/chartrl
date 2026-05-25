@@ -37,13 +37,16 @@ reasoning among correct responses, and Negative Sample Reinforcement
 (\textbf{NSR}; \citealp{zhu2025nsr}), which removes gradient signal
 from correct responses entirely.
 
+We evaluate on ChartQA (in-distribution) and the held-out ChartFC
+benchmark, which is excluded from training and serves as our
+out-of-distribution (OOD) test.
 NSR collapses format compliance from 96.8\% to 31.6\% on ChartQA
 with no gain in answer accuracy over GRPO.
 Per-tag analysis traces the failure to the structural tags reward
 training had to teach, pointing to reward-signal starvation as the
 cause.
-HCPC achieves the best Pass@4 (0.828 vs.\ 0.816 for GRPO) but
-degrades out-of-distribution, where reliance on structured extraction
+HCPC achieves the best Pass@4 on ChartQA (0.828 vs.\ 0.816 for GRPO)
+but degrades on ChartFC, where reliance on structured extraction
 becomes a liability.
 Combining the two, NSR+HCPC recovers GRPO-level accuracy on ChartFC
 while format compliance stays near zero.
