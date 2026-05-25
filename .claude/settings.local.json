@@ -49,7 +49,8 @@
       "Bash(cp app/outputs/model_nsr_baselin/outputs/nsr_baseline/run_20260515_115514/config.json supplementary/training_logs/nsr_baseline/)",
       "Bash(cp app/outputs/model_nsr_hcpc/outputs/nsr_hcpc/run_20260515_114827/metrics.jsonl supplementary/training_logs/nsr_hcpc/)",
       "Bash(grep -rln \"sumai\\\\|sumaiya\\\\|safahaqi\\\\|nafisa\\\\|sectum\\\\|niamul\\\\|/kaggle\\\\|/home/cse\\\\|/workspace\\\\|C:\\\\\\\\\\\\\\\\Users\" --include=\"*.json\" --include=\"*.py\" --include=\"*.md\" --include=\"*.jsonl\" --include=\"*.txt\")",
-      "Bash(PYTHONIOENCODING=utf-8 python code/analysis/hcpc_firing.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python code/analysis/hcpc_firing.py)",
+      "Bash(PYTHONIOENCODING=utf-8 python analysis/plot_format.py)"
     ]
   }
 }

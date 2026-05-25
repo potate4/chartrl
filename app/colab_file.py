@@ -283,13 +283,23 @@ list_experiments()
 
 python app/scripts/train.py \
   --resume-from /home/cse/Desktop/sumaiya223/chartrl/app/outputs/grpo_hcpc/run_20260219_191830/trl_output/checkpoint-850 \
-  --experiment grpo_hcpc \
+  --experiment  grpo_hcpc_table_only \
   --subset-size 1000 \
   --num-epochs 2 \
   --no-wandb \
   --batch-size 2 \
   --num-generations 4
 
+
+
+python app/scripts/train.py \
+  --resume-from /home/cse/Desktop/sumaiya223/chartrl/app/outputs/grpo_hcpc/run_20260219_191830/trl_output/checkpoint-850 \
+  --experiment grpo_hcpc \
+  --subset-size 1000 \
+  --num-epochs 2 \
+  --no-wandb \
+  --batch-size 2 \
+  --num-generations 4
 
 kaggle kernels output sumsumaiya/notebookf34fc1b85a -f chartrl/app/outputs/grpo_hcpc/run_20260228_170909config.json  -p C:\Users\sumai\DATA\RESEARCH\THESIS\chartrl\app\outputs\grpo_hcpc\run_20260228_170909
 
