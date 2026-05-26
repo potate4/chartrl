@@ -334,7 +334,7 @@ $\hat{w}_i$; high values indicate diverse inferential paths to the
 same answer. $C_{\text{type}}$ and $C_{\text{table}}$ enforce
 convergence where the correct answer is unique; $D_{\text{reason}}$
 enforces divergence where multiple paths are valid.
-All similarities use cosine distance over MiniLM-L6 embeddings.
+All similarities use cosine similarity over MiniLM-L6 embeddings.
 
 \subsubsection{Reward Integration}
 \label{sec:bonus}
@@ -399,7 +399,6 @@ HCPC is silent when $|G^+|{<}2$; on ChartQA this occurs 28.8\% of the
 time ($|G^+|{=}0$ on 17.2\% of groups, $|G^+|{\ge}3$ on 56.6\%),
 exceeding the na\"{i}ve Bernoulli bound of 15.7\% at $p{=}0.62$ due
 to within-group visual correlation.
-
 \subsection{Diagnostic Baseline: NSR}
 \label{sec:nsr}
 
@@ -469,15 +468,13 @@ advantages on rollouts with $R_i \ge \theta$ (\S\ref{sec:nsr}).
 Evaluation samples 4 generations per test prompt at temperature 0.8
 and top-$p{=}0.95$, the standard inference-time setting; training
 uses top-$p{=}1.0$ to keep the rollout distribution unrestricted
-during exploration.
-We evaluate on two disjoint 500-sample slices,
+during exploration. We evaluate on two disjoint 500-sample slices,
 one per benchmark, drawn from the official test split of each.
 \textbf{ChartQA}~\citep{chartqa} provides the in-distribution slice;
 \textbf{ChartFC}~\citep{chartfc} provides the held-out OOD slice,
 differing from ChartQA on task format (fact-checking vs.\ open-ended
 QA) and visual style. The two slices are reported separately and
 never mixed.
-
 We report Pass@1, unbiased Pass@4~\citep{passatk}, and format
 compliance Fmt\%. Two additional metrics are central to this paper.
 
@@ -600,31 +597,31 @@ Individual differences are not significant at $n{=}500$
 
 Unpacking $\Delta_{\text{tbl}}$: $P(\hat y=y^*\mid\text{tbl})$ is
 $0.625$ for GRPO and $0.634$ for HCPC (tied on the common-table
-intersection, \S\ref{sec:delta_intersection}), while $P(\hat y=y^*\mid\text{no tbl})$
-is $0.360$ for GRPO and $0.490$ for HCPC. The two methods are
-indistinguishable when a parseable table is produced; the gap in
-$\Delta_{\text{tbl}}$ comes entirely from the no-table arm, where
-HCPC remains markedly more accurate than GRPO. The correct-path
-bonus appears to make the policy more robust to extraction
-failures rather than more dependent on the extracted table:
-when the table tag is missing, HCPC still answers correctly $49\%$
-of the time vs.\ GRPO's $36\%$.
+intersection, \S\ref{sec:delta_intersection}), while
+$P(\hat y=y^*\mid\text{no tbl})$ is $0.360$ for GRPO and $0.490$
+for HCPC. The two methods are indistinguishable when a parseable
+table is produced; the gap in $\Delta_{\text{tbl}}$ comes entirely
+from the no-table arm, where HCPC remains markedly more accurate
+than GRPO. The correct-path bonus appears to make the policy more
+robust to extraction failures rather than more dependent on the
+extracted table: when the table tag is missing, HCPC still answers
+correctly $49\%$ of the time vs.\ GRPO's $36\%$.
 
 \paragraph{GRPO+HCPC OOD behavior.} On the OOD ChartFC probe,
 GRPO+HCPC trails plain GRPO on most metrics (Pass@1 $0.606$ vs.\
 $0.638$, Pass@4 $0.918$ vs.\ $0.922$, format $66.4\%$ vs.\
-$98.8\%$). Format compliance is the largest drop: HCPC's extraction
-pipeline is less reliable on unfamiliar visual styles, and $34\%$ of
-rollouts no longer emit a parseable table tag. Despite this,
-answer accuracy in the no-table arm holds up well
+$98.8\%$). Format compliance is the largest drop: HCPC's
+extraction pipeline is less reliable on unfamiliar visual styles,
+and $34\%$ of rollouts no longer emit a parseable table tag.
+Despite this, answer accuracy in the no-table arm holds up well
 ($P(\hat y=y^*\mid\text{no tbl}){=}0.605$ for HCPC vs.\ $0.500$ for
 GRPO on the few GRPO samples that fall in this bucket), so the
-Pass@1 and Pass@4 gaps to GRPO remain small ($-3.2$ and $-0.4$\,pp).
-$\Delta_{\text{tbl}}$ correspondingly drops to $+0.020$: with the
-no-table arm now containing a sizable share of the rollouts and
-the model still answering correctly without a table, the
-parseable-table condition no longer carries a large correctness
-premium. This is a
+Pass@1 and Pass@4 gaps to GRPO remain small ($-3.2$ and
+$-0.4$\,pp). $\Delta_{\text{tbl}}$ correspondingly drops to
+$+0.020$: with the no-table arm now containing a sizable share of
+the rollouts and the model still answering correctly without a
+table, the parseable-table condition no longer carries a large
+correctness premium. This is a
 genuine limitation of standalone GRPO+HCPC, complementary to the
 NSR-mitigation result in \S\ref{sec:dissociation}; we leave a fix
 (e.g., a chart-style augmentation in training or a softer
@@ -699,13 +696,12 @@ Verifying this empirically is beyond our current scope.
 \subsection{Format and Accuracy as Separable Channels}
 \label{sec:dissociation}
 
-On ChartFC, HCPC added to NSR improves over plain NSR on every
-metric: Pass@1 $0.590\!\to\!0.632$ ($+4.2$\,pp),
+On ChartFC, HCPC added to NSR improves over plain NSR on every metric: Pass@1 $0.590\!\to\!0.632$ ($+4.2$\,pp),
 Pass@4 $0.884\!\to\!0.894$ ($+1.0$\,pp), $\Delta_{\text{tbl}}$
 $-0.064\!\to\!-0.003$ ($+0.061$), and format
 $16.2\%\!\to\!17.8\%$. The $\Delta_{\text{tbl}}$ shift from clearly
-negative to near zero indicates that table extraction stops actively
-hurting; the format gain is marginal. Plain NSR is the weakest OOD
+negative to near zero indicates that table extraction stops
+actively hurting; the format gain is marginal. Plain NSR is the weakest OOD
 configuration in Table~\ref{tab:main} on every metric, and HCPC
 closes most of that gap (Figure~\ref{fig:passk_chartfc}). How the
 gap is closed (mechanism below) turns out to be more interesting
@@ -927,6 +923,8 @@ confirming strong positive correlation of correctness within a
 group (rollouts share the same chart image and question) and
 justifying HCPC's group-local design over a rollout-pooled
 alternative.
+
+
 
 \section{$\Delta_{\text{tbl}}$ on the Common-Table Subset}
 \label{sec:delta_intersection}
