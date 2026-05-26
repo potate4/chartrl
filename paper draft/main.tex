@@ -451,7 +451,12 @@ $\alpha{=}16$ on $W_q, W_v$) using AdamW at learning rate
 $1\!\times\!10^{-6}$, effective batch size 4 (per-device 1, gradient
 accumulation 4), $K{=}4$ rollouts per prompt at temperature 0.8 and
 top-$p{=}1.0$, over 2 epochs. No KL penalty is applied
-($\beta_{\text{KL}}{=}0$). We evaluate five configurations:
+($\beta_{\text{KL}}{=}0$). In our setup, the verifiable rewards
+themselves act as the main constraint against degenerate outputs,
+and LoRA (restricted to $W_q, W_v$ with $r{=}8$) sharply limits how
+far the policy can drift from the base model, so an additional
+reference-policy KL term was empirically unnecessary on our 1{,}000-sample,
+2-epoch budget. We evaluate five configurations:
 \textsc{Base} (untuned Qwen2.5-VL-3B-Instruct), \textsc{GRPO},
 \textsc{GRPO+HCPC}, \textsc{NSR}, and \textsc{NSR+HCPC}. \textsc{GRPO}
 uses the standard group-normalized advantage $\hat{A}_i =
