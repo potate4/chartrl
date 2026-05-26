@@ -913,10 +913,22 @@ fraction & 17.2\% & 11.6\% & 14.6\% & 15.8\% & 40.8\% \\
 \end{tabular}
 \end{center}
 
-HCPC fires on $1-(17.2+11.6) = 71.2\%$ of groups. The 17.2\%
-all-wrong rate is well above the naive Bernoulli bound of 15.7\% at
-$p{=}0.62$, indicating that correctness within a group is positively
-correlated, as expected from samples sharing the same chart image.
+HCPC fires (i.e., contributes a non-zero bonus) on groups with
+$|G^+|{\ge}2$, which is $1-(17.2+11.6) = 71.2\%$ of groups. The
+remaining $28.8\%$ of groups receive no HCPC signal.
+
+To check whether this silent rate is just driven by per-rollout
+accuracy, we compare it to the rate predicted under independence.
+The per-rollout probability of a rollout entering $G^+$ is the
+mean of $|G^+|/K$ across groups, which is $p{=}0.628$. If
+rollout-level correctness were independent within a group, the
+silent rate $P(|G^+|{<}2)$ would be
+$(1{-}p)^4 + 4p(1{-}p)^3 = 15.7\%$, and the all-wrong rate
+$P(|G^+|{=}0)$ would be $(1{-}p)^4 = 2.1\%$. The observed values
+($28.8\%$ silent, $17.2\%$ all-wrong) are roughly $1.8\times$ and
+$8\times$ the independence bounds respectively, confirming strong
+positive correlation of correctness within a group: rollouts on the
+same chart image and question tend to succeed or fail together.
 
 \section{$\Delta_{\text{tbl}}$ on the Common-Table Subset}
 \label{sec:delta_intersection}
