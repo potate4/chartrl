@@ -58,7 +58,7 @@ Per-tag analysis traces the failure to the structural tags reward
 training had to teach, pointing to reward-signal starvation as the
 cause.
 HCPC achieves the best Pass@4 on ChartQA (0.828 \textit{vs.}\ 0.816 for GRPO)
-but degrades on ChartFC (0.0.918 \textit{vs.}\ 0.922 for GRPO), where reliance on structured extraction
+but degrades on ChartFC (0.918 \textit{vs.}\ 0.922 for GRPO), where reliance on structured extraction
 becomes a liability.
 Combining the two, NSR+HCPC recovers GRPO-level accuracy on ChartFC
 while format compliance barely recovers.
@@ -141,10 +141,10 @@ separability in mind. Our contributions are as follows:
 \begin{enumerate}
     \item \textbf{HCPC (\S\ref{sec:hcpc}, \S\ref{sec:hcpc_grpo}).}
     A cross-rollout bonus applying level-specific pressure to table
-    extraction and reasoning separately. HCPC improves robustness
-    across multi-sample and table-dependence metrics while
-    maintaining parity with the GRPO baseline on single-sample
-    accuracy.
+    extraction and reasoning separately. HCPC improves rollout-set
+    robustness (Pass@4, all-rollouts-correct rate, format
+    compliance) while maintaining parity with the GRPO baseline on
+    single-sample accuracy.
     \item \textbf{NSR transferability analysis
     (\S\ref{sec:nsr_collapse}).} Porting NSR unchanged into our
     multi-component chart-reasoning training pipeline collapses
@@ -492,11 +492,20 @@ to specific structural components rather than reporting it in aggregate.
 \Delta_{\text{tbl}} = P(\hat y=y^*\mid\text{tbl parsed})
                     - P(\hat y=y^*\mid\text{no tbl}),
 \]
-computed per sample on rollout~0 then aggregated across the test
-slice. A higher $\Delta_{\text{tbl}}$ indicates the model's answer
+computed using \emph{within-sample averaging}: for each test sample
+$s$ we form the per-sample conditional means $\bar p^{+}_s =
+\mathrm{mean}_i\{\hat y_i = y^* : \text{tbl}_i\ \text{parsed}\}$ and
+$\bar p^{-}_s = \mathrm{mean}_i\{\hat y_i = y^* : \text{tbl}_i\
+\text{not parsed}\}$ over the $K{=}4$ rollouts of that sample. The
+slice-level $\Delta_{\text{tbl}}$ then averages each per-sample mean
+across the samples that have at least one rollout in the relevant
+condition. This keeps each test sample as the unit of observation
+(so paired-bootstrap CIs remain valid) while using all $K$ rollouts
+to reduce per-sample noise, rather than relying on a single rollout
+index. A higher $\Delta_{\text{tbl}}$ indicates the model's answer
 correctness depends more strongly on emitting a parseable table.
-The two arms of the conditional can move for different reasons;
-we unpack this in \S\ref{sec:hcpc_grpo}.
+The two arms of the conditional can move for different reasons; we
+unpack this in \S\ref{sec:hcpc_grpo}.
 
 \section{Results and Analysis}
 \label{sec:results}
@@ -516,11 +525,11 @@ we unpack this in \S\ref{sec:hcpc_grpo}.
 Method & Pass@1 & Pass@4 & $\Delta_{\text{tbl}}$ & Fmt\% &
 Pass@1 & Pass@4 & $\Delta_{\text{tbl}}$ & Fmt\%\\
 \midrule
-\textsc{Base}      & 0.518 & 0.774 & $-0.031$ & 29.8 & --    & --    & --       & --\\
-\textsc{GRPO}      & \textbf{0.630} & 0.816 & $+0.178$ & 96.8 & \textbf{0.638} & \textbf{0.922} & $+0.139$ & \textbf{98.8}\\
-\textsc{GRPO+HCPC} & 0.622 & \textbf{0.828} & $\mathbf{+0.264}$ & \textbf{98.2} & 0.606 & 0.918 & $-0.059$ & 66.4\\
-\textsc{NSR}       & 0.592 & 0.808 & $+0.082$ & 31.6 & 0.590 & 0.884 & $-0.059$ & 16.2\\
-\textsc{NSR+HCPC}  & 0.574 & 0.800 & $+0.147$ & 43.0 & 0.632 & 0.894 & $+0.002$ & 17.8\\
+\textsc{Base}      & 0.518 & 0.774 & $+0.005$ & 29.8 & --    & --    & --       & --\\
+\textsc{GRPO}      & \textbf{0.630} & 0.816 & $\mathbf{+0.265}$ & 96.8 & \textbf{0.638} & \textbf{0.922} & $\mathbf{+0.160}$ & \textbf{98.8}\\
+\textsc{GRPO+HCPC} & 0.622 & \textbf{0.828} & $+0.144$ & \textbf{98.2} & 0.606 & 0.918 & $+0.020$ & 66.4\\
+\textsc{NSR}       & 0.592 & 0.808 & $+0.041$ & 31.6 & 0.590 & 0.884 & $-0.064$ & 16.2\\
+\textsc{NSR+HCPC}  & 0.574 & 0.800 & $+0.118$ & 43.0 & 0.632 & 0.894 & $-0.003$ & 17.8\\
 \bottomrule
 \end{tabular}
 \caption{Main results. $\Delta_{\text{tbl}}$ is the conditional gain
@@ -535,10 +544,14 @@ ChartFC. GRPO training substantially improves both answer accuracy
 and format compliance over the untuned Base model: Pass@1 rises from
 0.518 to 0.630 on ChartQA and Fmt\% from 29.8 to 96.8.
 \textsc{GRPO+HCPC} matches \textsc{GRPO} on Pass@1 (0.622 vs.\
-0.630) while leading on Pass@4 (0.828 vs.\ 0.816) and
-$\Delta_{\text{tbl}}$ ($+$0.264 vs.\ $+$0.178), consistent with
-HCPC's design goal of improving rollout-set coverage rather than
-single-shot accuracy. \textsc{NSR} collapses format compliance to
+0.630) and pulls ahead at higher $K$ (Pass@4 $0.828$ vs.\ $0.816$),
+consistent with HCPC's design goal of improving rollout-set
+coverage rather than single-shot accuracy. \textsc{GRPO} retains
+the strongest table-dependence on both benchmarks
+($\Delta_{\text{tbl}}{=}{+}0.265$ on ChartQA, $+0.160$ on ChartFC),
+indicating that the un-augmented advantage rule already routes
+answer correctness through the extracted table; HCPC trades a small
+amount of this dependence for the rollout-set robustness gain. \textsc{NSR} collapses format compliance to
 31.6\% on ChartQA and 16.2\% on ChartFC with no accuracy gain; the
 per-tag analysis in \S\ref{sec:nsr_collapse} traces this to
 reward-signal starvation on structural tags. \textsc{NSR+HCPC}
@@ -558,17 +571,18 @@ not single-shot Pass@1.
 Headline Pass@1 on ChartQA is statistically tied: \textsc{GRPO}
 $0.630$ vs.\ \textsc{GRPO+HCPC} $0.622$ (paired bootstrap
 $-0.8$\,pp, CI $[-3.8,+5.4]$, $p{=}0.77$, $n_{\text{boot}}{=}10{,}000$).
-On every other in-distribution metric, the direction favors HCPC:
-the fraction of test samples where all 4 rollouts are correct is
+On rollout-set robustness metrics, the direction favors HCPC: the
+fraction of test samples where all 4 rollouts are correct is
 $40.8\%$ for HCPC vs.\ $38.6\%$ for GRPO; the average correct rate
 per group is $0.628$ vs.\ $0.620$; Pass@4 is $0.828$ vs.\ $0.816$;
-table-dependence is $\Delta_{\text{tbl}}{=}{+}0.264$ vs.\
-$+0.178$; format compliance is $98.2\%$ vs.\ $96.8\%$. No individual
-difference reaches significance at $n{=}500$ (Pass@4 boot-$p{=}0.48$),
-but the joint direction across six metrics in HCPC's favor is
-consistent with the design hypothesis that a cross-rollout bonus
-preserves correct-path quality without trading off single-shot
-accuracy. Figure~\ref{fig:passk} shows the Pass@$K$ curves: HCPC
+format compliance is $98.2\%$ vs.\ $96.8\%$. Table-dependence is
+the one direction where GRPO leads
+($\Delta_{\text{tbl}}{=}{+}0.265$ vs.\ HCPC's $+0.144$), which we
+unpack below. No individual difference reaches significance at
+$n{=}500$ (Pass@4 boot-$p{=}0.48$), but the joint direction across
+robustness metrics is consistent with the design hypothesis that a
+cross-rollout bonus preserves correct-path coverage without
+trading off single-shot accuracy. Figure~\ref{fig:passk} shows the Pass@$K$ curves: HCPC
 matches GRPO at $K{=}1$ and pulls ahead at $K{\geq}3$, the regime
 where rollout-set coverage matters.
 
@@ -585,25 +599,32 @@ Individual differences are not significant at $n{=}500$
 \end{figure}
 
 Unpacking $\Delta_{\text{tbl}}$: $P(\hat y=y^*\mid\text{tbl})$ is
-$0.639$ for GRPO and $0.632$ for HCPC (tied; also tied on the
-common-table intersection of 462 samples, Appendix~C), while
-$P(\hat y=y^*\mid\text{no tbl})$ is $0.462$ for GRPO and $0.368$ for
-HCPC. The gain therefore reflects stronger table-dependence:
-HCPC drops 9.4\,pp more than GRPO when no table is produced, while
-matching it when a table is produced. The correct-path bonus makes
-the extracted table load-bearing in the answer pathway.
+$0.625$ for GRPO and $0.634$ for HCPC (tied on the common-table
+intersection, Appendix~C), while $P(\hat y=y^*\mid\text{no tbl})$
+is $0.360$ for GRPO and $0.490$ for HCPC. The two methods are
+indistinguishable when a parseable table is produced; the gap in
+$\Delta_{\text{tbl}}$ comes entirely from the no-table arm, where
+HCPC remains markedly more accurate than GRPO. The correct-path
+bonus appears to make the policy more robust to extraction
+failures rather than more dependent on the extracted table:
+when the table tag is missing, HCPC still answers correctly $49\%$
+of the time vs.\ GRPO's $36\%$.
 
-\paragraph{GRPO+HCPC OOD limitation.} The same property makes
-GRPO+HCPC weaker than plain GRPO on the OOD ChartFC probe
-(Pass@1 $0.606$ vs.\ $0.638$, Pass@4 $0.918$ vs.\ $0.922$,
-$\Delta_{\text{tbl}}$ $-0.059$ vs.\ $+0.139$, format
-$66.4\%$ vs.\ $98.8\%$). The mechanism is plausible from the
-in-distribution finding: HCPC trains the model to rely on the
-extracted table, so when table extraction degrades OOD (HCPC's
-format compliance drops to $66.4\%$ on ChartFC, indicating the
-extraction pipeline is less reliable on unfamiliar visual styles),
-the answer pathway degrades with it. The table-dependence that
-benefits HCPC in-distribution becomes a liability OOD. This is a
+\paragraph{GRPO+HCPC OOD behavior.} On the OOD ChartFC probe,
+GRPO+HCPC trails plain GRPO on most metrics (Pass@1 $0.606$ vs.\
+$0.638$, Pass@4 $0.918$ vs.\ $0.922$, format $66.4\%$ vs.\
+$98.8\%$). Format compliance is the largest drop: HCPC's extraction
+pipeline is less reliable on unfamiliar visual styles, and $34\%$ of
+rollouts no longer emit a parseable table tag. Despite this,
+answer accuracy in the no-table arm holds up well
+($P(\hat y=y^*\mid\text{no tbl}){=}0.605$ for HCPC vs.\ $0.500$ for
+GRPO on the few GRPO samples that fall in this bucket), so the
+Pass@1 and Pass@4 gaps to GRPO remain small ($-3.2$ and $-0.4$\,pp).
+$\Delta_{\text{tbl}}$ correspondingly drops to $+0.020$: with the
+no-table arm now containing a sizable share of the rollouts and
+the model still answering correctly without a table, the
+parseable-table condition no longer carries a large correctness
+premium. This is a
 genuine limitation of standalone GRPO+HCPC, complementary to the
 NSR-mitigation result in \S\ref{sec:dissociation}; we leave a fix
 (e.g., a chart-style augmentation in training or a softer
@@ -678,11 +699,12 @@ Verifying this empirically is beyond our current scope.
 \subsection{Format and Accuracy as Separable Channels}
 \label{sec:dissociation}
 
-On ChartFC, HCPC added to NSR improves over plain NSR on every metric: Pass@1 $0.590\!\to\!0.632$ ($+4.2$\,pp),
+On ChartFC, HCPC added to NSR improves over plain NSR on every
+metric: Pass@1 $0.590\!\to\!0.632$ ($+4.2$\,pp),
 Pass@4 $0.884\!\to\!0.894$ ($+1.0$\,pp), $\Delta_{\text{tbl}}$
-$-0.059\!\to\!+0.002$ ($+0.061$), and format
-$16.2\%\!\to\!17.8\%$. The $\Delta_{\text{tbl}}$ sign flip from
-negative to zero indicates that table extraction stops actively
+$-0.064\!\to\!-0.003$ ($+0.061$), and format
+$16.2\%\!\to\!17.8\%$. The $\Delta_{\text{tbl}}$ shift from clearly
+negative to near zero indicates that table extraction stops actively
 hurting; the format gain is marginal. Plain NSR is the weakest OOD
 configuration in Table~\ref{tab:main} on every metric, and HCPC
 closes most of that gap (Figure~\ref{fig:passk_chartfc}). How the
@@ -721,7 +743,7 @@ HCPC adds its bonus to exactly the correct-path rollouts that NSR
 then masks out of the gradient, so the bonus does not reach the
 policy as a direct positive update. But TRL computes the GRPO
 advantage before the NSR mask is applied, using the group
-mean $\bar R$ over the full set of rollouts. Adding $B_{\text{HCPC}}$
+mean $\bar R$ over the full set of rollouts. Adding $R_{\text{HCPC}}$
 to correct rollouts raises $\bar R$, and for the wrong rollouts that
 survive the mask this makes their advantage more negative. The
 correct-path bonus therefore reshapes the reference baseline that
@@ -849,8 +871,8 @@ Method & think & answer & type & table & order\\
 \caption{Per-tag emission rate (\%) on both benchmarks. On ChartFC,
 the \texttt{<think>} and \texttt{<table>} tags collapse hardest under
 NSR variants (51.4--61.4\%, vs.\ GRPO's 99.0--99.6\%). GRPO+HCPC also
-degrades OOD but milder ($\sim$78--87\%), consistent with the
-table-dependence finding in \S\ref{sec:hcpc_grpo}.}
+degrades OOD but milder ($\sim$78--87\%), in line with the OOD
+analysis in \S\ref{sec:hcpc_grpo}.}
 \label{tab:tags_full}
 \end{table}
 
@@ -900,16 +922,19 @@ correlated, as expected from samples sharing the same chart image.
 \label{sec:delta_intersection}
 
 To rule out the confound that $\Delta_{\text{tbl}}$ is computed on
-different denominators per method, we recompute it on the
-intersection of samples where both methods produce a parseable
-table. On the 462 ChartQA samples where both \textsc{GRPO} and
-\textsc{GRPO+HCPC} produce parseable tables,
-$P(\hat y=y^*\mid\text{tbl})$ is $0.643$ vs.\ $0.636$. The
-$\Delta_{\text{tbl}}$ gap in Table~\ref{tab:main} therefore arises
-entirely from the $P(\hat y=y^*\mid\text{no tbl})$ arm
-($0.462$ vs.\ $0.368$). We interpret this as evidence that HCPC
-induces stronger table-dependence, not stronger table-conditioned
-reasoning accuracy.
+different denominators per method, we recompute the
+table-conditioned arm on the intersection of samples where both
+methods produce at least one parseable-table rollout. On the 498
+ChartQA samples where both \textsc{GRPO} and \textsc{GRPO+HCPC}
+have a parseable table available, $P(\hat y=y^*\mid\text{tbl})$ is
+$0.623$ for GRPO and $0.634$ for HCPC: indistinguishable.
+The two methods reach the same answer accuracy when a parseable
+table is produced. The $\Delta_{\text{tbl}}$ gap in
+Table~\ref{tab:main} therefore arises entirely from the no-table
+arm. On the full slice, $P(\hat y=y^*\mid\text{no tbl})$ is
+$0.360$ for GRPO and $0.490$ for HCPC, so HCPC is more robust to
+extraction failures rather than more dependent on the extracted
+table for correctness.
 
 \section{Per-Answer-Type Breakdown}
 \label{sec:answer_type}
