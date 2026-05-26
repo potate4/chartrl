@@ -346,25 +346,55 @@ all rollouts in $G^+$:
     \bigl(w_{\text{type}}\,C_{\text{type}}
         + w_{\text{table}}\,C_{\text{table}}\bigr).
 \]
+The $|G^+|/K$ prefactor scales the consistency bonus by the
+correct-path fraction, so the signal grows with the share of rollouts
+the model already gets right and vanishes when the group is mostly
+incorrect.
 The diversity component is assigned per-rollout via a uniqueness score
-$u_k = 1 - \bar{s}_k$, where $\bar{s}_k$ is rollout $k$'s mean cosine
-similarity to all other reasonings in $G^+$. The per-rollout HCPC
-reward is then:
+$u_i = 1 - \bar{s}_i$ for $i \in G^+$, where
+\[
+  \bar{s}_i = \frac{1}{|G^+|-1}\sum_{j \in G^+,\, j\neq i}
+              \mathrm{sim}(\hat{w}_i, \hat{w}_j)
+\]
+is rollout $i$'s mean cosine similarity to the other reasonings in
+$G^+$. The rollout average of $u_i$ over $G^+$ equals
+$D_{\text{reason}}$, so $u_i$ is the per-rollout decomposition of the
+group-level diversity. For groups with $|G^+| \ge 2$, the per-rollout
+HCPC reward is:
 \[
   R_{\text{HCPC}}(o_i) =
   \begin{cases}
-    B_{\text{cons}} + w_{\text{reason}}\,u_k & \text{if } o_i \in G^+, \\
+    B_{\text{cons}} + w_{\text{reason}}\,u_i & \text{if } o_i \in G^+, \\
     0                                         & \text{otherwise,}
   \end{cases}
 \]
-with $w_{\text{type}}{=}1.0$, $w_{\text{table}}{=}2.0$,
-$w_{\text{reason}}{=}1.5$, and $R_{\text{HCPC}}{=}0$ when
-$|G^+|{<}2$. The total reward is:
+with $w_{\text{type}}{=}1.0$, $w_{\text{table}}{=}2.0$, and
+$w_{\text{reason}}{=}1.5$. The total reward is:
 \[
   R_i = R_{\text{base}}(o_i) + R_{\text{HCPC}}(o_i).
 \]
-In practice $D_{\text{reason}}$ is small (${\sim}0.05$ at $K{=}4$),
-so the dominant signal is $w_{\text{table}}\,C_{\text{table}}$.
+\paragraph{Choice of weights.}
+The weights are fixed rather than tuned, and the chosen values reflect
+the empirical magnitudes of each term so that no single component
+dominates trivially. $C_{\text{table}}$ ranges in $[0,1]$ but is the
+signal most directly aligned with correctness, so it receives the
+largest weight. $C_{\text{type}}$ also ranges in $[0,1]$ but is
+typically near ceiling on groups where HCPC fires (chart-type
+prediction saturates early in training), so it receives a smaller
+weight to avoid contributing a near-constant offset. The
+per-rollout uniqueness $u_i$ has a much smaller empirical range
+($\bar{u} \approx 0.05$ at $K{=}4$): $w_{\text{reason}}$ is raised
+above $w_{\text{type}}$ so that the diversity term remains a
+non-trivial part of the bonus despite its smaller magnitude.
+Even so, $w_{\text{table}}\,C_{\text{table}}$ remains the dominant
+contribution in practice.
+
+We do not perform a weight sweep or per-component ablation:
+with three weights, $K{=}4$ rollouts, and full-pipeline training runs
+for every grid point, a proper isolation is beyond our compute
+budget. We acknowledge this as a limitation and leave systematic
+ablation of $(w_{\text{type}}, w_{\text{table}}, w_{\text{reason}})$
+to future work.
 HCPC is silent when $|G^+|{<}2$; on ChartQA this occurs 28.8\% of the
 time ($|G^+|{=}0$ on 17.2\% of groups, $|G^+|{\ge}3$ on 56.6\%),
 exceeding the na\"{i}ve Bernoulli bound of 15.7\% at $p{=}0.62$ due
