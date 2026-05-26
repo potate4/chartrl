@@ -430,14 +430,10 @@ rollouts drive the policy update under NSR.
 \subsection{Data and Training Setup}
 \label{sec:setup}
 
-Training uses the first 1,000 samples of \texttt{sanchit97/chart-rvr-grpo-train}~\citep{chartrvr2025},
-Chart-RVR's CoT training mixture drawn from ChartQA~\citep{chartqa},
-PlotQA, and ChartFC~\citep{chartfc}. Samples are selected
-sequentially by index. ChartFC samples in the training mixture come
-from the training split of \citet{chartfc}; the OOD evaluation probe
-(\S\ref{sec:eval_protocol}) uses the disjoint test split. PlotQA
-samples are included in training for domain coverage but excluded
-from evaluation, which targets chart QA and fact-checking directly.
+Training uses 1{,}000 ChartQA~\citep{chartqa} samples drawn from
+Chart-RVR's CoT training mixture~\citep{chartrvr2025}. ChartQA is
+our in-distribution benchmark and ChartFC~\citep{chartfc} is our
+held-out OOD benchmark; no ChartFC samples are used in training.
 
 We fine-tune Qwen2.5-VL-3B-Instruct with LoRA ($r{=}8$,
 $\alpha{=}16$ on $W_q, W_v$) using AdamW at learning rate

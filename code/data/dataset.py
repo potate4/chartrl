@@ -139,6 +139,58 @@ def _get_first(example: Dict[str, Any], keys: List[str]):
     return None
 
 
+def _normalize_query(text: str) -> str:
+    """Whitespace- and case-normalized question text for join keys."""
+    return " ".join(str(text or "").lower().split())
+
+
+_CHARTQA_QUERY_SET: Optional[set] = None
+
+
+def _load_chartqa_query_set(cache_dir: Optional[str] = None) -> set:
+    """Build the set of normalized ChartQA question strings used as a
+    join key when filtering the merged Chart-RVR training mixture.
+
+    We load the train split of `HuggingFaceM4/ChartQA` and key on the
+    normalized question text. Samples in the merged training mixture
+    are considered ChartQA-derived if their `query` normalizes to a
+    member of this set.
+    """
+    global _CHARTQA_QUERY_SET
+    if _CHARTQA_QUERY_SET is not None:
+        return _CHARTQA_QUERY_SET
+    chartqa = load_dataset(
+        "HuggingFaceM4/ChartQA", split="train", cache_dir=cache_dir
+    )
+    _CHARTQA_QUERY_SET = {
+        _normalize_query(row.get("query") or row.get("question") or "")
+        for row in chartqa
+    }
+    _CHARTQA_QUERY_SET.discard("")
+    return _CHARTQA_QUERY_SET
+
+
+def _filter_by_source(dataset, source: str = "chartqa", cache_dir: Optional[str] = None):
+    """Filter the merged Chart-RVR training mixture down to one source.
+
+    For `source="chartqa"`, we identify ChartQA-derived samples by
+    matching the merged-mixture `query` against the train split of the
+    original `HuggingFaceM4/ChartQA` dataset (whitespace- and
+    case-normalized). This isolates the ChartQA portion of the mixture
+    cleanly and leaves the ChartFC test split fully held out for OOD
+    evaluation.
+    """
+    source = source.lower()
+    if source == "chartqa":
+        query_set = _load_chartqa_query_set(cache_dir=cache_dir)
+        return dataset.filter(
+            lambda ex: _normalize_query(
+                _get_first(ex, ["query", "question"]) or ""
+            ) in query_set
+        )
+    raise ValueError(f"Unknown source filter: {source}")
+
+
 def load_training_dataset(
     config,
     processor=None,
@@ -158,6 +210,18 @@ def load_training_dataset(
         split="train",
         cache_dir=config.cache_dir,
     )
+
+    # Filter to ChartQA samples only. The Chart-RVR merged training
+    # mixture (`sanchit97/chart-rvr-grpo-train`) contains samples from
+    # ChartQA, PlotQA, and ChartFC. ChartQA samples are identified by
+    # matching the merged-mixture `query` against the train split of
+    # `HuggingFaceM4/ChartQA`, so ChartFC and PlotQA are fully filtered
+    # out and the ChartFC test split remains held out for OOD eval.
+    filter_source = getattr(config, "filter_source", "chartqa")
+    if filter_source:
+        dataset = _filter_by_source(
+            dataset, source=filter_source, cache_dir=config.cache_dir
+        )
 
     if config.subset_size:
         dataset = dataset.select(range(min(config.subset_size, len(dataset))))
