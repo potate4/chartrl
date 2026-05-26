@@ -467,10 +467,13 @@ advantages on rollouts with $R_i \ge \theta$ (\S\ref{sec:nsr}).
 \label{sec:eval_protocol}
 
 Evaluation samples 4 generations per test prompt at temperature 0.8
-and top-$p{=}0.95$ on a 500-sample test slice of each benchmark.
-\textbf{ChartQA}~\citep{chartqa} is in-distribution; \textbf{ChartFC}~\citep{chartfc}
-is held out as the OOD probe, differing from ChartQA on task format
-(fact-checking vs.\ open-ended QA) and visual style.
+and top-$p{=}0.95$. We evaluate on two disjoint 500-sample slices,
+one per benchmark, drawn from the official test split of each.
+\textbf{ChartQA}~\citep{chartqa} provides the in-distribution slice;
+\textbf{ChartFC}~\citep{chartfc} provides the held-out OOD slice,
+differing from ChartQA on task format (fact-checking vs.\ open-ended
+QA) and visual style. The two slices are reported separately and
+never mixed.
 
 We report Pass@1, unbiased Pass@4~\citep{passatk}, and format
 compliance Fmt\%. Two additional metrics are central to this paper.
