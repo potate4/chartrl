@@ -600,7 +600,7 @@ Individual differences are not significant at $n{=}500$
 
 Unpacking $\Delta_{\text{tbl}}$: $P(\hat y=y^*\mid\text{tbl})$ is
 $0.625$ for GRPO and $0.634$ for HCPC (tied on the common-table
-intersection, Appendix~C), while $P(\hat y=y^*\mid\text{no tbl})$
+intersection, \S\ref{sec:delta_intersection}), while $P(\hat y=y^*\mid\text{no tbl})$
 is $0.360$ for GRPO and $0.490$ for HCPC. The two methods are
 indistinguishable when a parseable table is produced; the gap in
 $\Delta_{\text{tbl}}$ comes entirely from the no-table arm, where
@@ -913,22 +913,20 @@ fraction & 17.2\% & 11.6\% & 14.6\% & 15.8\% & 40.8\% \\
 \end{tabular}
 \end{center}
 
-HCPC fires (i.e., contributes a non-zero bonus) on groups with
-$|G^+|{\ge}2$, which is $1-(17.2+11.6) = 71.2\%$ of groups. The
-remaining $28.8\%$ of groups receive no HCPC signal.
-
-To check whether this silent rate is just driven by per-rollout
-accuracy, we compare it to the rate predicted under independence.
-The per-rollout probability of a rollout entering $G^+$ is the
-mean of $|G^+|/K$ across groups, which is $p{=}0.628$. If
-rollout-level correctness were independent within a group, the
-silent rate $P(|G^+|{<}2)$ would be
-$(1{-}p)^4 + 4p(1{-}p)^3 = 15.7\%$, and the all-wrong rate
-$P(|G^+|{=}0)$ would be $(1{-}p)^4 = 2.1\%$. The observed values
-($28.8\%$ silent, $17.2\%$ all-wrong) are roughly $1.8\times$ and
-$8\times$ the independence bounds respectively, confirming strong
-positive correlation of correctness within a group: rollouts on the
-same chart image and question tend to succeed or fail together.
+HCPC fires (non-zero bonus) on groups with $|G^+|{\ge}2$, i.e.\
+$71.2\%$ of groups; the remaining $28.8\%$ are silent. To check
+whether this silent rate is fully explained by per-rollout accuracy,
+let $p$ be the per-rollout probability of passing all three $G^+$
+gates (format, table similarity, answer match), estimated as the
+mean of $|G^+|/K$ across the 500 test groups: $p{=}0.628$. Under
+i.i.d.\ Bernoulli($p$) rollouts the silent rate would be
+$(1{-}p)^4 + 4p(1{-}p)^3 \approx 15.7\%$ and the all-wrong rate
+$(1{-}p)^4 \approx 2.1\%$. The observed values ($28.8\%$ and
+$17.2\%$) are $1.8\times$ and ${\approx}8\times$ these bounds,
+confirming strong positive correlation of correctness within a
+group (rollouts share the same chart image and question) and
+justifying HCPC's group-local design over a rollout-pooled
+alternative.
 
 \section{$\Delta_{\text{tbl}}$ on the Common-Table Subset}
 \label{sec:delta_intersection}
