@@ -49,9 +49,7 @@ We study this with two opposing interventions: Hierarchical Correct-Path Consist
 cross-rollout bonus rewarding consistent extraction and diverse
 reasoning among correct responses, and Negative Sample Reinforcement
 (\textbf{NSR}; \citealp{zhu2025nsr}), which removes gradient signal
-from correct responses entirely.
-
-We evaluate on ChartQA (in-distribution) and the held-out ChartFC
+from correct responses entirely. We evaluate on ChartQA (in-distribution) and the held-out ChartFC
 benchmark, which is excluded from training and serves as our
 out-of-distribution (OOD) test.
 NSR collapses format compliance from 96.8\% to 31.6\% on ChartQA
@@ -59,15 +57,15 @@ with no gain in answer accuracy over GRPO.
 Per-tag analysis traces the failure to the structural tags reward
 training had to teach, pointing to reward-signal starvation as the
 cause.
-HCPC achieves the best Pass@4 on ChartQA (0.828 vs.\ 0.816 for GRPO)
-but degrades on ChartFC, where reliance on structured extraction
+HCPC achieves the best Pass@4 on ChartQA (0.828 \textit{vs.}\ 0.816 for GRPO)
+but degrades on ChartFC (0.0.918 \textit{vs.}\ 0.922 for GRPO), where reliance on structured extraction
 becomes a liability.
 Combining the two, NSR+HCPC recovers GRPO-level accuracy on ChartFC
 while format compliance barely recovers.
 The fact that accuracy returns but format does not suggests the two
 are distinct behavioral channels, and that reward update rules from
 single-component settings should be re-evaluated before applying them
-to richer reward landscapes.
+to richer reward landscapes. We will make our code and data public.
 \end{abstract}
 
 
@@ -76,7 +74,7 @@ to richer reward landscapes.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.90\textwidth, trim=0 1in 0 1in, clip]{fig_teaser.pdf}
+\includegraphics[width=0.90\textwidth]{fig_teaser.pdf}
 \caption{Format and answer accuracy are separable channels in
 chart RLVR. \textbf{Left:} a stylized rollout under each training
 regime. GRPO emits the required structural tags and the correct
@@ -123,12 +121,7 @@ answer reflect genuine competence. A ground-truth-anchored filter
 ensures the bonus targets correct-path quality rather than surface
 agreement among arbitrary rollouts.
 
-To explicitly isolate what HCPC is and is not doing, we introduce
-a contrastive diagnostic that applies opposing pressure to the same
-problem. Negative Sample Reinforcement (NSR; \citealp{zhu2025nsr}) targets the same diversity goal by the
-opposite route: masking gradient signal on correct rollouts and
-penalizing only incorrect ones. In single-component math RLVR,
-this works \citep{zhu2025nsr}. In chart RLVR, it does not. Porting
+To explicitly isolate what HCPC is and is not doing, we introduce a contrastive diagnostic that applies opposing pressure to the same problem. Negative Sample Reinforcement (NSR; \citealp{zhu2025nsr}) follows an opposite optimization strategy by masking gradient signal on correct rollouts while penalizing incorrect ones. NSR was originally motivated by mitigating reward hacking and overconfident convergence on easy solutions, though its mechanism may also encourage greater exploration and diversity. In single-component math RLVR, this strategy is effective \citep{zhu2025nsr}. In chart RLVR, however, we do not observe comparable gains. Porting
 NSR unchanged collapses format compliance, specifically the
 structured XML tags and table markup that the pipeline depends on,
 on both in-distribution and out-of-distribution data, with no
@@ -137,9 +130,7 @@ failure to exactly the structural tags that reward training had to
 teach, pointing to reward-signal starvation as the cause. The
 result is informative precisely because the failure is clean:
 something about the multimodal, multi-component reward landscape
-breaks an assumption that held in the simpler setting.
-
-Adding HCPC to NSR recovers competitive answer accuracy
+breaks an assumption that held in the simpler setting. Adding HCPC to NSR recovers competitive answer accuracy
 out-of-distribution while format compliance stays near zero.
 Accuracy returns; format does not. This dissociation is the central
 finding of the paper: format compliance and answer accuracy are
@@ -270,6 +261,7 @@ type $c^*$). Their sum gives the base reward:
   R_{\text{base}}(o_i) = R_{\text{fmt}} + R_{\text{acc}}
                        + R_{\text{tbl}} + R_{\text{type}}.
 \]
+
 For answer evaluation, we intentionally decouple extraction of
 $\hat{y}_i$ from full-format validity. We read $\hat{y}_i$ from the
 first \texttt{<answer>...</answer>} span if one is present, even if
@@ -281,15 +273,9 @@ format/accuracy dissociation analyzed later. By contrast, HCPC's
 correct-path filter in \S\ref{sec:cpf} uses the stricter requirement
 that the entire response be structurally parseable.
 
-Three Chart-RVR components are inactive in our setup. A length
-reward $R_{\text{len}}$ (encouraging mid-range rationale lengths) and
-a token-count reward $R_{\text{tok}}$ (firing only when each required
-tag appears exactly once) are both disabled because the base model
-prepends a native reasoning block that yields duplicate tags and
-unconstrained length, making these signals noisy on our setup.
 Chart-RVR also defines a process reward measuring similarity to the
 ground-truth reasoning chain; we disable it because it conflicts
-with $D_{\text{reason}}$'s diversity objective.
+with our diversity objective.
 
 \subsection{HCPC: Hierarchical Correct-Path Consistency}
 \label{sec:hcpc}
@@ -751,6 +737,7 @@ our highest-priority follow-up.
 
 \section{Reproducibility}
 \label{sec:appendix}
+
 
 Training and evaluation code is included with the submission.
 Hyperparameters and the exact reward configuration used for every
