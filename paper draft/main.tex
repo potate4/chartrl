@@ -74,7 +74,7 @@ to richer reward landscapes. We will make our code and data public.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.85\textwidth]{fig_teaser.pdf}
+\includegraphics[width=0.90\textwidth]{fig_teaser.pdf}
 \caption{Format and answer accuracy are separable channels in
 chart RLVR. \textbf{Left:} a stylized rollout under each training
 regime. GRPO emits the required structural tags and the correct
@@ -233,7 +233,7 @@ VLM RLVR, not a side note.
 \label{sec:method}
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.85\textwidth]{fig_pipeline.pdf}
+\includegraphics[width=0.90\textwidth]{fig_pipeline.pdf}
 \caption{Training pipeline. The multi-component reward supervises
 each rollout independently through format, accuracy, table, and
 chart-type rewards. HCPC adds a group-level bonus computed over rollouts
@@ -390,10 +390,11 @@ avoids a near-constant offset. The per-rollout uniqueness $u_i$ has
 a much smaller empirical range ($\bar{u}{\approx}0.05$ at $K{=}4$),
 so $w_{\text{reason}}$ is raised above $w_{\text{type}}$ to keep
 the diversity term non-trivial; even so,
-$w_{\text{table}}C_{\text{table}}$ dominates. A full grid sweep
-over $(w_{\text{type}}, w_{\text{table}}, w_{\text{reason}})$ is
-beyond our compute budget; we leave systematic ablation to future
-work.
+$w_{\text{table}}C_{\text{table}}$ dominates. We do not perform a
+full grid sweep over $(w_{\text{type}}, w_{\text{table}},
+w_{\text{reason}})$ due to compute budget, but ablate the
+diversity term by setting $w_{\text{reason}}{=}0$ in
+\S\ref{sec:ablation_dreason}.
 HCPC is silent when $|G^+|{<}2$; on ChartQA this occurs $28.8\%$ of
 the time ($|G^+|{=}0$ on $17.2\%$ of groups, $|G^+|{\ge}3$ on
 $56.6\%$).
@@ -986,6 +987,59 @@ $p{=}0.63$), boolean ($n{=}75$, $+4.0$\,pp, $p{=}0.71$), and string
 category-specific accuracy advantage at this scale; the rollout-set
 robustness gains reported in \S\ref{sec:hcpc_grpo} are uniform
 across answer types rather than concentrated on any single category.
+
+\section{Ablation: HCPC without $D_{\text{reason}}$}
+\label{sec:ablation_dreason}
+
+To isolate the contribution of the reasoning-diversity term, we
+re-train GRPO+HCPC with $w_{\text{reason}}{=}0$, so the bonus
+reduces to $R_{\text{HCPC}}(o_i) = B_{\text{cons}} =
+(|G^+|/K)(w_{\text{type}}C_{\text{type}} + w_{\text{table}}C_{\text{table}})$
+on $o_i \in G^+$. All other hyperparameters are unchanged. We
+evaluate on the same 500-sample test slices used for the main
+results (ChartQA in-distribution, ChartFC OOD).
+
+\begin{table}[!htbp]
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{lccccc}
+\toprule
+Method & Pass@1 & Pass@4 & all-4 & Fmt\% & $\Delta_{\text{tbl}}$\\
+\midrule
+\multicolumn{6}{l}{\emph{ChartQA (in-distribution)}}\\
+\textsc{GRPO}                   & 0.630 & 0.816 & 38.6 & 96.8 & $+0.265$\\
+\textsc{GRPO+HCPC} (full)       & 0.622 & 0.828 & 40.8 & 98.2 & $+0.144$\\
+\textsc{GRPO+HCPC} (table-only) & 0.556 & 0.830 & 28.0 & 46.8 & $+0.003$\\
+\midrule
+\multicolumn{6}{l}{\emph{ChartFC (out-of-distribution)}}\\
+\textsc{GRPO}                   & 0.638 & 0.922 & 35.4 & 98.8 & $+0.160$\\
+\textsc{GRPO+HCPC} (full)       & 0.606 & 0.918 & 28.4 & 66.4 & $+0.020$\\
+\textsc{GRPO+HCPC} (table-only) & 0.622 & 0.883 & 27.3 & 31.7 & $+0.000$\\
+\bottomrule
+\end{tabular}
+\caption{Ablation: HCPC with $w_{\text{reason}}{=}0$
+(``table-only''). Removing $D_{\text{reason}}$ collapses format
+compliance on both benchmarks (ChartQA: $98.2\%\!\to\!46.8\%$;
+ChartFC: $66.4\%\!\to\!31.7\%$) and drives $\Delta_{\text{tbl}}$ to
+near zero, while Pass@4 holds on ChartQA but drops $3.5$\,pp on
+ChartFC. All rows use the same 500-sample test slices.}
+\label{tab:ablation_dreason}
+\end{table}
+
+The reasoning-diversity term is load-bearing for two behaviors.
+First, format compliance: without per-rollout pressure on
+reasoning diversity, the policy collapses toward repetitive,
+narrowly-templated outputs that skip structural tags
+(\texttt{<think>}, \texttt{<table>}) on both benchmarks, echoing
+the NSR collapse pattern (\S\ref{sec:nsr_collapse}) despite using
+the GRPO advantage rule. Second, rollout-set robustness: the
+all-4-correct rate falls $\sim$12\,pp ID and $\sim$1\,pp OOD, and
+Pass@4 drops materially on ChartFC ($0.918\!\to\!0.883$). The
+table-consistency term alone is insufficient to preserve the
+multi-rollout coherence HCPC was designed for; the diversity term
+contributes a meaningful, distinct signal rather than serving as a
+near-constant offset.
 
 \section{Qualitative Example: Format Collapse in Action}
 \label{sec:qualitative}

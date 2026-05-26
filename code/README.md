@@ -60,12 +60,3 @@ python scripts/eval_run.py \
 Writes `per_sample.jsonl` (per-sample raw outputs, correctness,
 diversity metrics, format compliance) and `summary.json`.
 
-## Analysis
-
-```bash
-python analysis/compute_stats.py       # Pass@K, CIs, McNemar, Delta_tbl
-python analysis/intersection_lift.py   # Intersection-set Delta_tbl
-python analysis/hcpc_firing.py         # HCPC firing-rate distribution
-python analysis/verify_dissociation.py # Format/accuracy decoupling
-python analysis/plot_passk.py          # Pass@K curves
-```
