@@ -41,8 +41,8 @@ def _make_reward_config(use_hcpc: bool, use_d_reason: bool = True) -> RewardConf
 _SHARED = dict(
     seed=2026,
     learning_rate=1e-6,
-    gradient_accumulation_steps=2,
-    batch_size=2,                # effective batch size = 4
+    gradient_accumulation_steps=4,
+    batch_size=1,                # single-GPU run; effective batch size = 4
     num_epochs=2,                # ~2000 optimization steps on a 1K-sample subset
     warmup_ratio=None,
     weight_decay=None,

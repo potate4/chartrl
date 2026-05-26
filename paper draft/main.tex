@@ -235,8 +235,8 @@ VLM RLVR, not a side note.
 \centering
 \includegraphics[width=0.85\textwidth]{fig_pipeline.pdf}
 \caption{Training pipeline. The multi-component reward supervises
-each rollout independently through format, table, accuracy, and
-length rewards. HCPC adds a group-level bonus computed over rollouts
+each rollout independently through format, accuracy, table, and
+chart-type rewards. HCPC adds a group-level bonus computed over rollouts
 that pass the correct-path filter ($G^+$), rewarding consistent
 table extraction together with diverse reasoning. We compare two
 advantage estimators over the same per-rollout reward: standard
@@ -278,9 +278,11 @@ format/accuracy dissociation analyzed later. By contrast, HCPC's
 correct-path filter in \S\ref{sec:cpf} uses the stricter requirement
 that the entire response be structurally parseable.
 
-Chart-RVR also defines a process reward measuring similarity to the
-ground-truth reasoning chain; we disable it because it conflicts
-with our diversity objective.
+Chart-RVR's other reward components (length, token-count, and
+process-conformity) are disabled: the first two are noisy on this
+backbone because the base model's reasoning yields variable lengths
+and duplicate tags, and process-conformity (similarity to the GT
+reasoning chain) conflicts with our diversity objective.
 
 \subsection{HCPC: Hierarchical Correct-Path Consistency}
 \label{sec:hcpc}
@@ -410,8 +412,9 @@ advantage of any rollout with $R_i \ge \theta = 0.5\,R_{\max}$,
 where $R_{\max}$ sums all defined Chart-RVR ceilings whether or not
 each component is active: $11.0$ base, $15.5$ with HCPC
 ($11.0 + w_{\text{type}} + w_{\text{table}} + w_{\text{reason}}$),
-so $\theta{=}5.5$ and $7.75$ respectively. With two base components
-inactive (\S\ref{sec:base}), the threshold is conservative and
+so $\theta{=}5.5$ and $7.75$ respectively. With three base
+components inactive (\S\ref{sec:base}), the threshold is
+conservative and
 masks only the highest-scoring rollouts. It is fixed, not
 group-relative.
 
@@ -438,8 +441,8 @@ from evaluation, which targets chart QA and fact-checking directly.
 
 We fine-tune Qwen2.5-VL-3B-Instruct with LoRA ($r{=}8$,
 $\alpha{=}16$ on $W_q, W_v$) using AdamW at learning rate
-$1\!\times\!10^{-6}$, effective batch size 4 (per-device 2, gradient
-accumulation 2), $K{=}4$ rollouts per prompt at temperature 0.8 and
+$1\!\times\!10^{-6}$, effective batch size 4 (per-device 1, gradient
+accumulation 4), $K{=}4$ rollouts per prompt at temperature 0.8 and
 top-$p{=}1.0$, over 2 epochs. No KL penalty is applied
 ($\beta_{\text{KL}}{=}0$). In our setup, the verifiable rewards
 themselves act as the main constraint against degenerate outputs,
