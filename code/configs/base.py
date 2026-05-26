@@ -102,10 +102,7 @@ class TrainingConfig:
     # Dataset
     dataset_name: str = "sanchit97/chart-rvr-grpo-train"
     eval_dataset_name: str = "lmms-lab/EvoChart"
-    subset_size: Optional[int] = None  # For quick iteration
-    # Source filter applied to the merged Chart-RVR training mixture.
-    # Set to "chartqa" to use only ChartQA samples (default), "chartfc"
-    # or "plotqa" to restrict to those sources, or None to disable.
+    subset_size: Optional[int] = None
     filter_source: Optional[str] = "chartqa"
 
     # Precision
