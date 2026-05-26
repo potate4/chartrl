@@ -999,23 +999,24 @@ on $o_i \in G^+$. All other hyperparameters are unchanged. We
 evaluate on the same 500-sample test slices used for the main
 results (ChartQA in-distribution, ChartFC OOD).
 
-\begin{table}[!htbp]
+\begin{table*}[!htbp]
 \centering
-\footnotesize
-\setlength{\tabcolsep}{3.5pt}
-\begin{tabular}{lccccc}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{lccccc|ccccc}
 \toprule
-Method & Pass@1 & Pass@4 & all-4 & Fmt\% & $\Delta_{\text{tbl}}$\\
+& \multicolumn{5}{c}{\textbf{ChartQA (in-distribution)}}
+& \multicolumn{5}{c}{\textbf{ChartFC (out-of-distribution)}}\\
+\cmidrule(lr){2-6}\cmidrule(lr){7-11}
+Method & Pass@1 & Pass@4 & all-4 & Fmt\% & $\Delta_{\text{tbl}}$ &
+         Pass@1 & Pass@4 & all-4 & Fmt\% & $\Delta_{\text{tbl}}$\\
 \midrule
-\multicolumn{6}{l}{\emph{ChartQA (in-distribution)}}\\
-\textsc{GRPO}                   & 0.630 & 0.816 & 38.6 & 96.8 & $+0.265$\\
-\textsc{GRPO+HCPC} (full)       & 0.622 & 0.828 & 40.8 & 98.2 & $+0.144$\\
-\textsc{GRPO+HCPC} (table-only) & 0.556 & 0.830 & 28.0 & 46.8 & $+0.003$\\
-\midrule
-\multicolumn{6}{l}{\emph{ChartFC (out-of-distribution)}}\\
-\textsc{GRPO}                   & 0.638 & 0.922 & 35.4 & 98.8 & $+0.160$\\
-\textsc{GRPO+HCPC} (full)       & 0.606 & 0.918 & 28.4 & 66.4 & $+0.020$\\
-\textsc{GRPO+HCPC} (table-only) & 0.622 & 0.883 & 27.3 & 31.7 & $+0.000$\\
+\textsc{GRPO}                   & 0.630 & 0.816 & 38.6 & 96.8 & $+0.265$ &
+                                  0.638 & 0.922 & 35.4 & 98.8 & $+0.160$\\
+\textsc{GRPO+HCPC} (full)       & 0.622 & 0.828 & 40.8 & 98.2 & $+0.144$ &
+                                  0.606 & 0.918 & 28.4 & 66.4 & $+0.020$\\
+\textsc{GRPO+HCPC} (table-only) & 0.556 & 0.830 & 28.0 & 46.8 & $+0.003$ &
+                                  0.622 & 0.883 & 27.3 & 31.7 & $+0.000$\\
 \bottomrule
 \end{tabular}
 \caption{Ablation: HCPC with $w_{\text{reason}}{=}0$
@@ -1025,7 +1026,7 @@ ChartFC: $66.4\%\!\to\!31.7\%$) and drives $\Delta_{\text{tbl}}$ to
 near zero, while Pass@4 holds on ChartQA but drops $3.5$\,pp on
 ChartFC. All rows use the same 500-sample test slices.}
 \label{tab:ablation_dreason}
-\end{table}
+\end{table*}
 
 The reasoning-diversity term is load-bearing for two behaviors.
 First, format compliance: without per-rollout pressure on

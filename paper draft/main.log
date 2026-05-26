@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  26 MAY 2026 16:52
+This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  26 MAY 2026 16:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1267,40 +1267,39 @@ Underfull \hbox (badness 2680) in paragraph at lines 994--1001
  []
 
 
-Overfull \hbox (48.36546pt too wide) in paragraph at lines 1006--1026
+Overfull \hbox (26.28413pt too wide) in paragraph at lines 1006--1027
  [][] 
  []
 
 
-Underfull \hbox (badness 1107) in paragraph at lines 1030--1043
+Underfull \hbox (badness 1107) in paragraph at lines 1031--1044
 \T1/ptm/m/n/10.95 for two be-hav-iors. First, for-mat com-pli-ance:
  []
 
 
-Underfull \hbox (badness 2941) in paragraph at lines 1030--1043
+Underfull \hbox (badness 2941) in paragraph at lines 1031--1044
 \T1/ptm/m/n/10.95 with-out per-rollout pres-sure on rea-son-ing di-
  []
 
 
-Underfull \hbox (badness 1430) in paragraph at lines 1030--1043
+Underfull \hbox (badness 1430) in paragraph at lines 1031--1044
 \T1/ptm/m/n/10.95 ver-sity, the pol-icy col-lapses to-ward repet-i-tive,
  []
 
 
+Underfull \vbox (badness 4634) has occurred while \output is active []
+
+
+Underfull \vbox (badness 4634) has occurred while \output is active []
 
 
 
-[11]
 
 Package natbib Warning: There were undefined citations.
 
 
 
-
-
-[12
-
-] (main.aux)
+[11] [12] (main.aux)
  ***********
 LaTeX2e <2025-06-01> patch level 1
 L3 programming layer <2025-09-02>
@@ -1318,10 +1317,10 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 Here is how much of TeX's memory you used:
  16376 strings out of 403197
  261520 string characters out of 5455936
- 752710 words of memory out of 5000000
+ 754710 words of memory out of 5000000
  44670 multiletter control sequences out of 15000+600000
  686827 words of font info for 123 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 84i,13n,93p,1003b,689s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,13n,93p,1003b,685s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 Output written on main.pdf (12 pages).
