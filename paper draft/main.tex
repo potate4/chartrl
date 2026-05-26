@@ -392,10 +392,9 @@ $w_{\text{table}}C_{\text{table}}$ dominates. A full grid sweep
 over $(w_{\text{type}}, w_{\text{table}}, w_{\text{reason}})$ is
 beyond our compute budget; we leave systematic ablation to future
 work.
-HCPC is silent when $|G^+|{<}2$; on ChartQA this occurs 28.8\% of the
-time ($|G^+|{=}0$ on 17.2\% of groups, $|G^+|{\ge}3$ on 56.6\%),
-exceeding the na\"{i}ve Bernoulli bound of 15.7\% at $p{=}0.62$ due
-to within-group visual correlation.
+HCPC is silent when $|G^+|{<}2$; on ChartQA this occurs $28.8\%$ of
+the time ($|G^+|{=}0$ on $17.2\%$ of groups, $|G^+|{\ge}3$ on
+$56.6\%$).
 \subsection{Diagnostic Baseline: NSR}
 \label{sec:nsr}
 
@@ -439,8 +438,8 @@ from evaluation, which targets chart QA and fact-checking directly.
 
 We fine-tune Qwen2.5-VL-3B-Instruct with LoRA ($r{=}8$,
 $\alpha{=}16$ on $W_q, W_v$) using AdamW at learning rate
-$1\!\times\!10^{-6}$, effective batch size 4 (per-device 1, gradient
-accumulation 4), $K{=}4$ rollouts per prompt at temperature 0.8 and
+$1\!\times\!10^{-6}$, effective batch size 4 (per-device 2, gradient
+accumulation 2), $K{=}4$ rollouts per prompt at temperature 0.8 and
 top-$p{=}1.0$, over 2 epochs. No KL penalty is applied
 ($\beta_{\text{KL}}{=}0$). In our setup, the verifiable rewards
 themselves act as the main constraint against degenerate outputs,
@@ -948,19 +947,14 @@ fraction & 17.2\% & 11.6\% & 14.6\% & 15.8\% & 40.8\% \\
 \end{center}
 
 HCPC fires (non-zero bonus) on groups with $|G^+|{\ge}2$, i.e.\
-$71.2\%$ of groups; the remaining $28.8\%$ are silent. To check
-whether this silent rate is fully explained by per-rollout accuracy,
-let $p$ be the per-rollout probability of passing all three $G^+$
-gates (format, table similarity, answer match), estimated as the
-mean of $|G^+|/K$ across the 500 test groups: $p{=}0.628$. Under
-i.i.d.\ Bernoulli($p$) rollouts the silent rate would be
-$(1{-}p)^4 + 4p(1{-}p)^3 \approx 15.7\%$ and the all-wrong rate
-$(1{-}p)^4 \approx 2.1\%$. The observed values ($28.8\%$ and
-$17.2\%$) are $1.8\times$ and ${\approx}8\times$ these bounds,
-confirming strong positive correlation of correctness within a
-group (rollouts share the same chart image and question) and
-justifying HCPC's group-local design over a rollout-pooled
-alternative.
+$71.2\%$ of groups; the remaining $28.8\%$ are silent. Most firing
+groups are concentrated at the high end of the distribution
+($|G^+|{=}4$ alone accounts for $40.8\%$), so the bonus is mostly
+applied where the policy already produces multiple correct
+rollouts and benefits from cross-rollout consistency and diversity
+signals. The $17.2\%$ all-wrong rate reflects strong positive
+correlation of correctness within a group, as expected when all
+$K{=}4$ rollouts share the same chart image and question.
 
 
 
