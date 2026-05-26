@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  26 MAY 2026 14:21
+This is XeTeX, Version 3.141592653-2.6-0.999997 (MiKTeX 25.4) (preloaded format=xelatex 2025.10.19)  26 MAY 2026 14:37
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -865,12 +865,6 @@ Package natbib Warning: Citation `minilm' on page 4 undefined on input line 310
 .
 
 
-Underfull \vbox (badness 5939) has occurred while \output is active []
-
-
-Underfull \vbox (badness 5939) has occurred while \output is active []
-
-
 
 
 Underfull \hbox (badness 1881) in paragraph at lines 353--360
@@ -952,21 +946,20 @@ Underfull \hbox (badness 3281) in paragraph at lines 440--456
  []
 
 
-
-[5]
-
-Package natbib Warning: Citation `chartqa' on page 6 undefined on input line 46
+Package natbib Warning: Citation `chartqa' on page 5 undefined on input line 46
 5.
 
 
-Package natbib Warning: Citation `chartfc' on page 6 undefined on input line 46
+Package natbib Warning: Citation `chartfc' on page 5 undefined on input line 46
 6.
 
 
-Package natbib Warning: Citation `passatk' on page 6 undefined on input line 47
+Package natbib Warning: Citation `passatk' on page 5 undefined on input line 47
 0.
 
 
+
+[5]
 Overfull \hbox (7.40575pt too wide) detected at line 483
 \OT1/cmr/m/n/10.95 ^^A[] = \OML/cmm/m/it/10.95 P\OT1/cmr/m/n/10.95 ([] = \OML/c
 mm/m/it/10.95 y[] \OMS/cmsy/m/n/10.95 j []\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10
@@ -996,9 +989,6 @@ Underfull \hbox (badness 1888) in paragraph at lines 559--576
 
 File: fig_passk.pdf Graphic file (type pdf)
 <fig_passk.pdf>
-
-
-[6]
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
 (Font)              scaled to size 10.0pt on input line 631.
 
@@ -1011,14 +1001,11 @@ Underfull \hbox (badness 3108) in paragraph at lines 597--634
 \T1/ptm/m/n/10.95 GRPO+HCPC trails GRPO on most met-rics
  []
 
+
+
+[6]
 File: fig_format.pdf Graphic file (type pdf)
 <fig_format.pdf>
-
-Underfull \vbox (badness 7415) has occurred while \output is active []
-
-
-Underfull \vbox (badness 7415) has occurred while \output is active []
-
 
 
 
@@ -1036,6 +1023,12 @@ Underfull \hbox (badness 1072) in paragraph at lines 660--674
 \T1/ptm/m/it/10.95 structure-good, answer-wrong \T1/ptm/m/n/10.95 roll-outs, le
 av-ing
  []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 
@@ -1074,142 +1067,147 @@ Underfull \hbox (badness 3471) in paragraph at lines 699--707
  []
 
 
+
+
 Underfull \hbox (badness 4291) in paragraph at lines 709--714
  []\T1/ptm/b/n/10.95 Why HCPC be-haves so dif-fer-ently un-der
  []
 
 
+Underfull \hbox (badness 1057) in paragraph at lines 739--748
+\T1/ptm/m/n/10.95 enough that well-formed roll-outs cross NSR's
+ []
 
 
 
 [8]
 
 Package natbib Warning: Citation `evochart' on page 9 undefined on input line 7
-60.
+57.
 
 
 Package natbib Warning: Citation `chartqapro' on page 9 undefined on input line
- 761.
+ 758.
 
 No file main.bbl.
 
-Underfull \hbox (badness 10000) in paragraph at lines 756--767
+Underfull \hbox (badness 10000) in paragraph at lines 753--764
 \T1/ptm/m/n/10.95 We use a sin-gle 3B-parameter back-bone
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 756--767
+Underfull \hbox (badness 10000) in paragraph at lines 753--764
 \T1/ptm/m/n/10.95 (Qwen2.5-VL-3B), a 1,000-sample train-ing
  []
 
 
-Underfull \hbox (badness 1231) in paragraph at lines 756--767
+Underfull \hbox (badness 1231) in paragraph at lines 753--764
 \T1/ptm/m/n/10.95 us from train-ing on the full Chart-RVR CoT
  []
 
 
-Underfull \hbox (badness 2903) in paragraph at lines 756--767
+Underfull \hbox (badness 2903) in paragraph at lines 753--764
 \T1/ptm/m/n/10.95 mix-ture (34,194 sam-ples), eval-u-at-ing on the
  []
 
 
-Underfull \hbox (badness 1082) in paragraph at lines 756--767
+Underfull \hbox (badness 1082) in paragraph at lines 753--764
 \T1/ptm/m/n/10.95 probe ChartFC pro-vides. Scal-ing to the full
  []
 
 
 Package natbib Warning: Citation `passatk' on page 9 undefined on input line 77
-9.
+6.
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 774--783
+Underfull \hbox (badness 10000) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 Training and eval-u-a-tion code is in-cluded
  []
 
 
-Underfull \hbox (badness 3354) in paragraph at lines 774--783
+Underfull \hbox (badness 3354) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 with the sub-mis-sion. Hy-per-pa-ram-e-ters and
  []
 
 
-Underfull \hbox (badness 3815) in paragraph at lines 774--783
+Underfull \hbox (badness 3815) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 the ex-act re-ward con-fig-u-ra-tion used for ev-
  []
 
 
-Underfull \hbox (badness 2042) in paragraph at lines 774--783
+Underfull \hbox (badness 2042) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 ery run are spec-i-fied in the train-ing con-figs
  []
 
 
-Underfull \hbox (badness 1038) in paragraph at lines 774--783
+Underfull \hbox (badness 1038) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 schema is in ^^9f[][]B[][]. Pass@$\OML/cmm/m/it/10.95 K$ \T1/
 ptm/m/n/10.95 uses the un-bi-ased
  []
 
 
-Underfull \hbox (badness 1102) in paragraph at lines 774--783
+Underfull \hbox (badness 1102) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 es-ti-ma-tor of \T1/ptm/b/n/10.95 ?\T1/ptm/m/n/10.95 . Cross-
 rollout sim-i-lar-i-ties use
  []
 
 
-Underfull \hbox (badness 2856) in paragraph at lines 774--783
+Underfull \hbox (badness 2856) in paragraph at lines 771--780
 \T1/ptm/m/n/10.95 use $\OML/cmm/m/it/10.95 n[][]\OT1/cmr/m/n/10.95 10[]000$ \T1
 /ptm/m/n/10.95 re-sam-ples; Mc-Ne-mar tests
  []
 
 
-Underfull \hbox (badness 1365) in paragraph at lines 787--793
+Underfull \hbox (badness 1365) in paragraph at lines 784--790
 \T1/ptm/m/n/10.95 The model is prompted to emit re-sponses in
  []
 
 
-Underfull \hbox (badness 1137) in paragraph at lines 787--793
+Underfull \hbox (badness 1137) in paragraph at lines 784--790
 \T1/ptm/m/n/10.95 a struc-tured XML tem-plate. The prompt in-
  []
 
 
-Underfull \hbox (badness 3815) in paragraph at lines 787--793
+Underfull \hbox (badness 3815) in paragraph at lines 784--790
 \T1/ptm/m/n/10.95 structs the model to wrap its rea-son-ing in
  []
 
-
-
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
-(Font)              scaled to size 9.0pt on input line 794.
+(Font)              scaled to size 9.0pt on input line 791.
+
+
 File: fig_dataset_example.png Graphic file (type bmp)
 <fig_dataset_example.png>
 
 
 [9]
 LaTeX Font Info:    Trying to load font information for TS1+zi4 on input line 8
-62.
+59.
 
 (C:\Users\sumai\AppData\Local\Programs\MiKTeX\tex/latex/inconsolata\ts1zi4.fd
 File: ts1zi4.fd 2018/01/14 TS1/zi4 (Inconsolata)
 )
 LaTeX Font Info:    Font shape `TS1/zi4/m/n' will be
-(Font)              scaled to size 9.0pt on input line 862.
+(Font)              scaled to size 9.0pt on input line 859.
 Package microtype Info: Loading generic protrusion settings for font family
 (microtype)             `zi4' (encoding: TS1).
 (microtype)             For optimal results, create family-specific settings.
 (microtype)             See the microtype manual for details.
 
-Underfull \hbox (badness 2538) in paragraph at lines 919--933
+Underfull \hbox (badness 2538) in paragraph at lines 916--930
 \T1/ptm/m/n/10.95 con-fig-u-ra-tions (\T1/ptm/m/sc/10.95 GRPO\T1/ptm/m/n/10.95 
 , \T1/ptm/m/sc/10.95 GRPO+HCPC\T1/ptm/m/n/10.95 , \T1/ptm/m/sc/10.95 NSR\T1/ptm
 /m/n/10.95 ,
  []
 
 
-Underfull \hbox (badness 1009) in paragraph at lines 919--933
+Underfull \hbox (badness 1009) in paragraph at lines 916--930
 \T1/ptm/m/sc/10.95 NSR+HCPC\T1/ptm/m/n/10.95 ), two pair-wise gaps reach $\OML/
 cmm/m/it/10.95 p <
  []
 
 
-Underfull \hbox (badness 1629) in paragraph at lines 919--933
+Underfull \hbox (badness 1629) in paragraph at lines 916--930
 \OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 05$\T1/ptm/m/n/10.9
 5 : \T1/ptm/m/sc/10.95 GRPO \T1/ptm/m/n/10.95 vs. \T1/ptm/m/sc/10.95 NSR \T1/pt
 m/m/n/10.95 on ChartFC Pass@4
@@ -1218,40 +1216,40 @@ m/m/n/10.95 on ChartFC Pass@4
 
 
 
-Underfull \hbox (badness 1502) in paragraph at lines 937--941
+Underfull \hbox (badness 1502) in paragraph at lines 934--938
 \T1/ptm/m/n/10.95 the 500 ChartQA test groups for the trained
  []
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 970.
+(hyperref)                removing `math shift' on input line 967.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\Delta' on input line 970.
+(hyperref)                removing `\Delta' on input line 967.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 970.
+(hyperref)                removing `subscript' on input line 967.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 970.
+(hyperref)                removing `math shift' on input line 967.
 
 
 
 [10]
-Underfull \hbox (badness 4686) in paragraph at lines 991--999
+Underfull \hbox (badness 4686) in paragraph at lines 988--996
 \T1/ptm/m/n/10.95 We split ChartQA test sam-ples by ground-
  []
 
 
-Underfull \hbox (badness 1803) in paragraph at lines 991--999
+Underfull \hbox (badness 1803) in paragraph at lines 988--996
 \T1/ptm/m/sc/10.95 GRPO+HCPC \T1/ptm/m/n/10.95 on Pass@1. Dif-fer-ences are
  []
 
 
-Underfull \hbox (badness 3907) in paragraph at lines 991--999
+Underfull \hbox (badness 3907) in paragraph at lines 988--996
 \OMS/cmsy/m/n/10.95 ^^@\OT1/cmr/m/n/10.95 1\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10
 .95 7$\T1/ptm/m/n/10.95 pp, $\OML/cmm/m/it/10.95 p[]\OT1/cmr/m/n/10.95 0\OML/cm
 m/m/it/10.95 :\OT1/cmr/m/n/10.95 63$\T1/ptm/m/n/10.95 ), boolean ($\OML/cmm/m/i
@@ -1287,10 +1285,10 @@ Package rerunfilecheck Info: File `main.out' has not changed.
 Here is how much of TeX's memory you used:
  16372 strings out of 403197
  261461 string characters out of 5455936
- 748035 words of memory out of 5000000
+ 748028 words of memory out of 5000000
  44666 multiletter control sequences out of 15000+600000
  686827 words of font info for 123 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 84i,13n,93p,1003b,556s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,13n,93p,1003b,685s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 Output written on main.pdf (11 pages).

@@ -74,7 +74,7 @@ to richer reward landscapes. We will make our code and data public.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.90\textwidth]{fig_teaser.pdf}
+\includegraphics[width=0.85\textwidth]{fig_teaser.pdf}
 \caption{Format and answer accuracy are separable channels in
 chart RLVR. \textbf{Left:} a stylized rollout under each training
 regime. GRPO emits the required structural tags and the correct
@@ -233,7 +233,7 @@ VLM RLVR, not a side note.
 \label{sec:method}
 \begin{figure*}[t]
 \centering
-\includegraphics[width=0.90\textwidth]{fig_pipeline.pdf}
+\includegraphics[width=0.85\textwidth]{fig_pipeline.pdf}
 \caption{Training pipeline. The multi-component reward supervises
 each rollout independently through format, table, accuracy, and
 length rewards. HCPC adds a group-level bonus computed over rollouts
@@ -739,16 +739,13 @@ the channel-separability claim concrete.
 We introduced HCPC, a cross-rollout bonus rewarding consistent
 extraction and diverse reasoning on the correct-path subset of a
 group. On GRPO it yields more robust correct groups without
-sacrificing Pass@1. Porting NSR, a diversity-preservation recipe
-from text-only math RLVR, into chart RLVR collapses format
+sacrificing Pass@1. Porting NSR, from text-only math RLVR, into chart RLVR collapses format
 compliance: structural rewards saturate fast enough that well-formed
 rollouts cross NSR's threshold regardless of answer quality. HCPC
 on top of NSR recovers GRPO-level OOD accuracy at near-zero format,
 direct evidence that format and answer accuracy are separable
-channels. Advantage-rule asymmetries from single-reward
-domains can interact destructively with new reward components in
-the target domain, so the multi-component reward mixture deserves
-first-class consideration when porting RLVR across modalities.
+channels. Reward-rule asymmetries from single-reward domains can interact destructively with added reward components, making multi-component reward design a first-class concern when transferring RLVR across modalities.
+
 
 
 \section*{Limitations}
