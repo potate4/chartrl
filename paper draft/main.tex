@@ -182,9 +182,9 @@ richer training data \citep{chartgemma,chartinstruct}, grounding
 reflection \citep{chartpoint2025}, and agentic pipelines that wrap
 base models rather than modifying training
 \citep{chartagent2025,vprochart2025,chartcitor2025}. Our work sits
-next to these. We keep Chart-RVR's reward backbone unchanged and ask
+next to these. We utilize Chart-RVR's reward backbone and ask
 a different question: how the choice of advantage rule and a
-cross-rollout reward interact with that backbone.
+cross-rollout reward interact with it.
 
 \paragraph{Advantage-rule variants in RLVR.}
 GRPO \citep{deepseekmath} treats correct and incorrect rollouts
@@ -490,8 +490,7 @@ slice-level $\Delta_{\text{tbl}}$ then averages each per-sample mean
 across the samples that have at least one rollout in the relevant
 condition. This keeps each test sample as the unit of observation
 (so paired-bootstrap CIs remain valid) while using all $K$ rollouts
-to reduce per-sample noise, rather than relying on a single rollout
-index. A higher $\Delta_{\text{tbl}}$ indicates the model's answer
+to reduce per-sample noise, rather than relying on a single rollout. A higher $\Delta_{\text{tbl}}$ indicates the model's answer
 correctness depends more strongly on emitting a parseable table.
 The two arms of the conditional can move for different reasons; we
 unpack this in \S\ref{sec:hcpc_grpo}.
@@ -580,7 +579,7 @@ where rollout-set coverage matters.
 \includegraphics[width=0.95\columnwidth]{fig_passk.pdf}
 \caption{Pass@$K$ on ChartQA ($n{=}500$). HCPC's gain over GRPO grows
 with $K$: tied at $K{=}1$, leading at $K{=}3$ and $K{=}4$. The
-direction is consistent with the design hypothesis that a
+direction is consistent with the hypothesis that a
 cross-rollout bonus preserves correct-path coverage at higher $K$.
 Individual differences are not significant at $n{=}500$
 (Pass@4 boot-$p{=}0.48$).}
@@ -608,8 +607,7 @@ $+0.020$: the no-table arm is now large and still mostly correct,
 so the parseable-table condition no longer carries a sizable
 correctness premium. This is a genuine limitation of standalone
 GRPO+HCPC, complementary to the NSR-mitigation result in
-\S\ref{sec:dissociation}; fixes (chart-style augmentation, softer
-GT-anchored filter) are left to future work.
+\S\ref{sec:dissociation}; fixes (chart-style augmentation) are left to future work.
 \begin{table}[t]
 \centering
 \footnotesize
@@ -671,8 +669,7 @@ removes the dominant positive gradient on structural-tag emission,
 and the policy drifts back toward the base model's unstructured
 output. We expect this failure mode to be absent in
 \citet{zhu2025nsr}'s math experiments because text-math rewards are
-dominated by a single answer bit; the implicit format (a final
-\verb|\boxed{}| or number on its own line) is either trivial or
+dominated by a single answer bit; the implicit format is either trivial or
 emerges from the answer-correctness signal itself.
 
 \subsection{Format and Accuracy as Separable Channels}
@@ -739,22 +736,20 @@ accuracy recovers fully while format does not. This asymmetry makes
 the channel-separability claim concrete.
 
 \section{Conclusion}
-We introduced HCPC, a cross-rollout bonus that rewards consistent
+We introduced HCPC, a cross-rollout bonus rewarding consistent
 extraction and diverse reasoning on the correct-path subset of a
-group. On top of GRPO it produces more robust correct groups and
-stronger table grounding without sacrificing Pass@1. Comparing against
-NSR, a diversity-preservation recipe imported from text-only math
-RLVR, we find that porting it unchanged into chart RLVR collapses
-format compliance: structural rewards saturate fast enough for
-well-formed rollouts to cross NSR's threshold regardless of answer
-quality. HCPC on top of NSR recovers GRPO-level OOD accuracy at
-near-zero format compliance, providing direct evidence that format
-and answer accuracy are separable channels of the trained policy.
-The takeaway for practitioners: advantage-rule asymmetries developed
-for single-reward source domains can interact destructively with
-reward components that are new in the target domain. The shape of the
-multi-component reward mixture deserves first-class consideration when
-porting RLVR recipes across modalities.
+group. On GRPO it yields more robust correct groups without
+sacrificing Pass@1. Porting NSR, a diversity-preservation recipe
+from text-only math RLVR, into chart RLVR collapses format
+compliance: structural rewards saturate fast enough that well-formed
+rollouts cross NSR's threshold regardless of answer quality. HCPC
+on top of NSR recovers GRPO-level OOD accuracy at near-zero format,
+direct evidence that format and answer accuracy are separable
+channels. Advantage-rule asymmetries from single-reward
+domains can interact destructively with new reward components in
+the target domain, so the multi-component reward mixture deserves
+first-class consideration when porting RLVR across modalities.
+
 
 \section*{Limitations}
 
