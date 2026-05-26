@@ -835,6 +835,74 @@ schema. \texttt{<think>} and \texttt{<table>} are not natively
 emitted by Qwen2.5-VL-3B-Instruct without training; the format reward
 provides the gradient that teaches them.
 
+\section{Training Dataset Example}
+\label{sec:dataset_example}
+
+Each training instance is a tuple of (image, query, ground-truth
+label, chart type, reference table, expected reasoning trace). The
+prompt sent to the model is the system message from
+\S\ref{sec:prompt} together with the chart image and the query. The
+reward signals defined in \S\ref{sec:base} are computed against the
+ground-truth label, chart type, and reference table; the reference
+reasoning trace is used only for the (disabled) process-conformity
+reward, not in our reported runs. Figure~\ref{fig:dataset_example}
+shows the image; the remaining fields for this instance are below.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\columnwidth]{fig_dataset_example.png}
+\caption{Chart image for the dataset example below. Source: Our
+World in Data / World Bank, reproduced under CC-BY as it appears in
+the training mixture.}
+\label{fig:dataset_example}
+\end{figure}
+
+\paragraph{Query.}
+\begin{Verbatim}
+What is the value of Child bar?
+\end{Verbatim}
+
+\paragraph{Ground-truth label.}
+\begin{Verbatim}
+8.13
+\end{Verbatim}
+
+\paragraph{Chart type.}
+\begin{Verbatim}
+bar
+\end{Verbatim}
+
+\paragraph{Reference table.}
+\begin{Verbatim}
+{
+  "columns": ["Category", "Value"],
+  "rows": [
+    ["Child (before age 5)",            "8.13%"],
+    ["Infant (first year of life)",     "5.48%"],
+    ["Neonatal (first 28 days of life)","2.85%"]
+  ]
+}
+\end{Verbatim}
+
+\paragraph{Reference reasoning trace.}
+\begin{Verbatim}
+<step-1>: Identify the relevant bar for 'Child' in the chart.
+<step-2>: Read the value associated with the 'Child' bar.
+<step-3>: Verify the value matches the percentage label.
+<step-4>: Confirm the value is 8.13%.
+<step-5>: Verify the final answer for hallucinations.
+\end{Verbatim}
+
+\paragraph{Dataset schema.}
+The training mixture is a Hugging Face dataset with the following
+columns: \texttt{image} (chart PNG), \texttt{query} (natural-language
+question), \texttt{label} (ground-truth answer string),
+\texttt{prompt} (assembled system prompt $+$ query),
+\texttt{reasoning} (reference reasoning trace), and
+\texttt{chart\_type} (categorical label). Per-rollout outputs are
+parsed against the expected schema in \S\ref{sec:prompt} to extract
+the predicted answer, table, and chart type for reward computation.
+
 \section{Per-Tag Format Compliance, Both Benchmarks}
 \label{sec:tags_full}
 
