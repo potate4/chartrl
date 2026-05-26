@@ -121,16 +121,21 @@ answer reflect genuine competence. A ground-truth-anchored filter
 ensures the bonus targets correct-path quality rather than surface
 agreement among arbitrary rollouts.
 
-To explicitly isolate what HCPC is and is not doing, we introduce a contrastive diagnostic that applies opposing pressure to the same problem. Negative Sample Reinforcement (NSR; \citealp{zhu2025nsr}) follows an opposite optimization strategy by masking gradient signal on correct rollouts while penalizing incorrect ones. NSR was originally motivated by mitigating reward hacking and overconfident convergence on easy solutions, though its mechanism may also encourage greater exploration and diversity. In single-component math RLVR, this strategy is effective \citep{zhu2025nsr}. In chart RLVR, however, we do not observe comparable gains. Porting
-NSR unchanged collapses format compliance, specifically the
-structured XML tags and table markup that the pipeline depends on,
-on both in-distribution and out-of-distribution data, with no
-corresponding gain in answer accuracy. Per-tag analysis traces the
-failure to exactly the structural tags that reward training had to
-teach, pointing to reward-signal starvation as the cause. The
-result is informative precisely because the failure is clean:
-something about the multimodal, multi-component reward landscape
-breaks an assumption that held in the simpler setting. Adding HCPC to NSR recovers competitive answer accuracy
+To isolate what HCPC is and is not doing, we introduce a
+contrastive diagnostic: Negative Sample Reinforcement (NSR;
+\citealp{zhu2025nsr}), which masks gradient on correct rollouts and
+penalizes only incorrect ones. NSR was motivated by mitigating
+reward hacking and overconfident convergence, though its mechanism
+may also encourage exploration and diversity. In single-component
+math RLVR it works \citep{zhu2025nsr}. In chart RLVR it does not:
+porting it unchanged collapses format compliance, specifically the
+structured XML tags and table markup the pipeline depends on, on
+both ID and OOD data, with no gain in answer accuracy. Per-tag
+analysis traces the failure to exactly the structural tags reward
+training had to teach, pointing to reward-signal starvation. The
+failure is informative precisely because it is clean: something
+about the multimodal, multi-component reward landscape breaks an
+assumption that held in the simpler setting. Adding HCPC to NSR recovers competitive answer accuracy
 out-of-distribution while format compliance stays near zero.
 Accuracy returns; format does not. This dissociation is the central
 finding of the paper: format compliance and answer accuracy are
@@ -374,27 +379,19 @@ $w_{\text{reason}}{=}1.5$. The total reward is:
   R_i = R_{\text{base}}(o_i) + R_{\text{HCPC}}(o_i).
 \]
 \paragraph{Choice of weights.}
-The weights are fixed rather than tuned, and the chosen values reflect
-the empirical magnitudes of each term so that no single component
-dominates trivially. $C_{\text{table}}$ ranges in $[0,1]$ but is the
-signal most directly aligned with correctness, so it receives the
-largest weight. $C_{\text{type}}$ also ranges in $[0,1]$ but is
-typically near ceiling on groups where HCPC fires (chart-type
-prediction saturates early in training), so it receives a smaller
-weight to avoid contributing a near-constant offset. The
-per-rollout uniqueness $u_i$ has a much smaller empirical range
-($\bar{u} \approx 0.05$ at $K{=}4$): $w_{\text{reason}}$ is raised
-above $w_{\text{type}}$ so that the diversity term remains a
-non-trivial part of the bonus despite its smaller magnitude.
-Even so, $w_{\text{table}}\,C_{\text{table}}$ remains the dominant
-contribution in practice.
-
-We do not perform a weight sweep or per-component ablation:
-with three weights, $K{=}4$ rollouts, and full-pipeline training runs
-for every grid point, a proper isolation is beyond our compute
-budget. We acknowledge this as a limitation and leave systematic
-ablation of $(w_{\text{type}}, w_{\text{table}}, w_{\text{reason}})$
-to future work.
+Weights are fixed (not tuned) and scaled to the empirical range of
+each term. $C_{\text{table}}$ gets the largest weight because it
+ranges in $[0,1]$ and is the term most directly tied to correctness.
+$C_{\text{type}}$ shares the same range but is near-ceiling on
+firing groups (chart-type saturates early), so a smaller weight
+avoids a near-constant offset. The per-rollout uniqueness $u_i$ has
+a much smaller empirical range ($\bar{u}{\approx}0.05$ at $K{=}4$),
+so $w_{\text{reason}}$ is raised above $w_{\text{type}}$ to keep
+the diversity term non-trivial; even so,
+$w_{\text{table}}C_{\text{table}}$ dominates. A full grid sweep
+over $(w_{\text{type}}, w_{\text{table}}, w_{\text{reason}})$ is
+beyond our compute budget; we leave systematic ablation to future
+work.
 HCPC is silent when $|G^+|{<}2$; on ChartQA this occurs 28.8\% of the
 time ($|G^+|{=}0$ on 17.2\% of groups, $|G^+|{\ge}3$ on 56.6\%),
 exceeding the na\"{i}ve Bernoulli bound of 15.7\% at $p{=}0.62$ due
@@ -403,32 +400,27 @@ to within-group visual correlation.
 \label{sec:nsr}
 
 Negative Sample Reinforcement~\citep{zhu2025nsr} pursues the same
-diversity goal as HCPC by the opposite route: it removes gradient from
-correct rollouts entirely and penalizes only incorrect ones. In
-single-component math RLVR this improves Pass@$K$~\citep{zhu2025nsr}.
-We port it to chart RLVR unchanged to test whether that finding
-transfers to a multi-component reward setting.
+diversity goal as HCPC by the opposite route: zeroing gradient on
+correct rollouts and penalizing only incorrect ones. It improves
+Pass@$K$ in single-component math RLVR~\citep{zhu2025nsr}; we port
+it unchanged to test transfer to multi-component reward.
 
 \textbf{Masking rule.}
-After GRPO normalizes advantages within a group, we zero out the
-advantage of any rollout with $R_i \ge \theta$, where
-$\theta = 0.5\,R_{\max}$. $R_{\max}$ is summed from all defined
-reward ceilings in the Chart-RVR specification regardless of whether
-each component is active: $R_{\max}{=}11.0$ for the base
-configuration and $R_{\max}{=}15.5$ with HCPC
+After GRPO normalizes advantages within a group, we zero the
+advantage of any rollout with $R_i \ge \theta = 0.5\,R_{\max}$,
+where $R_{\max}$ sums all defined Chart-RVR ceilings whether or not
+each component is active: $11.0$ base, $15.5$ with HCPC
 ($11.0 + w_{\text{type}} + w_{\text{table}} + w_{\text{reason}}$),
-giving $\theta{=}5.5$ and $\theta{=}7.75$ respectively. Because two
-base components are inactive (\S\ref{sec:base}), the achievable
-ceiling is lower; the threshold is therefore conservative, masking
-only the highest-scoring rollouts. The threshold is fixed rather than
-group-relative, so it does not shift with the per-step distribution.
+so $\theta{=}5.5$ and $7.75$ respectively. With two base components
+inactive (\S\ref{sec:base}), the threshold is conservative and
+masks only the highest-scoring rollouts. It is fixed, not
+group-relative.
 
 \textbf{NSR+HCPC.}
-When combined, HCPC bonus inflates $R_i$ for rollouts in $G^+$,
-making them more likely to be masked by NSR. Rollouts outside $G^+$
-receive no HCPC bonus and are more likely to retain a negative
-gradient. HCPC membership thus indirectly determines which rollouts
-drive the policy update under NSR.
+The HCPC bonus inflates $R_i$ for rollouts in $G^+$, making them
+more likely to be masked; rollouts outside $G^+$ keep their
+negative gradient. HCPC membership thus indirectly selects which
+rollouts drive the policy update under NSR.
 
 \section{Experimental Setup}
 \label{sec:experiments}
@@ -596,36 +588,28 @@ Individual differences are not significant at $n{=}500$
 \end{figure}
 
 Unpacking $\Delta_{\text{tbl}}$: $P(\hat y=y^*\mid\text{tbl})$ is
-$0.625$ for GRPO and $0.634$ for HCPC (tied on the common-table
-intersection, \S\ref{sec:delta_intersection}), while
-$P(\hat y=y^*\mid\text{no tbl})$ is $0.360$ for GRPO and $0.490$
-for HCPC. The two methods are indistinguishable when a parseable
-table is produced; the gap in $\Delta_{\text{tbl}}$ comes entirely
-from the no-table arm, where HCPC remains markedly more accurate
-than GRPO. The correct-path bonus appears to make the policy more
-robust to extraction failures rather than more dependent on the
-extracted table: when the table tag is missing, HCPC still answers
-correctly $49\%$ of the time vs.\ GRPO's $36\%$.
+$0.625$ for GRPO and $0.634$ for HCPC (tied; also tied on the
+common-table intersection, \S\ref{sec:delta_intersection}). The gap
+comes entirely from the no-table arm: $P(\hat y=y^*\mid\text{no tbl})$
+is $0.360$ for GRPO and $0.490$ for HCPC. The correct-path bonus
+makes the policy more robust to extraction failures rather than
+more dependent on the extracted table.
 
-\paragraph{GRPO+HCPC OOD behavior.} On the OOD ChartFC probe,
-GRPO+HCPC trails plain GRPO on most metrics (Pass@1 $0.606$ vs.\
-$0.638$, Pass@4 $0.918$ vs.\ $0.922$, format $66.4\%$ vs.\
-$98.8\%$). Format compliance is the largest drop: HCPC's
-extraction pipeline is less reliable on unfamiliar visual styles,
-and $34\%$ of rollouts no longer emit a parseable table tag.
-Despite this, answer accuracy in the no-table arm holds up well
+\paragraph{GRPO+HCPC OOD behavior.} On ChartFC, GRPO+HCPC trails
+GRPO on most metrics (Pass@1 $0.606$ vs.\ $0.638$, Pass@4 $0.918$
+vs.\ $0.922$, format $66.4\%$ vs.\ $98.8\%$). Format is the largest
+drop: HCPC's extraction is less reliable on unfamiliar visual
+styles, and $34\%$ of rollouts no longer emit a parseable table.
+Despite this, no-table accuracy holds up
 ($P(\hat y=y^*\mid\text{no tbl}){=}0.605$ for HCPC vs.\ $0.500$ for
-GRPO on the few GRPO samples that fall in this bucket), so the
-Pass@1 and Pass@4 gaps to GRPO remain small ($-3.2$ and
-$-0.4$\,pp). $\Delta_{\text{tbl}}$ correspondingly drops to
-$+0.020$: with the no-table arm now containing a sizable share of
-the rollouts and the model still answering correctly without a
-table, the parseable-table condition no longer carries a large
-correctness premium. This is a
-genuine limitation of standalone GRPO+HCPC, complementary to the
-NSR-mitigation result in \S\ref{sec:dissociation}; we leave a fix
-(e.g., a chart-style augmentation in training or a softer
-GT-anchored filter) to future work.
+GRPO on its few no-table samples), so the Pass@1/Pass@4 gaps stay
+small ($-3.2$ and $-0.4$\,pp). $\Delta_{\text{tbl}}$ drops to
+$+0.020$: the no-table arm is now large and still mostly correct,
+so the parseable-table condition no longer carries a sizable
+correctness premium. This is a genuine limitation of standalone
+GRPO+HCPC, complementary to the NSR-mitigation result in
+\S\ref{sec:dissociation}; fixes (chart-style augmentation, softer
+GT-anchored filter) are left to future work.
 \begin{table}[t]
 \centering
 \footnotesize
@@ -675,37 +659,35 @@ teach ($\langle$think$\rangle$, $\langle$table$\rangle$). NSR's
 $\langle$think$\rangle$ rate (57.4\%) is essentially the base model's
 (52.2\%) plus noise; $\langle$table$\rangle$ rate (72.2\%) falls below the base model's (77.2\%).
 
-The mechanism is mechanical. $R_{\text{fmt}}$, the active structural
-reward in our setup, saturates quickly: emitting the required tags in
-the correct order is a learned-once behavior that yields near-maximal
-contribution from that component. With those rewards saturating, the total per-rollout
-$R_i$ for a well-formed rollout reaches the NSR threshold
-$\theta = 0.5\,R_{\max}$ regardless of whether the final answer is
-correct. NSR therefore masks the advantage of
+The mechanism is mechanical. $R_{\text{fmt}}$, the active
+structural reward, saturates quickly: emitting the required tags is
+a learned-once behavior that yields near-maximal contribution. With
+$R_{\text{fmt}}$ saturated, the per-rollout $R_i$ for a well-formed
+rollout reaches $\theta = 0.5\,R_{\max}$ regardless of answer
+correctness. NSR therefore masks
 \emph{structure-good, answer-wrong} rollouts, leaving only
-\emph{structure-bad, answer-wrong} rollouts, which receive negative
-advantage, to drive the policy. This removes the dominant positive
-gradient on structural-tag emission, and the policy drifts back toward
-the base model's unstructured output. We expect this failure mode to
-be absent in \citet{zhu2025nsr}'s math experiments because text-math
-rewards are dominated by a single answer bit; the implicit ``format''
-(a final \verb|\boxed{}| or a number on its own line) is either
-trivial or emerges from the answer-correctness signal itself.
-Verifying this empirically is beyond our current scope.
+\emph{structure-bad, answer-wrong} ones to drive the policy. This
+removes the dominant positive gradient on structural-tag emission,
+and the policy drifts back toward the base model's unstructured
+output. We expect this failure mode to be absent in
+\citet{zhu2025nsr}'s math experiments because text-math rewards are
+dominated by a single answer bit; the implicit format (a final
+\verb|\boxed{}| or number on its own line) is either trivial or
+emerges from the answer-correctness signal itself.
 
 \subsection{Format and Accuracy as Separable Channels}
 \label{sec:dissociation}
 
-On ChartFC, HCPC added to NSR improves over plain NSR on every metric: Pass@1 $0.590\!\to\!0.632$ ($+4.2$\,pp),
-Pass@4 $0.884\!\to\!0.894$ ($+1.0$\,pp), $\Delta_{\text{tbl}}$
-$-0.064\!\to\!-0.003$ ($+0.061$), and format
-$16.2\%\!\to\!17.8\%$. The $\Delta_{\text{tbl}}$ shift from clearly
-negative to near zero indicates that table extraction stops
-actively hurting; the format gain is marginal. Plain NSR is the weakest OOD
-configuration in Table~\ref{tab:main} on every metric, and HCPC
-closes most of that gap (Figure~\ref{fig:passk_chartfc}). How the
-gap is closed (mechanism below) turns out to be more interesting
-than the gap-closing itself.
+On ChartFC, HCPC added to NSR improves every metric: Pass@1
+$0.590\!\to\!0.632$ ($+4.2$\,pp), Pass@4 $0.884\!\to\!0.894$
+($+1.0$\,pp), $\Delta_{\text{tbl}}$ $-0.064\!\to\!-0.003$
+($+0.061$), and format $16.2\%\!\to\!17.8\%$. The
+$\Delta_{\text{tbl}}$ shift from clearly negative to near zero
+indicates table extraction stops actively hurting; the format gain
+is marginal. Plain NSR is the weakest OOD configuration on every
+metric (Table~\ref{tab:main}), and HCPC closes most of that gap
+(Figure~\ref{fig:passk_chartfc}). How the gap is closed turns out
+to matter more than the gap itself.
 
 \begin{figure}[t]
 \centering
@@ -717,41 +699,37 @@ evaluated on ChartFC.}
 \label{fig:passk_chartfc}
 \end{figure}
 
-\paragraph{Format/accuracy dissociation.} The way in which HCPC
-mitigates NSR's damage is unusual: NSR+HCPC reaches Pass@1 $=0.632$, statistically indistinguishable
-from GRPO ($0.638$; paired-bootstrap CI $[-0.046,+0.060]$,
-$p{=}0.85$), while format compliance remains collapsed at $17.8\%$
-(vs.\ GRPO's $98.8\%$). HCPC under NSR recovers GRPO-level OOD
-answer accuracy without recovering format. This is the cleanest
-empirical evidence in the paper that format compliance and answer
-accuracy are separable downstream behaviors in chart RLVR.
+\paragraph{Format/accuracy dissociation.} The way HCPC mitigates
+NSR's damage is unusual: NSR+HCPC reaches Pass@1 $=0.632$,
+statistically tied with GRPO ($0.638$; paired-bootstrap CI
+$[-0.046,+0.060]$, $p{=}0.85$), while format compliance remains
+collapsed at $17.8\%$ (vs.\ GRPO's $98.8\%$). HCPC under NSR
+recovers GRPO-level OOD accuracy without recovering format: the
+cleanest evidence in the paper that format compliance and answer
+accuracy are separable channels in chart RLVR.
 
 \paragraph{Why HCPC behaves so differently under GRPO and NSR.}
-Under GRPO, HCPC behaves as designed: the bonus is added to
-correct-path rollouts' rewards, those rollouts get higher GRPO
-advantage $(R_i - \bar R)/s_R$, and the policy is reinforced toward
-the correct path. This is the standard positive-gradient
-interpretation and accounts for the ChartQA results
+Under GRPO, HCPC acts as designed: the bonus raises correct-path
+rollouts' rewards, lifts their advantage $(R_i - \bar R)/s_R$, and
+reinforces the correct path. This standard positive-gradient
+interpretation accounts for the ChartQA results
 (\S\ref{sec:hcpc_grpo}).
 
 Under NSR, the same bonus operates through a different channel.
-HCPC adds its bonus to exactly the correct-path rollouts that NSR
-then masks out of the gradient, so the bonus does not reach the
-policy as a direct positive update. But TRL computes the GRPO
-advantage before the NSR mask is applied, using the group
-mean $\bar R$ over the full set of rollouts. Adding $R_{\text{HCPC}}$
-to correct rollouts raises $\bar R$, and for the wrong rollouts that
-survive the mask this makes their advantage more negative. The
-correct-path bonus therefore reshapes the reference baseline that
-the surviving (wrong) rollouts are penalized against, pushing the
-policy harder away from wrong-path behavior. The mechanism is
-\emph{baseline shift, not direct reinforcement}: HCPC under NSR
-strengthens the negative gradient on wrong rollouts without
-providing any positive gradient on correct ones. This is consistent
-with what we observe. Answer-level OOD accuracy recovers because
-wrong-rollout suppression strengthens, while structured-output
-emission, which requires positive gradient on correct rollouts that
-neither NSR nor HCPC-under-NSR can provide, remains collapsed.
+HCPC's bonus lands on exactly the correct-path rollouts that NSR
+masks, so it never reaches the policy as a direct positive update.
+But TRL computes the GRPO advantage before the NSR mask is applied,
+using the group mean $\bar R$. Adding $R_{\text{HCPC}}$ to correct
+rollouts raises $\bar R$, making the surviving wrong rollouts'
+advantages more negative. The bonus thus reshapes the baseline that
+wrong rollouts are penalized against, pushing the policy harder
+away from wrong-path behavior. The mechanism is \emph{baseline
+shift, not direct reinforcement}: HCPC under NSR strengthens the
+negative gradient on wrong rollouts without giving any positive
+gradient to correct ones. This matches what we observe: answer
+accuracy OOD recovers (wrong-rollout suppression strengthens) while
+structured-output emission, which needs positive gradient on
+correct rollouts, stays collapsed.
 
 On ChartQA, adding HCPC on top of NSR also partially restores format
 ($31.6\%\!\to\!43.0\%$ overall, with the recovery concentrated in
