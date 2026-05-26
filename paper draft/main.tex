@@ -467,7 +467,10 @@ advantages on rollouts with $R_i \ge \theta$ (\S\ref{sec:nsr}).
 \label{sec:eval_protocol}
 
 Evaluation samples 4 generations per test prompt at temperature 0.8
-and top-$p{=}0.95$. We evaluate on two disjoint 500-sample slices,
+and top-$p{=}0.95$, the standard inference-time setting; training
+uses top-$p{=}1.0$ to keep the rollout distribution unrestricted
+during exploration.
+We evaluate on two disjoint 500-sample slices,
 one per benchmark, drawn from the official test split of each.
 \textbf{ChartQA}~\citep{chartqa} provides the in-distribution slice;
 \textbf{ChartFC}~\citep{chartfc} provides the held-out OOD slice,
