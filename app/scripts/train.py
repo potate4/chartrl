@@ -88,6 +88,15 @@ def parse_args():
         help="Use subset of data for quick iteration",
     )
 
+    # Reproducibility
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Override random seed. Tags the run's experiment_name with "
+             "'_seed<N>' so seed sweeps land in separate output dirs.",
+    )
+
     # Training overrides
     parser.add_argument(
         "--num-epochs",
@@ -219,6 +228,12 @@ def main():
 
     if args.subset_size:
         overrides["subset_size"] = args.subset_size
+    if args.seed is not None:
+        overrides["seed"] = args.seed
+        # Tag the experiment so this seed's outputs get their own directory
+        # (outputs/<experiment>_seed<N>/...) instead of colliding with the
+        # default-seed run.
+        overrides["experiment_name"] = f"{args.experiment}_seed{args.seed}"
     if args.num_epochs:
         overrides["num_epochs"] = args.num_epochs
     if args.batch_size:
